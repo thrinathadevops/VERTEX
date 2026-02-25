@@ -10,61 +10,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.models.interview import (
     CandidateProfile, JobDescription, ScreeningStatus
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _skill_match(resume: str, required_skills: list[str]) -> tuple[list, list]:
-    """Simple keyword scan — swap for embeddings/LLM in production."""
-    resume_lower = resume.lower()
-    matched = [s for s in required_skills if s.lower() in resume_lower]
-    missing = [s for s in required_skills if s.lower() not in resume_lower]
-    return matched, missing
-
-
-async def _call_llm_ats(
-    resume_text: str,
-    jd_text: str,
-    screening_prompt: str | None,
-    matched: list,
-    missing: list,
-) -> dict:
-    """
-    Placeholder for LLM-powered deep screening.
-
-    Prompt strategy:
-      System : "You are a senior technical recruiter. Evaluate this resume
-                against the job description. {screening_prompt or ''}"
-      User   : "JD: {jd_text}
-
-Resume: {resume_text}
-
-
-                Matched skills: {matched}
-Missing skills: {missing}"
-
-    Expected JSON response:
-      {summary, technical_fit_score (0-10), soft_skills_score (0-10),
-       recommendation: Shortlist|Reject|Review}
-    """
-    # STUB — replace with openai.ChatCompletion or similar
-    score = round(len(matched) / max(len(matched) + len(missing), 1) * 100, 1)
-    recommendation = (
-        "Shortlist" if score >= 70
-        else "Review" if score >= 40
-        else "Reject"
-    )
-    return {
-        "summary": (
-            f"Candidate matches {len(matched)} of "
-            f"{len(matched)+len(missing)} required skills. "
-            f"Score: {score}/100. Recommendation: {recommendation}."
-        ),
-        "recommendation": recommendation,
-    }
+from app.services.llm_service import run_ats_analysis
 
 
 # ── Main service function ──────────────────────────────────────────────────────
@@ -88,23 +40,33 @@ async def run_ats_scan(db: AsyncSession, candidate_id: UUID) -> dict:
     required_skills: list[str] = jd.required_skills or []
     resume_text: str = candidate.resume_text or ""
 
-    matched, missing = _skill_match(resume_text, required_skills)
-
-    ats_score = round(len(matched) / max(len(matched) + len(missing), 1) * 100, 1)
-
-    llm_result = await _call_llm_ats(
-        resume_text=resume_text,
-        jd_text=jd.description,
-        screening_prompt=jd.screening_prompt,
-        matched=matched,
-        missing=missing,
+    if not settings.GEMINI_API_KEY:
+        # Fallback if no LLM key provided
+        resume_lower = resume_text.lower()
+        matched = [s for s in required_skills if s.lower() in resume_lower]
+        missing = [s for s in required_skills if s.lower() not in resume_lower]
+        ats_score = round(len(matched) / max(len(matched) + len(missing), 1) * 100, 1)
+        feedback = f"Matched {len(matched)} of {len(required_skills)} skills."
+    else:
+        # Actual LLM Integration
+        from app.services.llm_service import run_ats_analysis
+        llm_result = await run_ats_analysis(resume_text, jd.description, required_skills)
+        ats_score = llm_result.get("ats_score", 0)
+        matched = llm_result.get("matched_skills", [])
+        missing = llm_result.get("missing_skills", [])
+        feedback = llm_result.get("feedback", "")
+    
+    recommendation = (
+        "Shortlist" if ats_score >= 70
+        else "Review" if ats_score >= 40
+        else "Reject"
     )
 
     report = {
         "matched_skills": matched,
         "missing_skills": missing,
-        "summary": llm_result["summary"],
-        "recommendation": llm_result["recommendation"],
+        "summary": feedback,
+        "recommendation": recommendation,
     }
 
     # Persist
@@ -112,9 +74,9 @@ async def run_ats_scan(db: AsyncSession, candidate_id: UUID) -> dict:
     candidate.ats_report = report
     candidate.screening_status = (
         ScreeningStatus.shortlisted
-        if llm_result["recommendation"] == "Shortlist"
+        if recommendation == "Shortlist"
         else ScreeningStatus.rejected
-        if llm_result["recommendation"] == "Reject"
+        if recommendation == "Reject"
         else ScreeningStatus.screened
     )
     await db.commit()

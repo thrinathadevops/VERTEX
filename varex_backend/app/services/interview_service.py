@@ -26,7 +26,10 @@ from app.models.interview import (
 MAX_TURNS = 8   # ~30 min at ~4 min per turn
 
 
-# ── LLM Stubs (replace with real API calls) ───────────────────────────────────
+from app.core.config import settings
+from app.services.llm_service import generate_interview_question, score_answer, generate_score_report
+
+# ── LLM Integration (with fallbacks) ──────────────────────────────────────────
 
 async def _call_llm_question(
     jd_text: str,
@@ -35,18 +38,30 @@ async def _call_llm_question(
     turn_number: int,
 ) -> str:
     """Generate the next interview question based on JD + conversation history."""
-    openers = [
-        "Tell me about yourself and what drew you to this role.",
-        "Can you walk me through a challenging project you have led recently?",
-        "How do you approach system design for a high-traffic API?",
-        "Describe how you handle disagreements with team members.",
-        "What's your experience with asynchronous programming in Python?",
-        "How do you ensure code quality in a fast-moving team?",
-        "Describe a time you had to optimise a slow database query.",
-        "Where do you see yourself in three years?",
-    ]
-    # STUB: In production, pass history to GPT-4o / Gemini and get a contextual question.
-    return openers[min(turn_number - 1, len(openers) - 1)]
+    if not settings.GEMINI_API_KEY:
+        openers = [
+            "Tell me about yourself and what drew you to this role.",
+            "Can you walk me through a challenging project you have led recently?",
+            "How do you approach system design for a high-traffic API?",
+            "Describe how you handle disagreements with team members.",
+            "What's your experience with asynchronous programming in Python?",
+            "How do you ensure code quality in a fast-moving team?",
+            "Describe a time you had to optimise a slow database query.",
+            "Where do you see yourself in three years?",
+        ]
+        return openers[min(turn_number - 1, len(openers) - 1)]
+
+    # Note: `resume_text` isn't strictly required by our llm_service right now, 
+    # but could be passed if we update generate_interview_question.
+    skills = [] # Optionally parse from jd_text or pass securely.
+    # To keep it simple, we pass jd_text as is.
+    return await generate_interview_question(
+        job_title="Role", 
+        job_description=jd_text, 
+        skills=skills, 
+        turn_number=turn_number, 
+        previous_qa=history
+    )
 
 
 async def _call_llm_score(
@@ -55,14 +70,19 @@ async def _call_llm_score(
     jd_text: str,
 ) -> tuple[float, str]:
     """Score the candidate's answer (0–10) and return a polite reply."""
-    # STUB: Send to LLM for evaluation
-    word_count = len(answer.split())
-    score = min(10.0, round(word_count / 20, 1))  # naive word-count proxy
-    reply = (
-        "Thank you for sharing that — very insightful. Let's move to the next question."
-        if score >= 5
-        else "Thank you for your response. I appreciate your honesty. Let's continue."
-    )
+    if not settings.GEMINI_API_KEY:
+        word_count = len(answer.split())
+        score = min(10.0, round(word_count / 20, 1))  # naive word-count proxy
+        reply = (
+            "Thank you for sharing that — very insightful. Let's move to the next question."
+            if score >= 5
+            else "Thank you for your response. I appreciate your honesty. Let's continue."
+        )
+        return score, reply
+
+    res = await score_answer(question, answer, job_title="Role", skills=[])
+    score = float(res.get("score", 5))
+    reply = res.get("feedback", "Thank you for your response. Let's continue.")
     return score, reply
 
 
@@ -72,24 +92,45 @@ async def _call_llm_report(
     jd_title: str,
 ) -> dict:
     """Generate the final score report narrative."""
-    avg_score = round(
-        sum(t.answer_score or 0 for t in turns) / max(len(turns), 1) * 10, 1
-    )  # scale to 100
+    if not settings.GEMINI_API_KEY:
+        avg_score = round(
+            sum(t.answer_score or 0 for t in turns) / max(len(turns), 1) * 10, 1
+        )  # scale to 100
+        return {
+            "overall_score": avg_score,
+            "communication_score": round(avg_score / 10 * 10, 1),
+            "technical_score": round(avg_score / 10 * 9, 1),
+            "problem_solving_score": round(avg_score / 10 * 8.5, 1),
+            "confidence_score": round(avg_score / 10 * 9.5, 1),
+            "strengths": ["Clear communication", "Relevant experience"],
+            "areas_to_improve": ["Depth on distributed systems", "Quantify achievements"],
+            "recommendation": "Shortlist" if avg_score >= 70 else "Review" if avg_score >= 40 else "Reject",
+            "ai_summary": (
+                f"{candidate_name} completed the AI interview for {jd_title}. "
+                f"Overall score: {avg_score}/100. "
+                "Candidate demonstrated reasonable communication skills. "
+                "Recommend proceeding to the human panel round."
+            ),
+        }
+
+    history = [
+        {"question": t.ai_question, "answer": t.candidate_answer, "score": t.answer_score}
+        for t in turns
+    ]
+    res = await generate_score_report(jd_title, candidate_name, history)
+    
+    overall_score = float(res.get("overall_score", 5)) * 10
+    
     return {
-        "overall_score": avg_score,
-        "communication_score": round(avg_score / 10 * 10, 1),
-        "technical_score": round(avg_score / 10 * 9, 1),
-        "problem_solving_score": round(avg_score / 10 * 8.5, 1),
-        "confidence_score": round(avg_score / 10 * 9.5, 1),
-        "strengths": ["Clear communication", "Relevant experience"],
-        "areas_to_improve": ["Depth on distributed systems", "Quantify achievements"],
-        "recommendation": "Shortlist" if avg_score >= 70 else "Review" if avg_score >= 40 else "Reject",
-        "ai_summary": (
-            f"{candidate_name} completed the AI interview for {jd_title}. "
-            f"Overall score: {avg_score}/100. "
-            "Candidate demonstrated reasonable communication skills. "
-            "Recommend proceeding to the human panel round."
-        ),
+        "overall_score": overall_score,
+        "communication_score": float(res.get("communication", 5)) * 10,
+        "technical_score": float(res.get("technical_score", 5)) * 10,
+        "problem_solving_score": float(res.get("overall_score", 5)) * 10,
+        "confidence_score": float(res.get("overall_score", 5)) * 10,
+        "strengths": res.get("details", {}).get("strengths", []),
+        "areas_to_improve": res.get("details", {}).get("weaknesses", []),
+        "recommendation": "Shortlist" if overall_score >= 70 else "Review" if overall_score >= 40 else "Reject",
+        "ai_summary": res.get("summary", "Interview completed."),
     }
 
 
