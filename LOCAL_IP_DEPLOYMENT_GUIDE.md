@@ -4,7 +4,7 @@ This guide provides a detailed, step-by-step walk-through for deploying the VARE
 
 When you don't have a domain name configured, Nginx's default behavior—which forces traffic over a secure SSL connection (HTTPS)—will cause your application to fail, as Let's Encrypt cannot issue SSL certificates for a bare IP address. To fix this, you need to modify the Nginx config, tweak your Docker setup, and adjust environment variables so everything runs smoothly over standard HTTP (`http://`).
 
-Let's assume AWS assigned your EC2 instance the public IP address: **`13.235.122.9`**. Wherever you see this IP, replace it with your actual EC2 IP.
+Let's assume AWS assigned your EC2 instance the **Public IPv4 address**: **`13.235.122.9`**. Wherever you see this IP, replace it with your actual EC2 Public IP. Do NOT use the Private IP.
 
 ---
 
@@ -148,8 +148,9 @@ nano docker-compose.yml
 
 ## Step 4: Configure Environment Variables for IP Access
 
-You must explicitly tell your Frontend and Backend to accept traffic natively on your EC2 IP address over HTTP. 
-
+You must explicitly tell your Frontend and Backend to accept traffic natively on your EC2 Public IP address over HTTP. 
+ 
+ to generate random secret key:-  `openssl rand -hex 32`
 ### 1. Backend `.env`
 
 Create or open:
@@ -158,22 +159,35 @@ nano varex_backend/.env
 ```
 
 **What to set:**
-Ensure `ALLOWED_ORIGINS` and `FRONTEND_URL` represent the exact IP you use in the browser, starting with `http://`.
+Ensure `ALLOWED_ORIGINS` and `FRONTEND_URL` represent the exact **Public IP** you use in the browser, starting with `http://`.
 
 ```env
 ENVIRONMENT=production
 SECRET_KEY=generate_with_openssl_rand_hex_32_here
 
-# Put your AWS IP address here:
-FRONTEND_URL=http://13.235.122.9
-ALLOWED_ORIGINS=http://13.235.122.9,http://localhost:3000
+# Put your AWS Public IP address here:
+FRONTEND_URL=http://YOUR_EC2_PUBLIC_IP
+ALLOWED_ORIGINS=http://YOUR_EC2_PUBLIC_IP,http://localhost:3000
 
 # Database strings remain the same
 DATABASE_URL=postgresql+asyncpg://varex:varexpassword@db:5432/varexdb
 REDIS_URL=redis://redis:6379/0
 
-# (Add your Sendgrid, Razorpay keys here as well...)
+# 3. Third-Party Integrations
+RAZORPAY_KEY_ID=rzp_test_your_real_key
+RAZORPAY_KEY_SECRET=your_real_razorpay_secret
+AWS_S3_BUCKET=varex-assets
+AWS_REGION=ap-south-1
 ```
+
+### 💎 How to get your Temporary Razorpay Test Keys:
+1. Go to the [Razorpay Dashboard](https://dashboard.razorpay.com/) and sign up for a free account.
+2. In the top-left corner, ensure the toggle is set to **Test Mode**.
+3. Go to **Settings > API Keys** in the left sidebar.
+4. Click **Generate Key**. This will give you:
+   - Your `Key Id` (starts with `rzp_test_...`) → put this in `RAZORPAY_KEY_ID`
+   - Your `Key Secret` → put this in `RAZORPAY_KEY_SECRET`
+*(Keep them safe; the Secret will not be shown again.)*
 
 ### 2. Frontend `.env.local`
 
@@ -183,13 +197,11 @@ nano varex_frontend/.env.local
 ```
 
 **What to set:**
-Ensure Next.js knows exactly where to send API requests under the hood.
+Since your current file only has the Next.js API URL setup, you just need to replace `http://localhost:8000` with the EC2 IP.
 
 ```env
-# Put your AWS IP address here:
-NEXT_PUBLIC_API_BASE_URL=http://13.235.122.9
-
-# (Add your AWS S3, Razorpay keys here as well...)
+# URL of FastAPI backend
+NEXT_PUBLIC_API_BASE_URL=http://YOUR_EC2_PUBLIC_IP
 ```
 
 ---
