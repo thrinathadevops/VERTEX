@@ -1,102 +1,81 @@
-// lib/razorpay.ts — client-side Razorpay helpers
-
-export interface RazorpayOrder {
-  id: string;
-  amount: number;        // in paise
-  currency: string;
-  receipt: string;
-}
-
-export interface RazorpayOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  prefill?: { name?: string; email?: string; contact?: string };
-  theme?: { color?: string };
-  handler: (response: RazorpayPaymentResponse) => void;
-  modal?: { ondismiss?: () => void };
-}
-
-export interface RazorpayPaymentResponse {
-  razorpay_order_id:   string;
-  razorpay_payment_id: string;
-  razorpay_signature:  string;
-}
+// PATH: varex_frontend/lib/razorpay.ts
+// FIX 2.5: initiatePayment opens Razorpay modal AND calls /api/razorpay/verify on success
 
 declare global {
   interface Window {
-    Razorpay: new (options: RazorpayOptions) => { open(): void };
+    Razorpay: any;
   }
 }
 
-/** Dynamically loads the Razorpay checkout script once */
-export function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (document.getElementById("razorpay-script")) { resolve(true); return; }
-    const script   = document.createElement("script");
-    script.id      = "razorpay-script";
-    script.src     = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload  = () => resolve(true);
-    script.onerror = () => resolve(false);
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src   = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload  = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Razorpay SDK"));
     document.body.appendChild(script);
   });
 }
 
-/** Creates a Razorpay order via our backend, opens checkout, verifies payment */
-export async function initiatePayment({
-  planType,
-  user,
-  onSuccess,
-  onError,
-  onDismiss,
-}: {
-  planType:  string;
-  user:      { name: string; email: string };
-  onSuccess: (paymentId: string) => void;
-  onError:   (msg: string) => void;
-  onDismiss?: () => void;
-}) {
-  // Step 1 — load SDK
-  const loaded = await loadRazorpayScript();
-  if (!loaded) { onError("Failed to load payment SDK. Check your internet."); return; }
+interface PaymentOptions {
+  order_id:       string;
+  subscription_id: string;
+  amount:         number;      // in paise
+  user_name:      string;
+  user_email:     string;
+}
 
-  // Step 2 — create order on backend
-  const orderRes = await fetch("/api/razorpay/create-order", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ plan_type: planType }),
-  });
-  if (!orderRes.ok) { onError("Could not create order. Try again."); return; }
-  const order: RazorpayOrder = await orderRes.json();
+export function initiatePayment(opts: PaymentOptions): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      await loadRazorpayScript();
 
-  // Step 3 — open Razorpay checkout
-  const options: RazorpayOptions = {
-    key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "",
-    amount:      order.amount,
-    currency:    order.currency,
-    name:        "VAREX Technologies",
-    description: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Subscription`,
-    order_id:    order.id,
-    prefill:     { name: user.name, email: user.email },
-    theme:       { color: "#0ea5e9" },
-    handler: async (response) => {
-      // Step 4 — verify on backend
-      const verifyRes = await fetch("/api/razorpay/verify", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(response),
+      const rzp = new window.Razorpay({
+        key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount:      opts.amount,
+        currency:    "INR",
+        name:        "VAREX Technologies",
+        description: "Premium Subscription",
+        order_id:    opts.order_id,
+        prefill: {
+          name:  opts.user_name,
+          email: opts.user_email,
+        },
+        theme: { color: "#0ea5e9" },
+
+        handler: async (response: {
+          razorpay_order_id:   string;
+          razorpay_payment_id: string;
+          razorpay_signature:  string;
+        }) => {
+          try {
+            // Verify payment signature server-side and activate subscription
+            const verifyRes = await fetch("/api/razorpay/verify", {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                subscription_id:     opts.subscription_id,
+              }),
+            });
+            if (!verifyRes.ok) throw new Error("Payment verification failed");
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+
+        modal: {
+          ondismiss: () => reject(new Error("Payment cancelled")),
+        },
       });
-      if (verifyRes.ok) {
-        onSuccess(response.razorpay_payment_id);
-      } else {
-        onError("Payment verification failed. Contact support@varextech.in");
-      }
-    },
-    modal: { ondismiss: onDismiss },
-  };
 
-  new window.Razorpay(options).open();
+      rzp.open();
+    } catch (e) {
+      reject(e);
+    }
+  });
 }

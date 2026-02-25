@@ -1,201 +1,67 @@
-// ─────────────────────────────────────────────────────────────────
-// lib/api.ts  —  VAREX Platform  (complete)
-// ─────────────────────────────────────────────────────────────────
-import axios from "axios";
-import Cookies from "js-cookie";
-import type {
-  Tokens, User, Subscription, ContentItem,
-  Project, TeamMember, Certification, Achievement,
-  FAQ, Workshop, Lead,
-} from "./types";
-import { setTokens as storeTokens } from "./auth";
+// PATH: varex_frontend/lib/api.ts  — ADD these functions to your existing api.ts
+// FIX 4.6: subscription plan keys match backend PlanType enum exactly
+// FIX 4.7: interview endpoints added
+// FIX 4.8: analytics endpoint added
+// FIX 4.9: throw in production if NEXT_PUBLIC_API_BASE_URL not set
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  (process.env.NODE_ENV === "production"
+    ? (() => { throw new Error("NEXT_PUBLIC_API_BASE_URL is not set in production"); })()
+    : "http://localhost:8000");
 
-const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
-});
-
-// ── Request interceptor: attach Bearer token ──────────────────────
-api.interceptors.request.use((config) => {
-  const token = Cookies.get("access_token");
-  if (token) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// ── Response interceptor: auto-refresh on 401 ────────────────────
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const refreshToken = Cookies.get("refresh_token");
-      if (refreshToken) {
-        try {
-          const res = await axios.post<Tokens>(
-            `${API_BASE_URL}/api/v1/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-          storeTokens(res.data);
-          originalRequest.headers = originalRequest.headers ?? {};
-          originalRequest.headers.Authorization = `Bearer ${res.data.access_token}`;
-          return api(originalRequest);
-        } catch {
-          // refresh failed — fall through
-        }
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// ════════════════════════════════════════════════════════════════
-// AUTH
-// ════════════════════════════════════════════════════════════════
-export interface LoginPayload    { email: string; password: string }
-export interface RegisterPayload { name: string; email: string; password: string }
-
-export async function login(payload: LoginPayload): Promise<Tokens> {
-  const res = await api.post<Tokens>("/auth/login", payload);
+// ── Analytics (admin) ────────────────────────────────────────────
+export async function getAnalytics() {
+  const res = await apiRequest("GET", "/api/v1/analytics/");
   return res.data;
 }
 
-export async function register(payload: RegisterPayload) {
-  const res = await api.post("/auth/register", payload);
+// ── Subscriptions ────────────────────────────────────────────────
+// plan_type values MUST match backend PlanType enum: "monthly" | "quarterly" | "enterprise"
+export async function getMySubscription() {
+  const res = await apiRequest("GET", "/api/v1/subscriptions/me");
   return res.data;
 }
 
-// ════════════════════════════════════════════════════════════════
-// USER
-// ════════════════════════════════════════════════════════════════
-export async function getMe(): Promise<User> {
-  const res = await api.get<User>("/users/me");
+// ── Interview ────────────────────────────────────────────────────
+export async function createJobDescription(payload: {
+  title: string; company?: string; description: string; skills?: string[];
+}) {
+  const res = await apiRequest("POST", "/api/v1/interview/jd", payload);
   return res.data;
 }
 
-// ════════════════════════════════════════════════════════════════
-// SUBSCRIPTION
-// ════════════════════════════════════════════════════════════════
-export async function getMySubscription(): Promise<Subscription> {
-  const res = await api.get<Subscription>("/subscriptions/me");
+export async function uploadResume(jobId: string, file: File, candidateName: string, candidateEmail: string) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("job_id", jobId);
+  form.append("name", candidateName);
+  form.append("email", candidateEmail);
+  const res = await fetch(`${BASE}/api/v1/interview/candidate`, {
+    method: "POST",
+    body:   form,
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+}
+
+export async function startInterviewSession(jobId: string, candidateId: string) {
+  const res = await apiRequest("POST", "/api/v1/interview/session", { job_id: jobId, candidate_id: candidateId });
   return res.data;
 }
 
-export async function createSubscription(plan_type: string): Promise<Subscription> {
-  const res = await api.post<Subscription>(`/subscriptions?plan_type=${plan_type}`);
+export async function submitInterviewAnswer(sessionId: string, answer: string) {
+  const res = await apiRequest("POST", `/api/v1/interview/session/${sessionId}/answer`, { answer });
   return res.data;
 }
 
-// ════════════════════════════════════════════════════════════════
-// CONTENT / BLOG
-// ════════════════════════════════════════════════════════════════
-export async function listFreeContent(): Promise<ContentItem[]> {
-  const res = await api.get<ContentItem[]>("/content/free");
+export async function getInterviewReport(sessionId: string) {
+  const res = await apiRequest("GET", `/api/v1/interview/session/${sessionId}/report`);
   return res.data;
 }
 
-export async function listPremiumContent(): Promise<ContentItem[]> {
-  const res = await api.get<ContentItem[]>("/content/premium");
-  return res.data;
-}
-
-export async function getContentBySlug(slug: string): Promise<ContentItem> {
-  const res = await api.get<ContentItem>(`/content/${slug}`);
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// PORTFOLIO / PROJECTS
-// ════════════════════════════════════════════════════════════════
-export async function listProjects(
-  category?: string,
-  featured?: boolean
-): Promise<Project[]> {
-  const params = new URLSearchParams();
-  if (category) params.append("category", category);
-  if (featured)  params.append("featured_only", "true");
-  const res = await api.get<Project[]>(`/portfolio?${params}`);
-  return res.data;
-}
-
-export async function getProject(slug: string): Promise<Project> {
-  const res = await api.get<Project>(`/portfolio/${slug}`);
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// TEAM
-// ════════════════════════════════════════════════════════════════
-export async function listTeam(): Promise<TeamMember[]> {
-  const res = await api.get<TeamMember[]>("/team");
-  return res.data;
-}
-
-export async function getTeamMember(slug: string): Promise<TeamMember> {
-  const res = await api.get<TeamMember>(`/team/${slug}`);
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// CERTIFICATIONS & ACHIEVEMENTS
-// ════════════════════════════════════════════════════════════════
-export async function listCertifications(domain?: string): Promise<Certification[]> {
-  const params = domain ? `?domain=${domain}` : "";
-  const res = await api.get<Certification[]>(`/certifications${params}`);
-  return res.data;
-}
-
-export async function listAchievements(): Promise<Achievement[]> {
-  const res = await api.get<Achievement[]>("/certifications/achievements");
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// FAQ
-// ════════════════════════════════════════════════════════════════
-export async function listFAQs(category?: string): Promise<FAQ[]> {
-  const params = category ? `?category=${category}` : "";
-  const res = await api.get<FAQ[]>(`/faq${params}`);
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// WORKSHOPS
-// ════════════════════════════════════════════════════════════════
-export async function listWorkshops(): Promise<Workshop[]> {
-  const res = await api.get<Workshop[]>("/workshops");
-  return res.data;
-}
-
-export async function getWorkshop(slug: string): Promise<Workshop> {
-  const res = await api.get<Workshop>(`/workshops/${slug}`);
-  return res.data;
-}
-
-export async function registerWorkshop(workshopId: string): Promise<unknown> {
-  const res = await api.post(`/workshops/${workshopId}/register`);
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// LEADS / CONSULTATION
-// ════════════════════════════════════════════════════════════════
-export interface LeadPayload {
-  name: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  service_interest: string;
-  message?: string;
-  preferred_slot?: string;
-}
-
-export async function submitLead(payload: LeadPayload): Promise<Lead> {
-  const res = await api.post<Lead>("/leads", payload);
-  return res.data;
+function getToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/access_token=([^;]+)/);
+  return match ? match[1] : "";
 }

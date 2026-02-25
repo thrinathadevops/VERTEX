@@ -1,38 +1,93 @@
+// PATH: varex_frontend/lib/auth.ts
+// FIX: No longer storing tokens in JS-accessible cookies
+// Tokens are now httpOnly cookies set by the backend
+// user data stored only in React state / sessionStorage (not editable role cookie)
 
 "use client";
 
-import Cookies from "js-cookie";
-import jwtDecode from "jwt-decode";
-import type { Tokens, User } from "./types";
+import { getMe } from "@/lib/api";
+import type { User } from "@/lib/types";
 
-export function setTokens(tokens: Tokens) {
-  Cookies.set("access_token", tokens.access_token, { sameSite: "lax" });
-  Cookies.set("refresh_token", tokens.refresh_token, { sameSite: "lax" });
+// Login — POST to backend, which sets httpOnly cookies
+export async function login(email: string, password: string): Promise<User> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login`,
+    {
+      method:      "POST",
+      credentials: "include",          // Send/receive cookies cross-origin
+      headers:     { "Content-Type": "application/json" },
+      body:        JSON.stringify({ email, password }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail ?? "Login failed");
+  }
+  // Backend returns minimal user info — NOT the token
+  return res.json();
+}
 
-  try {
-    const decoded: any = jwtDecode(tokens.access_token);
-    Cookies.set("user_id", decoded.sub, { sameSite: "lax" });
-  } catch {
-    // ignore
+// Logout — calls backend to blacklist token + clear cookies
+export async function logout(): Promise<void> {
+  await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/logout`,
+    {
+      method:      "POST",
+      credentials: "include",
+    }
+  );
+  // Clear any local state
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("varex_user");
   }
 }
 
-export function clearTokens() {
-  Cookies.remove("access_token");
-  Cookies.remove("refresh_token");
-  Cookies.remove("user_id");
+// Register
+export async function register(name: string, email: string, password: string): Promise<void> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/register`,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ name, email, password }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail ?? "Registration failed");
+  }
 }
 
-export function getUserFromCookies(): User | null {
-  const raw = Cookies.get("user_cache");
-  if (!raw) return null;
+// Get current user — always fetched from backend (not from cookie)
+// Cache result in sessionStorage to avoid repeat calls on same tab
+export async function getCurrentUser(): Promise<User | null> {
   try {
-    return JSON.parse(raw) as User;
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem("varex_user");
+      if (cached) return JSON.parse(cached) as User;
+    }
+    const user = await getMe();
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("varex_user", JSON.stringify(user));
+    }
+    return user;
   } catch {
     return null;
   }
 }
 
-export function cacheUser(user: User) {
-  Cookies.set("user_cache", JSON.stringify(user), { sameSite: "lax" });
+// Refresh access token using refresh cookie
+export async function refreshAccessToken(): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`,
+      {
+        method:      "POST",
+        credentials: "include",
+      }
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

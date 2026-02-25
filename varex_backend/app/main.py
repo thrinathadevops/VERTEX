@@ -9,13 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-
+from app.services.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: do NOT call create_all — use `alembic upgrade head`
+    start_scheduler()    # Start APScheduler on startup
     yield
-    # Shutdown cleanup if needed
+    stop_scheduler()     # Graceful shutdown
 
 
 app = FastAPI(

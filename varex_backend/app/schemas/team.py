@@ -16,28 +16,33 @@ class AvatarUpdatePayload(BaseModel):
 class TeamMemberCreate(BaseModel):
     name: str
     slug: str
-    title: str
+    role: str
     bio: Optional[str] = None
-    years_experience: int = 0
-    specializations: Optional[List[str]] = None
-    tools: Optional[List[str]] = None
-    pricing: Optional[Any] = None
-    available_for: Optional[List[str]] = None
-    available_from: Optional[str] = None
+    avatar_url: Optional[str] = None
+    avatar_s3_key: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+    is_published: bool = False
+    specialisations: Optional[List[str]] = None
+    enterprise_projects: Optional[List[str]] = None
 
 class TeamMemberResponse(BaseModel):
     id: UUID
     name: str
     slug: str
-    title: str
+    role: str
     bio: Optional[str]
-    years_experience: int
-    specializations: Optional[List[str]]
-    tools: Optional[List[str]]
-    pricing: Optional[Any]
-    available_for: Optional[List[str]]
-    available_from: Optional[str]
+    avatar_url: Optional[str]
     avatar_s3_key: Optional[str]
     linkedin_url: Optional[str]
+    github_url: Optional[str]
+    specialisations: Optional[List[str]]
+    enterprise_projects: Optional[List[str]]
+    display_order: int
+    is_active: bool
+    is_published: bool
     created_at: datetime
+    updated_at: Optional[datetime]
     model_config = {"from_attributes": True}

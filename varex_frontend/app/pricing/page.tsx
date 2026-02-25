@@ -1,175 +1,155 @@
+// PATH: varex_frontend/app/pricing/page.tsx
+// FIX 2.5: handleSubscribe now opens Razorpay modal first, only activates after payment
+// FIX 2.6: role === "premium" (not "premium_user")
+
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createSubscription } from "@/lib/api";
-import { getUserFromCookies } from "@/lib/auth";
+import { getMe } from "@/lib/api";
+import { initiatePayment } from "@/lib/razorpay";
+import type { User } from "@/lib/types";
 
 const PLANS = [
   {
-    key: "free", label: "Free", price: "₹0", period: "forever",
-    highlight: false,
-    features: [
-      "Homepage & public pages",
-      "Limited blog articles",
-      "Service overview",
-      "Contact & consultation form",
-    ],
-    cta: "Get started free",
+    key:      "monthly" as const,
+    label:    "Monthly",
+    price:    "₹1,499",
+    paise:    149900,
+    features: ["All premium modules", "Workshop recordings", "Priority support"],
   },
   {
-    key: "monthly", label: "Monthly", price: "₹1,499", period: "/month",
-    highlight: false,
-    features: [
-      "Everything in Free",
-      "Advanced DevSecOps courses",
-      "Architecture deep dives",
-      "Workshop recordings",
-      "Case studies",
-      "Downloadable templates",
-    ],
-    cta: "Subscribe monthly",
-  },
-  {
-    key: "quarterly", label: "Quarterly", price: "₹3,999", period: "/quarter",
-    highlight: true,  // most popular
-    features: [
-      "Everything in Monthly",
-      "Interview prep content",
-      "All blog archives",
-      "Priority support",
-      "Save ₹1,498 vs monthly",
-    ],
-    cta: "Best value",
-  },
-  {
-    key: "enterprise", label: "Enterprise", price: "Custom", period: "",
-    highlight: false,
-    features: [
-      "Private training content",
-      "Custom dashboards",
-      "Internal reports",
-      "Dedicated workshop materials",
-      "Dedicated account manager",
-      "SLA-backed support",
-    ],
-    cta: "Contact sales",
+    key:      "quarterly" as const,
+    label:    "Quarterly",
+    price:    "₹3,999",
+    paise:    399900,
+    badge:    "Best Value",
+    features: ["Everything in Monthly", "3-month access", "Save ₹498"],
   },
 ];
 
 export default function PricingPage() {
   const router  = useRouter();
-  const user    = getUserFromCookies();
+  const [user,    setUser]    = useState<User | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [error,   setError]   = useState<string | null>(null);
 
-  const handleSubscribe = async (planKey: string) => {
-    if (!user) { router.push("/register"); return; }
-    if (planKey === "free") { router.push("/dashboard"); return; }
-    if (planKey === "enterprise") { router.push("/contact?service=consulting"); return; }
-    setLoading(planKey); setError(null);
+  useEffect(() => {
+    getMe().then(setUser).catch(() => {});
+  }, []);
+
+  async function handleSubscribe(planKey: "monthly" | "quarterly") {
+    if (!user) { router.push("/login"); return; }
+    setLoading(planKey);
+    setError(null);
+
     try {
-      await createSubscription(planKey);
-      router.push("/dashboard");
+      // Step 1 — Create Razorpay order via Next.js API route
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ plan_type: planKey }),
+      });
+      if (!orderRes.ok) throw new Error("Could not create payment order");
+      const { razorpay_order_id, id: subscription_id } = await orderRes.json();
+
+      // Step 2 — Open Razorpay modal; payment collected here
+      await initiatePayment({
+        order_id:       razorpay_order_id,
+        subscription_id,
+        amount:         PLANS.find((p) => p.key === planKey)!.paise,
+        user_name:      user.name,
+        user_email:     user.email,
+        // onSuccess: verify + activate is handled inside initiatePayment
+      });
+
+      // Step 3 — Redirect to dashboard on success
+      router.push("/dashboard/premium");
     } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Something went wrong.");
+      setError(err?.message ?? "Payment failed. Please try again.");
     } finally {
       setLoading(null);
     }
-  };
+  }
 
   return (
-    <div className="space-y-10">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold mb-2">Simple, transparent pricing</h1>
-        <p className="text-sm text-slate-300 max-w-md mx-auto">
-          Choose the plan that fits your learning and hiring goals. Upgrade or cancel anytime.
+    <main className="min-h-screen py-20 px-4">
+      <div className="max-w-4xl mx-auto text-center mb-14">
+        <h1 className="text-3xl font-bold mb-3">Choose Your Plan</h1>
+        <p className="text-slate-400">
+          Unlock premium modules, workshop recordings, and expert support.
         </p>
-      </header>
+      </div>
 
       {error && (
-        <div className="mx-auto max-w-md rounded-lg border border-red-700/50 bg-red-950/30 px-4 py-3 text-xs text-red-300">
-          {error}
-        </div>
+        <p className="text-center text-red-400 mb-6">{error}</p>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
-        {PLANS.map((plan) => (
-          <div key={plan.key}
-            className={`relative rounded-2xl border p-5 flex flex-col ${
-              plan.highlight
-                ? "border-sky-500 bg-sky-950/40 shadow-lg shadow-sky-500/10"
-                : "border-slate-800 bg-slate-900/70"
-            }`}
+      <div className="grid gap-6 sm:grid-cols-3 max-w-4xl mx-auto">
+        {/* Free */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+          <p className="text-lg font-bold mb-1">Free</p>
+          <p className="text-3xl font-extrabold mb-4">₹0</p>
+          <ul className="text-sm text-slate-400 space-y-2 mb-6">
+            <li>✓ Free articles</li>
+            <li>✓ Workshop listings</li>
+            <li>✓ Community access</li>
+          </ul>
+          <button
+            disabled
+            className="w-full rounded-xl py-2 text-sm bg-slate-800 text-slate-500 cursor-not-allowed"
           >
-            {plan.highlight && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-sky-500 px-3 py-0.5 text-[10px] font-semibold text-white whitespace-nowrap">
-                Most Popular
+            {user ? "Current Plan" : "Get Started Free"}
+          </button>
+        </div>
+
+        {/* Monthly & Quarterly */}
+        {PLANS.map((plan) => (
+          <div
+            key={plan.key}
+            className="relative rounded-2xl border border-sky-600/50 bg-slate-900/80 p-6"
+          >
+            {plan.badge && (
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-sky-600 px-3 py-0.5 text-xs font-semibold">
+                {plan.badge}
               </span>
             )}
-            <div className="mb-4">
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{plan.label}</p>
-              <p className="text-3xl font-bold text-slate-50">
-                {plan.price}
-                <span className="text-sm font-normal text-slate-400">{plan.period}</span>
-              </p>
-            </div>
-            <ul className="space-y-2 flex-1 mb-5">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-slate-300">
-                  <span className="mt-0.5 text-emerald-400 flex-shrink-0">✓</span>{f}
-                </li>
-              ))}
+            <p className="text-lg font-bold mb-1">{plan.label}</p>
+            <p className="text-3xl font-extrabold mb-1">{plan.price}</p>
+            <p className="text-xs text-slate-500 mb-4">
+              {plan.key === "monthly" ? "per month" : "per quarter"}
+            </p>
+            <ul className="text-sm text-slate-400 space-y-2 mb-6">
+              {plan.features.map((f) => <li key={f}>✓ {f}</li>)}
             </ul>
             <button
               onClick={() => handleSubscribe(plan.key)}
-              disabled={loading === plan.key}
-              className={`w-full rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-60 ${
-                plan.highlight
-                  ? "bg-sky-500 text-white hover:bg-sky-400"
-                  : "border border-slate-600 text-slate-100 hover:border-sky-500 hover:text-sky-300"
-              }`}
+              disabled={!!loading || user?.role === "premium" || user?.role === "enterprise"}
+              className="w-full rounded-xl py-2 text-sm font-semibold bg-sky-600 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loading === plan.key ? "Processing..." : plan.cta}
+              {loading === plan.key
+                ? "Processing…"
+                : user?.role === "premium" || user?.role === "enterprise"
+                ? "Current Plan"
+                : "Subscribe"}
             </button>
           </div>
         ))}
       </div>
 
-      {/* Access matrix */}
-      <section className="max-w-3xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-slate-800">
-              <th className="px-4 py-3 text-left text-slate-300 font-medium">Feature</th>
-              {["Guest","Free","Premium","Enterprise"].map(h => (
-                <th key={h} className="px-3 py-3 text-center text-slate-300 font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {[
-              ["Public pages & blog previews",  "✓","✓","✓","✓"],
-              ["Full blog articles",            "−","✓","✓","✓"],
-              ["DevSecOps courses",             "−","−","✓","✓"],
-              ["Workshop recordings",           "−","−","✓","✓"],
-              ["Architecture deep dives",       "−","−","✓","✓"],
-              ["Downloadable templates",        "−","−","✓","✓"],
-              ["Interview prep content",        "−","−","✓","✓"],
-              ["Private training content",      "−","−","−","✓"],
-              ["Custom dashboards",             "−","−","−","✓"],
-              ["Internal reports",              "−","−","−","✓"],
-              ["Dedicated account manager",     "−","−","−","✓"],
-            ].map(([feature, ...checks]) => (
-              <tr key={feature} className="hover:bg-slate-800/20">
-                <td className="px-4 py-2.5 text-slate-200">{feature}</td>
-                {checks.map((c, i) => (
-                  <td key={i} className={`px-3 py-2.5 text-center font-medium ${c === "✓" ? "text-emerald-400" : "text-slate-600"}`}>{c}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </div>
+      {/* Enterprise */}
+      <div className="max-w-4xl mx-auto mt-6 rounded-2xl border border-amber-700/40 bg-amber-950/10 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <p className="font-bold text-lg">Enterprise</p>
+          <p className="text-sm text-slate-400">Custom pricing · Dedicated support · Team onboarding</p>
+        </div>
+        <a
+          href="/contact"
+          className="rounded-xl px-6 py-2 bg-amber-600 hover:bg-amber-500 text-sm font-semibold transition"
+        >
+          Contact Sales
+        </a>
+      </div>
+    </main>
   );
 }
