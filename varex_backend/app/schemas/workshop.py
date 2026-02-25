@@ -1,57 +1,45 @@
-from uuid import UUID
+# PATH: varex_backend/app/schemas/workshop.py
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 from app.models.workshop import WorkshopMode, WorkshopStatus
 
-class WorkshopRegistrationResponse(BaseModel):
-    """
-    Returned by GET /workshops/{workshop_id}/registrations (admin only).
-    Add this class to your existing schemas/workshop.py file.
-    """
-    model_config = ConfigDict(from_attributes=True)
-
-    id:          UUID
-    workshop_id: UUID
-    user_id:     UUID
-    created_at:  datetime
-
-    # Optional: include user info if you join User in the query
-    # user_name:  str | None = None
-    # user_email: str | None = None
-
 
 class WorkshopCreate(BaseModel):
-    title: str
-    slug: str
-    description: str
-    curriculum: Optional[str] = None
-    mode: WorkshopMode = WorkshopMode.online
-    price_inr: Optional[float] = None
-    duration_hours: int = 8
-    max_seats: int = 30
+    title:          str
+    slug:           Optional[str] = None
+    description:    Optional[str] = None
+    mode:           str = "online"
+    price:          float = 0.0
+    max_seats:      int
+    status:         str = "upcoming"
+    trainer_id:     Optional[UUID] = None
+    is_published:   bool = False
     scheduled_date: Optional[datetime] = None
 
 class WorkshopResponse(BaseModel):
-    id: UUID
-    title: str
-    slug: str
-    description: str
-    mode: WorkshopMode
-    status: WorkshopStatus
-    price_inr: Optional[float]
-    duration_hours: int
-    max_seats: int
-    seats_booked: int
-    scheduled_date: Optional[datetime]
-    is_published: bool
-    created_at: datetime
+    id:             UUID
+    title:          str
+    slug:           Optional[str] = None
+    description:    Optional[str] = None
+    mode:           str
+    price:          float
+    max_seats:      int
+    seats_booked:   int
+    status:         str
+    is_published:   bool
+    scheduled_date: Optional[datetime] = None
+    created_at:     datetime
+    trainer_id:     Optional[UUID] = None
+
     model_config = {"from_attributes": True}
 
-class WorkshopRegisterResponse(BaseModel):
-    id: UUID
+class WorkshopRegistrationResponse(BaseModel):
+    id:          UUID
     workshop_id: UUID
-    user_id: UUID
-    paid: bool
-    registered_at: datetime
+    user_id:     UUID
+    paid:        bool = False
+    created_at:  datetime
+
     model_config = {"from_attributes": True}

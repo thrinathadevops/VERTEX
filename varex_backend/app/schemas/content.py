@@ -1,22 +1,27 @@
-from uuid import UUID
+# PATH: varex_backend/app/schemas/content.py
 from datetime import datetime
-
+from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel
 
-from app.models.content import AccessLevel
-
-
 class ContentCreate(BaseModel):
-    title: str
-    body: str
-    access_level: AccessLevel = AccessLevel.free
-
+    title:        str
+    slug:         Optional[str] = None
+    body:         str
+    category:     Optional[str] = None
+    access_level: str = "free"
+    is_published: bool = False
 
 class ContentResponse(BaseModel):
-    id: UUID
-    title: str
-    body: str
-    access_level: AccessLevel
-    created_at: datetime
+    id:           UUID
+    title:        str
+    slug:         Optional[str] = None
+    body:         str
+    category:     Optional[str] = None
+    access_level: str
+    is_published: bool
+    author_id:    Optional[UUID] = None
+    created_at:   datetime
+    updated_at:   Optional[datetime] = None
 
     model_config = {"from_attributes": True}
