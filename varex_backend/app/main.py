@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.logger import structured_logger
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -71,10 +72,9 @@ app.include_router(webhooks.router,       prefix=f"{API_V1}/webhooks",      tags
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    import logging
-    logging.error(f"Unhandled error: {exc}", exc_info=True)
+    structured_logger.error(f"Unhandled error: {exc}", exc_info=True)
     from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred. Please try again later."})
 
 
 @app.get("/health", tags=["Health"])

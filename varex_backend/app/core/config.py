@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # ── App ──────────────────────────────────────────────────────
     ENVIRONMENT: str = "development"
     PROJECT_NAME: str = "VAREX Platform"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # ── Security ─────────────────────────────────────────────────
     SECRET_KEY:                  str = "insecure-default-change-me"

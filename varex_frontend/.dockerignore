@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.next
+out
+build
+.env
+.env.*
+.git
+.github
+*.md
+.cache

@@ -127,7 +127,8 @@ def _clear_auth_cookies(response: Response) -> None:
 
 async def _send_email(to_email: str, subject: str, html: str) -> None:
     if not settings.SENDGRID_API_KEY:
-        print(f"Skipping email to {to_email} (no SendGrid API Key configured)")
+        from app.core.logger import structured_logger
+        structured_logger.warning(f"Skipping email to {to_email} (no SendGrid API Key configured)")
         return
         
     import httpx
@@ -212,7 +213,7 @@ async def register(
     await db.refresh(user)
 
     token      = secrets.token_urlsafe(32)
-    verify_url = f"https://varextech.in/verify-email?token={token}"
+    verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     _verify_tokens[token] = str(user.id)
     background_tasks.add_task(_send_verify_email, user.email, user.name, verify_url)
 
@@ -372,7 +373,7 @@ async def forgot_password(
     # Always return 200 — prevents user enumeration attacks
     if user and user.is_active:
         token     = secrets.token_urlsafe(32)
-        reset_url = f"https://varextech.in/reset-password?token={token}"
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         _reset_tokens[token] = {
             "user_id":    str(user.id),
             "expires_at": datetime.utcnow() + timedelta(hours=1),

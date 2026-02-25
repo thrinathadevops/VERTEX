@@ -11,7 +11,7 @@ on:
 jobs:
 
   # ── Job 1: Backend Tests ────────────────────────────────────────
-  test-backend:
+  test_backend:
     name: Backend Tests
     runs-on: ubuntu-latest
 
@@ -61,7 +61,7 @@ jobs:
           pytest tests/ -v --tb=short
 
   # ── Job 2: Frontend Build ───────────────────────────────────────
-  test-frontend:
+  test_frontend:
     name: Frontend Build & Lint
     runs-on: ubuntu-latest
 
@@ -87,6 +87,10 @@ jobs:
         working-directory: varex_frontend
         run: npx eslint . --ext .ts,.tsx --max-warnings 0
 
+      - name: Run Tests
+        working-directory: varex_frontend
+        run: npm run test
+
       - name: Build
         working-directory: varex_frontend
         env:
@@ -94,10 +98,10 @@ jobs:
         run: npm run build
 
   # ── Job 3: Build & Push Docker Images ──────────────────────────
-  build-images:
+  build_images:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
+    needs: [test_backend, test_frontend]
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -116,8 +120,8 @@ jobs:
           context: ./varex_backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/varex-backend:latest
-            ghcr.io/${{ github.repository_owner }}/varex-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/varex_backend:latest
+            ghcr.io/${{ github.repository_owner }}/varex_backend:${{ github.sha }}
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v5
@@ -125,14 +129,14 @@ jobs:
           context: ./varex_frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/varex-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/varex-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/varex_frontend:latest
+            ghcr.io/${{ github.repository_owner }}/varex_frontend:${{ github.sha }}
 
   # ── Job 4: Deploy to VPS ────────────────────────────────────────
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: [build-images]
+    needs: [build_images]
     if: github.ref == 'refs/heads/main'
 
     steps:

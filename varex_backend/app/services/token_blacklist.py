@@ -21,7 +21,8 @@ async def blacklist_token(jti: str, ttl_seconds: int) -> None:
         r = await get_redis()
         await r.setex(f"blacklist:{jti}", ttl_seconds, "1")
     except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
-        print(f"Warning: redis is not available, skipping blacklist for {jti}")
+        from app.core.logger import structured_logger
+        structured_logger.warning(f"redis is not available, skipping blacklist for {jti}")
 
 
 async def is_blacklisted(jti: str) -> bool:
@@ -30,7 +31,8 @@ async def is_blacklisted(jti: str) -> bool:
         r = await get_redis()
         return bool(await r.exists(f"blacklist:{jti}"))
     except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
-        print(f"Warning: redis is not available, assuming {jti} is not blacklisted")
+        from app.core.logger import structured_logger
+        structured_logger.warning(f"redis is not available, assuming {jti} is not blacklisted")
         return False
 
 
