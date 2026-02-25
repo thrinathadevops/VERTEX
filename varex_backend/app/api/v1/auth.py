@@ -126,6 +126,10 @@ def _clear_auth_cookies(response: Response) -> None:
 # ═══════════════════════════════════════════════════════════════════
 
 async def _send_email(to_email: str, subject: str, html: str) -> None:
+    if not settings.SENDGRID_API_KEY:
+        print(f"Skipping email to {to_email} (no SendGrid API Key configured)")
+        return
+        
     import httpx
     async with httpx.AsyncClient(timeout=10) as client:
         await client.post(

@@ -23,4 +23,5 @@ class User(Base):
     is_active    = Column(Boolean, default=True)
     created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     subscription = relationship("Subscription", back_populates="user", uselist=False)
+    content_items = relationship("Content", back_populates="author", cascade="all, delete-orphan")
     is_verified = Column(Boolean, default=False, nullable=False)
