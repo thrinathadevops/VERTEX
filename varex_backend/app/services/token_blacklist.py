@@ -16,13 +16,22 @@ async def get_redis() -> aioredis.Redis:
 
 async def blacklist_token(jti: str, ttl_seconds: int) -> None:
     """Add a JWT ID to the blacklist. TTL = remaining token lifetime."""
-    r = await get_redis()
-    await r.setex(f"blacklist:{jti}", ttl_seconds, "1")
+    import redis.exceptions
+    try:
+        r = await get_redis()
+        await r.setex(f"blacklist:{jti}", ttl_seconds, "1")
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+        print(f"Warning: redis is not available, skipping blacklist for {jti}")
 
 
 async def is_blacklisted(jti: str) -> bool:
-    r = await get_redis()
-    return bool(await r.exists(f"blacklist:{jti}"))
+    import redis.exceptions
+    try:
+        r = await get_redis()
+        return bool(await r.exists(f"blacklist:{jti}"))
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+        print(f"Warning: redis is not available, assuming {jti} is not blacklisted")
+        return False
 
 
 async def close_redis():

@@ -22,8 +22,10 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one special character")
         return v
 
+import uuid
+
 class UserResponse(BaseModel):
-    id:          str
+    id:          uuid.UUID
     name:        str
     email:       str
     role:        str

@@ -55,7 +55,13 @@ async def _get_user_from_token(
     if not user_id:
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    import uuid
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user   = result.scalar_one_or_none()
     if not user:
         raise credentials_exception

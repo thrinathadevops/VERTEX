@@ -1,0 +1,389 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend
+plugins: anyio-4.12.1, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests\test_auth.py ...F                                                  [ 57%]
+tests\test_workshops.py ...                                              [100%]
+
+================================== FAILURES ===================================
+___________________________ test_get_me_with_token ____________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x0000018980770950>
+dialect = <sqlalchemy.dialects.sqlite.aiosqlite.SQLiteDialect_aiosqlite object at 0x00000189803AB8C0>
+constructor = <bound method DefaultExecutionContext._init_compiled of <class 'sqlalchemy.dialects.sqlite.aiosqlite.SQLiteExecutionContext_aiosqlite'>>
+statement = <sqlalchemy.dialects.sqlite.base.SQLiteCompiler object at 0x0000018980771750>
+parameters = [{}]
+execution_options = immutabledict({'prebuffer_rows': True, '_result_disable_adapt_to_context': True})
+args = (<sqlalchemy.dialects.sqlite.base.SQLiteCompiler object at 0x0000018980771750>, [{}], <sqlalchemy.sql.selectable.Selec... at 0x000001898079C4D0>, [BindParameter('%(1690075820304 id)s', '1e645abe-eded-479b-9c41-ea32e1b2e144', type_=Uuid())])
+kw = {'cache_hit': <CacheStats.CACHE_MISS: 1>}, yp = None
+conn = <sqlalchemy.pool.base._ConnectionFairy object at 0x00000189806BBA80>
+
+    def _execute_context(
+        self,
+        dialect: Dialect,
+        constructor: Callable[..., ExecutionContext],
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+        execution_options: _ExecuteOptions,
+        *args: Any,
+        **kw: Any,
+    ) -> CursorResult[Any]:
+        """Create an :class:`.ExecutionContext` and execute, returning
+        a :class:`_engine.CursorResult`."""
+    
+        if execution_options:
+            yp = execution_options.get("yield_per", None)
+            if yp:
+                execution_options = execution_options.union(
+                    {"stream_results": True, "max_row_buffer": yp}
+                )
+        try:
+            conn = self._dbapi_connection
+            if conn is None:
+                conn = self._revalidate_connection()
+    
+>           context = constructor(
+                dialect, self, conn, execution_options, *args, **kw
+            )
+
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1815: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\sqlalchemy\engine\default.py:1496: in _init_compiled
+    flattened_processors[key](compiled_params[key])
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = '1e645abe-eded-479b-9c41-ea32e1b2e144'
+
+    def process(value):
+        if value is not None:
+>           value = value.hex
+                    ^^^^^^^^^
+E           AttributeError: 'str' object has no attribute 'hex'
+
+venv\Lib\site-packages\sqlalchemy\sql\sqltypes.py:3734: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+client = <httpx.AsyncClient object at 0x00000189806B8050>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x00000189806B82B0>
+
+    @pytest.mark.asyncio
+    async def test_get_me_with_token(client: AsyncClient, db_session):
+        # Register another user to avoid collision if db resets or if we want to be safe
+        await client.post("/api/v1/auth/register", json={
+            "name":     "Test User 2",
+            "email":    "test2@varextech.in",
+            "password": "TestPass123!",
+        })
+    
+        # Verify the user
+        await db_session.execute(update(User).where(User.email == "test2@varextech.in").values(is_verified=True))
+        await db_session.commit()
+    
+        # Login first
+        login = await client.post("/api/v1/auth/login", json={
+            "email":    "test2@varextech.in",
+            "password": "TestPass123!",
+        })
+        token = login.cookies["access_token"]
+    
+>       res = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+tests\test_auth.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\httpx\_client.py:1768: in get
+    return await self.request(
+venv\Lib\site-packages\httpx\_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1629: in send
+    response = await self._send_handling_auth(
+venv\Lib\site-packages\httpx\_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+venv\Lib\site-packages\httpx\_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\httpx\_transports\asgi.py:170: in handle_async_request
+    await self.app(scope, receive, send)
+venv\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+venv\Lib\site-packages\starlette\applications.py:123: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv\Lib\site-packages\starlette\middleware\cors.py:85: in __call__
+    await self.app(scope, receive, send)
+venv\Lib\site-packages\starlette\middleware\exceptions.py:65: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+venv\Lib\site-packages\starlette\routing.py:756: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\Lib\site-packages\starlette\routing.py:776: in app
+    await route.handle(scope, receive, send)
+venv\Lib\site-packages\starlette\routing.py:297: in handle
+    await self.app(scope, receive, send)
+venv\Lib\site-packages\starlette\routing.py:77: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv\Lib\site-packages\starlette\_exception_handler.py:64: in wrapped_app
+    raise exc
+venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    await app(scope, receive, sender)
+venv\Lib\site-packages\starlette\routing.py:72: in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\fastapi\routing.py:269: in app
+    solved_result = await solve_dependencies(
+venv\Lib\site-packages\fastapi\dependencies\utils.py:572: in solve_dependencies
+    solved_result = await solve_dependencies(
+venv\Lib\site-packages\fastapi\dependencies\utils.py:600: in solve_dependencies
+    solved = await call(**sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+app\dependencies\auth.py:58: in _get_user_from_token
+    result = await db.execute(select(User).where(User.id == user_id))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py:449: in execute
+    result = await greenlet_spawn(
+venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:190: in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\sqlalchemy\orm\session.py:2351: in execute
+    return self._execute_internal(
+venv\Lib\site-packages\sqlalchemy\orm\session.py:2249: in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+venv\Lib\site-packages\sqlalchemy\orm\context.py:306: in orm_execute_statement
+    result = conn.execute(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1821: in _execute_context
+    self._handle_dbapi_exception(
+venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+venv\Lib\site-packages\sqlalchemy\engine\base.py:1815: in _execute_context
+    context = constructor(
+venv\Lib\site-packages\sqlalchemy\engine\default.py:1496: in _init_compiled
+    flattened_processors[key](compiled_params[key])
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = '1e645abe-eded-479b-9c41-ea32e1b2e144'
+
+    def process(value):
+        if value is not None:
+>           value = value.hex
+                    ^^^^^^^^^
+E           sqlalchemy.exc.StatementError: (builtins.AttributeError) 'str' object has no attribute 'hex'
+E           [SQL: SELECT users.id, users.name, users.email, users.hashed_password, users.role, users.company, users.is_active, users.created_at, users.is_verified 
+E           FROM users 
+E           WHERE users.id = ?]
+E           [parameters: [{}]]
+
+venv\Lib\site-packages\sqlalchemy\sql\sqltypes.py:3734: StatementError
+---------------------------- Captured stdout call -----------------------------
+Skipping email to test2@varextech.in (no SendGrid API Key configured)
+Warning: redis is not available, assuming 43e66b2b-d92f-4242-a05a-b90f13b5ff73 is not blacklisted
+------------------------------ Captured log call ------------------------------
+ERROR    root:main.py:75 Unhandled error: (builtins.AttributeError) 'str' object has no attribute 'hex'
+[SQL: SELECT users.id, users.name, users.email, users.hashed_password, users.role, users.company, users.is_active, users.created_at, users.is_verified 
+FROM users 
+WHERE users.id = ?]
+[parameters: [{}]]
+Traceback (most recent call last):
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1815, in _execute_context
+    context = constructor(
+        dialect, self, conn, execution_options, *args, **kw
+    )
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1496, in _init_compiled
+    flattened_processors[key](compiled_params[key])
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\sql\sqltypes.py", line 3734, in process
+    value = value.hex
+            ^^^^^^^^^
+AttributeError: 'str' object has no attribute 'hex'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\fastapi\routing.py", line 269, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\fastapi\dependencies\utils.py", line 572, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\fastapi\dependencies\utils.py", line 600, in solve_dependencies
+    solved = await call(**sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\dependencies\auth.py", line 58, in _get_user_from_token
+    result = await db.execute(select(User).where(User.id == user_id))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 449, in execute
+    result = await greenlet_spawn(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1821, in _execute_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str(statement), parameters, None, None
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1815, in _execute_context
+    context = constructor(
+        dialect, self, conn, execution_options, *args, **kw
+    )
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 1496, in _init_compiled
+    flattened_processors[key](compiled_params[key])
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\sqlalchemy\sql\sqltypes.py", line 3734, in process
+    value = value.hex
+            ^^^^^^^^^
+sqlalchemy.exc.StatementError: (builtins.AttributeError) 'str' object has no attribute 'hex'
+[SQL: SELECT users.id, users.name, users.email, users.hashed_password, users.role, users.company, users.is_active, users.created_at, users.is_verified 
+FROM users 
+WHERE users.id = ?]
+[parameters: [{}]]
+============================== warnings summary ===============================
+venv\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+venv\Lib\site-packages\fastapi\routing.py:211: 127 warnings
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+app\services\llm_service.py:7
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\services\llm_service.py:7: FutureWarning: 
+  
+  All support for the `google.generativeai` package has ended. It will no longer be receiving 
+  updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+  See README for more details:
+  
+  https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+  
+    import google.generativeai as genai
+
+tests/test_auth.py: 12 warnings
+tests/test_workshops.py: 4 warnings
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\venv\Lib\site-packages\starlette\_utils.py:42: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+tests/test_auth.py::test_register_and_login
+tests/test_auth.py::test_get_me_with_token
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\core\security.py:22: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+
+tests/test_auth.py::test_register_and_login
+tests/test_auth.py::test_get_me_with_token
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\core\security.py:26: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "iat":  datetime.utcnow(),
+
+tests/test_auth.py::test_register_and_login
+tests/test_auth.py::test_get_me_with_token
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\core\security.py:34: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire  = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+tests/test_auth.py::test_register_and_login
+tests/test_auth.py::test_get_me_with_token
+  C:\Users\ThrinathaReddy\PycharmProjects\VERTEX\varex_backend\app\core\security.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "iat":  datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_auth.py::test_get_me_with_token - sqlalchemy.exc.StatementE...
+================== 1 failed, 6 passed, 153 warnings in 6.33s ==================
