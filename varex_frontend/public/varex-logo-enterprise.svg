@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
+  <defs>
+    <style>
+      .v-logo { font-family: "Inter", "Helvetica Neue", sans-serif; letter-spacing: 0.12em; }
+    </style>
+  </defs>
+  <!-- Shield icon (flat, minimal) -->
+  <path d="M18 12 L36 12 L36 36 Q36 48 27 54 Q18 48 18 36 Z"
+        fill="none" stroke="#0EA5E9" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M22 30 L26 34 L33 25" stroke="#0EA5E9" stroke-width="2" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- VAREX wordmark -->
+  <text x="48" y="46" class="v-logo"
+        font-size="30" font-weight="700" fill="#F1F5F9" letter-spacing="6">VAREX</text>
+  <!-- Tagline -->
+  <text x="49" y="62" font-family="Inter, sans-serif"
+        font-size="8" fill="#64748B" letter-spacing="2">VIRTUAL ARCHITECTURE · RESILIENCE · EXECUTION</text>
+</svg>

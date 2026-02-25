@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
+  <defs>
+    <style>
+      .cx { font-family: "Inter", "Helvetica Neue", sans-serif; }
+    </style>
+  </defs>
+  <!-- Dark background pill -->
+  <rect x="0" y="0" width="320" height="80" rx="6" fill="#0A0A0A"/>
+  <!-- VAR in steel grey -->
+  <text x="14" y="52" class="cx" font-size="36" font-weight="800"
+        fill="#9CA3AF" letter-spacing="4">VAR</text>
+  <!-- EX in vivid red (slightly larger) -->
+  <text x="132" y="52" class="cx" font-size="42" font-weight="900"
+        fill="#DC2626" letter-spacing="2">EX</text>
+  <!-- Thin red underline -->
+  <rect x="14" y="57" width="278" height="1.5" fill="#DC2626" opacity="0.4"/>
+  <!-- Subtle tagline -->
+  <text x="14" y="70" font-family="Inter, sans-serif"
+        font-size="7.5" fill="#4B5563" letter-spacing="2.5">ZERO TRUST · OFFENSIVE SECURITY · RED TEAM OPS</text>
+</svg>

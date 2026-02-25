@@ -1,0 +1,345 @@
+"""
+VAREX Interview API – /api/v1/interview
+"""
+from uuid import UUID
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_db
+from app.dependencies.auth import (
+    get_current_active_user, require_admin, require_premium, require_free
+)
+from app.models.user import User, UserRole
+from app.models.interview import (
+    JobDescription, CandidateProfile, InterviewSession,
+    ScoreReport, InterviewTurn, InterviewRound, InterviewStatus
+)
+from app.schemas.interview import (
+    JobDescriptionCreate, JobDescriptionResponse,
+    CandidateCreate, CandidateResponse,
+    ATSScanRequest, ATSScanResponse,
+    SessionCreate, SessionResponse,
+    TurnAnswerRequest, TurnResponse,
+    ScoreReportResponse,
+)
+from app.services.ats_service import run_ats_scan
+from app.services.interview_service import (
+    start_session, submit_answer, get_current_turn
+)
+
+router = APIRouter()
+
+
+# ═══════════════════════════════════════════════════════════════
+# 1. JOB DESCRIPTIONS  (admin / team-lead only)
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/jd", response_model=JobDescriptionResponse, status_code=201,
+             summary="Create job description with optional team-lead screening prompt")
+async def create_jd(
+    payload: JobDescriptionCreate,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Admin / team-lead creates a JD.
+    The `screening_prompt` field lets the team-lead express
+    specific focus areas for ATS + AI questions, e.g.:
+    "Focus on distributed systems, Python async, and cultural fit."
+    """
+    jd = JobDescription(**payload.model_dump(), created_by=current_user.id)
+    db.add(jd)
+    await db.commit()
+    await db.refresh(jd)
+    return jd
+
+
+@router.get("/jd", response_model=list[JobDescriptionResponse],
+            summary="List all active job descriptions")
+async def list_jds(
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(JobDescription).where(JobDescription.is_active == True)
+    )
+    return result.scalars().all()
+
+
+@router.get("/jd/{jd_id}", response_model=JobDescriptionResponse)
+async def get_jd(jd_id: UUID, db: AsyncSession = Depends(get_db)):
+    jd = await db.get(JobDescription, jd_id)
+    if not jd:
+        raise HTTPException(status_code=404, detail="Job description not found")
+    return jd
+
+
+# ═══════════════════════════════════════════════════════════════
+# 2. CANDIDATE PROFILES & RESUME UPLOAD
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/candidates", response_model=CandidateResponse, status_code=201,
+             summary="Register candidate profile")
+async def create_candidate(
+    payload: CandidateCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public endpoint – candidate submits basic info. Resume uploaded separately."""
+    candidate = CandidateProfile(**payload.model_dump())
+    db.add(candidate)
+    await db.commit()
+    await db.refresh(candidate)
+    return candidate
+
+
+@router.post("/candidates/{candidate_id}/upload-resume",
+             summary="Upload resume PDF (parsed server-side)")
+async def upload_resume(
+    candidate_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Accepts PDF / DOCX. In production:
+      1. Parse text with pdfminer / python-docx
+      2. Upload original to S3
+      3. Store extracted text in candidate.resume_text
+    """
+    candidate = await db.get(CandidateProfile, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    raw_bytes = await file.read()
+    # STUB: replace with actual PDF parser
+    extracted_text = raw_bytes.decode("utf-8", errors="ignore")
+
+    candidate.resume_text = extracted_text
+    candidate.resume_s3_key = f"resumes/{candidate_id}/{file.filename}"  # placeholder
+    await db.commit()
+
+    return {
+        "candidate_id": candidate_id,
+        "filename": file.filename,
+        "size_bytes": len(raw_bytes),
+        "status": "resume_stored",
+    }
+
+
+@router.get("/candidates/{candidate_id}", response_model=CandidateResponse)
+async def get_candidate(
+    candidate_id: UUID,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    candidate = await db.get(CandidateProfile, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return candidate
+
+
+# ═══════════════════════════════════════════════════════════════
+# 3. ATS SCREENING
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/screen", response_model=ATSScanResponse,
+             summary="Run ATS scan: compare resume vs JD + team-lead prompt")
+async def screen_candidate(
+    payload: ATSScanRequest,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    ATS pipeline:
+      1. Load candidate resume text
+      2. Load JD (required skills, description, team-lead screening_prompt)
+      3. Keyword match + LLM evaluation
+      4. Persist ATS score + report
+      5. Return structured result with matched/missing skills, score, recommendation
+    """
+    try:
+        result = await run_ats_scan(db, payload.candidate_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# 4. INTERVIEW SESSIONS
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/sessions", response_model=SessionResponse, status_code=201,
+             summary="Create a new AI interview session")
+async def create_session(
+    payload: SessionCreate,
+    current_user: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Creates a 30-minute AI interview session.
+    `video_recording_enabled=True` requires a premium subscription.
+    """
+    is_premium = current_user.role in (UserRole.premium_user, UserRole.admin)
+
+    if payload.video_recording_enabled and not is_premium:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Video recording is a premium feature. Please upgrade your subscription.",
+        )
+
+    session = InterviewSession(
+        candidate_id=payload.candidate_id,
+        job_description_id=payload.job_description_id,
+        round=InterviewRound.ai_interview,
+        scheduled_at=payload.scheduled_at,
+        video_recording_enabled=payload.video_recording_enabled if is_premium else False,
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+@router.post("/sessions/{session_id}/start", response_model=SessionResponse,
+             summary="Start the AI interview — AI asks the first question")
+async def start_interview(
+    session_id: UUID,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        session = await start_session(db, session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return session
+
+
+@router.get("/sessions/{session_id}/current-question", response_model=TurnResponse,
+            summary="Get the current AI question waiting for an answer")
+async def current_question(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    turn = await get_current_turn(db, session_id)
+    if not turn:
+        raise HTTPException(
+            status_code=404,
+            detail="No pending question. The interview may be complete.",
+        )
+    return turn
+
+
+@router.post("/sessions/{session_id}/turns/{turn_id}/answer",
+             response_model=TurnResponse,
+             summary="Submit candidate answer — AI scores it and returns polite reply")
+async def answer_question(
+    session_id: UUID,
+    turn_id: UUID,
+    payload: TurnAnswerRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Candidate submits their answer. The AI:
+      1. Evaluates relevance and depth (0–10)
+      2. Returns a polite acknowledgement
+      3. Queues the next question (or ends and generates score report)
+    """
+    try:
+        turn = await submit_answer(db, session_id, turn_id, payload.candidate_answer)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return turn
+
+
+@router.get("/sessions/{session_id}/turns", response_model=list[TurnResponse],
+            summary="List all Q&A turns for a session")
+async def list_turns(
+    session_id: UUID,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(InterviewTurn)
+        .where(InterviewTurn.session_id == session_id)
+        .order_by(InterviewTurn.turn_number)
+    )
+    return result.scalars().all()
+
+
+@router.get("/sessions/{session_id}", response_model=SessionResponse)
+async def get_session(
+    session_id: UUID,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    session = await db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+# ═══════════════════════════════════════════════════════════════
+# 5. SCORE REPORT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/sessions/{session_id}/report", response_model=ScoreReportResponse,
+            summary="Get full AI-generated score report")
+async def get_score_report(
+    session_id: UUID,
+    _: User = Depends(require_free),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns structured score report with:
+    • Overall score (0–100)
+    • Dimension scores: communication, technical, problem-solving, confidence
+    • Strengths and areas to improve
+    • AI recommendation: Shortlist / Review / Reject
+    • Full narrative summary
+    """
+    result = await db.execute(
+        select(ScoreReport).where(ScoreReport.session_id == session_id)
+    )
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail="Score report not yet generated. Ensure the interview is completed.",
+        )
+    return report
+
+
+# ═══════════════════════════════════════════════════════════════
+# 6. VIDEO RECORDING  (premium only)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/sessions/{session_id}/recording",
+            summary="Get signed S3 URL for interview video recording (premium)")
+async def get_recording(
+    session_id: UUID,
+    current_user: User = Depends(require_premium),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Premium feature: returns a pre-signed S3 URL for the interview recording.
+    In production: generate boto3 presigned URL from session.video_s3_key.
+    """
+    session = await db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not session.video_recording_enabled or not session.video_s3_key:
+        raise HTTPException(
+            status_code=404,
+            detail="No recording available for this session.",
+        )
+
+    # STUB: replace with boto3.generate_presigned_url()
+    presigned_url = f"https://s3.amazonaws.com/varex-bucket/{session.video_s3_key}?X-Amz-Expires=3600"
+
+    return {
+        "session_id": session_id,
+        "video_url": presigned_url,
+        "expires_in_seconds": 3600,
+    }

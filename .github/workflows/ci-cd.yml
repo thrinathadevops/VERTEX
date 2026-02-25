@@ -1,0 +1,151 @@
+# PATH: varex/.github/workflows/ci-cd.yml
+
+name: VAREX CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Job 1: Backend Tests ────────────────────────────────────────
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB:       varex_test
+          POSTGRES_USER:     varex
+          POSTGRES_PASSWORD: varexpassword
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: varex_backend
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Alembic migrations
+        working-directory: varex_backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://varex:varexpassword@localhost:5432/varex_test
+          SECRET_KEY: ci-test-secret-key-32-characters-x
+        run: |
+          alembic upgrade head
+
+      - name: Run tests
+        working-directory: varex_backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://varex:varexpassword@localhost:5432/varex_test
+          SECRET_KEY: ci-test-secret-key-32-characters-x
+          ENVIRONMENT: test
+        run: |
+          pytest tests/ -v --tb=short
+
+  # ── Job 2: Frontend Build ───────────────────────────────────────
+  test-frontend:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: varex_frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: varex_frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: varex_frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: varex_frontend
+        run: npx eslint . --ext .ts,.tsx --max-warnings 0
+
+      - name: Build
+        working-directory: varex_frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+        run: npm run build
+
+  # ── Job 3: Build & Push Docker Images ──────────────────────────
+  build-images:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./varex_backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/varex-backend:latest
+            ghcr.io/${{ github.repository_owner }}/varex-backend:${{ github.sha }}
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./varex_frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/varex-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/varex-frontend:${{ github.sha }}
+
+  # ── Job 4: Deploy to VPS ────────────────────────────────────────
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/varex
+            git pull origin main
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker compose exec -T backend alembic upgrade head
+            docker system prune -f

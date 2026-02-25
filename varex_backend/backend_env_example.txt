@@ -1,0 +1,23 @@
+# PATH: varex-backend/.env.example
+# Copy to .env and fill in real values
+
+# ── Database ─────────────────────────────────────────────────────
+DATABASE_URL=postgresql+asyncpg://varex:varexpassword@localhost:5432/varexdb
+
+# ── JWT ──────────────────────────────────────────────────────────
+SECRET_KEY=generate_with_openssl_rand_hex_32
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# ── App ──────────────────────────────────────────────────────────
+ENVIRONMENT=development
+ALLOWED_ORIGINS=http://localhost:3000,https://varextech.in
+
+# ── Razorpay (webhook verification only) ────────────────────────
+RAZORPAY_WEBHOOK_SECRET=your_webhook_signing_secret
+INTERNAL_API_SECRET=same_as_frontend_internal_secret
+
+# ── Email (optional — backend can also send via SendGrid) ────────
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxx
+FROM_EMAIL=noreply@varextech.in

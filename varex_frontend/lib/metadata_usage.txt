@@ -1,0 +1,31 @@
+// ── HOW TO USE lib/metadata.ts IN EACH PAGE ─────────────────────
+// Add this export to every app/*/page.tsx (server component only)
+
+// Example 1 — Static page (app/blog/page.tsx)
+import { PAGE_META } from "@/lib/metadata";
+export const metadata = PAGE_META.blog;
+
+// Example 2 — Dynamic [slug] page (app/blog/[slug]/page.tsx)
+import { buildMetadata } from "@/lib/metadata";
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = await getContentBySlug(params.slug); // your API call
+  return buildMetadata({
+    title:       post.title,
+    description: post.body.replace(/<[^>]*>/g, "").slice(0, 160),
+    path:        `/blog/${params.slug}`,
+  });
+}
+
+// ── PAGES AND THEIR METADATA KEYS ────────────────────────────────
+// app/page.tsx          → PAGE_META.home
+// app/blog/page.tsx     → PAGE_META.blog
+// app/portfolio/page.tsx → PAGE_META.portfolio
+// app/workshops/page.tsx → PAGE_META.workshops
+// app/learnings/page.tsx → PAGE_META.learnings
+// app/pricing/page.tsx  → PAGE_META.pricing
+// app/team/page.tsx     → PAGE_META.team
+// app/contact/page.tsx  → PAGE_META.contact
+// app/hire/page.tsx     → PAGE_META.hire
+// app/privacy/page.tsx  → PAGE_META.privacy
+// app/terms/page.tsx    → PAGE_META.terms
+// app/refund/page.tsx   → PAGE_META.refund
