@@ -4,9 +4,6 @@
 > **Note:** All previously marked `[✅ FIXED]` items have been removed from this list to give a clean overview of remaining tasks.
 
 ---
-## 7. Database / Migration Issues
-- **7.4, 7.5** [❌ STILL OPEN] Missing specific database indexes. Foreign keys generally don't automatically create indexes in PostgreSQL. Heavy read querying foreign keys without indexes will cause slowness.
-
 ## 8. Infrastructure & Docker Gaps
 - **8.3 - 8.8** [❌ STILL OPEN] Backend Dockerfile optimizations (multi-stage builds, non-root user).
 - **8.x** Certbot SSL implementation missing.
@@ -29,5 +26,4 @@
 ---
 
 ### Immediate Next Steps (Your Call To Action)
-1. **Database Indexing**: Create an alembic revision that manually applies fast indexes to heavily queried fields (like user IDs on foreign keys, email fields, and active status fields).
-2. **Testing Infrastructure**: Add basic pytest scaffolding manually inside a new `varex_backend/tests/` folder.
+1. **Testing Infrastructure**: Add basic pytest scaffolding manually inside a new `varex_backend/tests/` folder.
