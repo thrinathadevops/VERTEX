@@ -144,7 +144,55 @@ When you push code to `main`, GitHub will automatically:
 
 ---
 
-## 6. Going Live (Domain & SSL)
+## 6. Running Without A Domain (IP Address Only)
+
+If you **do not** have a domain name like `varextech.in` yet and simply want to access the platform via the EC2 instance's IP address (e.g., `http://13.235.122.9`), you must bypass the SSL/HTTPS requirement.
+
+By default, Nginx is configured to strictly demand SSL certificates and redirect all traffic to HTTPS. This will crash Docker if you don't have a domain. Follow these steps to disable SSL and run over pure HTTP:
+
+### Step 1: Modify Nginx Configuration
+Open your Nginx configuration file (`nginx/nginx.conf`) and replace the the entire `server` block routing logic so it only listens on Port 80.
+
+```bash
+nano nginx/nginx.conf
+```
+Replace the TWO `server {}` blocks with this single block:
+```nginx
+  server {
+    listen 80;
+    server_name _; # Listen to any IP/Domain
+
+    # (Keep all your existing location /api/, /docs, and / proxy_pass rules here)
+    # Remove all lines starting with ssl_
+  }
+```
+
+### Step 2: Update Your Environment Variables
+You must update your `.env` files to use `http://` and your IP address instead of `https://varextech.in`.
+
+**In `varex_backend/.env`:**
+```env
+ALLOWED_ORIGINS=http://YOUR_EC2_IP,http://localhost:3000
+FRONTEND_URL=http://YOUR_EC2_IP
+```
+
+**In `varex_frontend/.env.local`:**
+```env
+NEXT_PUBLIC_API_BASE_URL=http://YOUR_EC2_IP
+```
+
+### Step 3: Restart Docker
+Now you can safely launch the application over HTTP.
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+You can now access your application from any browser at `http://YOUR_EC2_IP`.
+
+---
+
+## 7. Going Live (Domain & SSL)
 
 Once AWS gives you an IP (e.g., `13.235.122.9`), you must properly link your domain:
 
