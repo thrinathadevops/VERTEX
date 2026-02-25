@@ -9,11 +9,11 @@ import { initiatePayment } from "@/lib/razorpay";
 import type { User, ContentItem } from "@/lib/types";
 
 function LearningsInner() {
-  const [user,    setUser]    = useState<User | null>(null);
-  const [items,   setItems]   = useState<ContentItem[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState<"monthly" | "quarterly">("monthly");
-  const [paying,  setPaying]  = useState(false);
+  const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ function LearningsInner() {
         const me = await getMe();
         setUser(me);
         const isPremium = ["premium", "enterprise", "admin"].includes(me.role);
-        const content   = isPremium ? await listPremiumContent() : await listFreeContent();
+        const content = isPremium ? await listPremiumContent() : await listFreeContent();
         setItems(content);
       } finally {
         setLoading(false);
@@ -35,16 +35,34 @@ function LearningsInner() {
     if (!user) return;
     setPaying(true);
     setMessage(null);
-    await initiatePayment({
-      planType: billing,
-      user:     { name: user.name, email: user.email },
-      onSuccess: (paymentId) => {
-        setMessage({ type: "success", text: `Payment successful! ID: ${paymentId}. Refreshing...` });
-        setTimeout(() => window.location.reload(), 2000);
-      },
-      onError:   (msg) => { setMessage({ type: "error", text: msg }); setPaying(false); },
-      onDismiss: ()    => setPaying(false),
-    });
+    try {
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan_type: billing }),
+      });
+      if (!orderRes.ok) throw new Error("Could not create payment order");
+      const { razorpay_order_id, id: subscription_id } = await orderRes.json();
+
+      const amount = billing === "monthly" ? 149900 : 399900;
+      await initiatePayment({
+        order_id: razorpay_order_id,
+        subscription_id,
+        amount: amount,
+        user_name: user.name,
+        user_email: user.email,
+      });
+
+      setMessage({ type: "success", text: "Payment successful! Refreshing..." });
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      if (err.message === "Payment cancelled") {
+        setPaying(false);
+      } else {
+        setMessage({ type: "error", text: err.message || "Payment failed." });
+        setPaying(false);
+      }
+    }
   };
 
   if (loading) return (
@@ -108,10 +126,10 @@ function LearningsInner() {
             <ul className="mb-4 space-y-1.5 text-xs text-slate-300">
               {["Access to public blog posts", "Limited system design notes",
                 "Community updates", "Workshop listing"].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-slate-500">•</span>{f}
-                </li>
-              ))}
+                  <li key={f} className="flex items-center gap-2">
+                    <span className="text-slate-500">•</span>{f}
+                  </li>
+                ))}
             </ul>
             <button disabled className="w-full rounded-md border border-slate-700
               px-3 py-2 text-xs text-slate-400 cursor-not-allowed">
@@ -133,19 +151,17 @@ function LearningsInner() {
             {/* Billing toggle */}
             <div className="mb-4 flex gap-1.5 rounded-lg bg-slate-950/50 p-1 text-xs">
               <button onClick={() => setBilling("monthly")}
-                className={`flex-1 rounded-md px-2 py-1.5 transition ${
-                  billing === "monthly"
+                className={`flex-1 rounded-md px-2 py-1.5 transition ${billing === "monthly"
                     ? "bg-sky-500 text-white font-semibold"
                     : "text-slate-300 hover:text-slate-100"
-                }`}>
+                  }`}>
                 Monthly · ₹1,499
               </button>
               <button onClick={() => setBilling("quarterly")}
-                className={`flex-1 rounded-md px-2 py-1.5 transition ${
-                  billing === "quarterly"
+                className={`flex-1 rounded-md px-2 py-1.5 transition ${billing === "quarterly"
                     ? "bg-sky-500 text-white font-semibold"
                     : "text-slate-300 hover:text-slate-100"
-                }`}>
+                  }`}>
                 Quarterly · ₹3,999
               </button>
             </div>
@@ -154,18 +170,17 @@ function LearningsInner() {
               {["Full access to all premium modules", "AI interview module",
                 "Architecture review checklists", "Workshop recordings",
                 "Downloadable templates"].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓</span>{f}
-                </li>
-              ))}
+                  <li key={f} className="flex items-center gap-2">
+                    <span className="text-emerald-400">✓</span>{f}
+                  </li>
+                ))}
             </ul>
 
             {message && (
-              <p className={`mb-3 text-[11px] rounded-md px-3 py-2 ${
-                message.type === "success"
+              <p className={`mb-3 text-[11px] rounded-md px-3 py-2 ${message.type === "success"
                   ? "bg-emerald-950/50 text-emerald-300"
                   : "bg-red-950/50 text-red-300"
-              }`}>{message.text}</p>
+                }`}>{message.text}</p>
             )}
 
             <button onClick={handleUpgrade} disabled={paying}

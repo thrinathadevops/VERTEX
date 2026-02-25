@@ -4,11 +4,11 @@ import { useState } from "react";
 import { submitLead } from "@/lib/api";
 
 export default function NewsletterSignup() {
-  const [email,     setEmail]     = useState("");
-  const [name,      setName]      = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [state,     setState]     = useState<"idle" | "success" | "error">("idle");
-  const [errorMsg,  setErrorMsg]  = useState("");
+  const [state, setState] = useState<"idle" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,10 +17,19 @@ export default function NewsletterSignup() {
     setState("idle");
     try {
       await submitLead({
-        name:             name || email.split("@")[0],
+        name: name || email.split("@")[0],
         email,
         service_interest: "newsletter",
-        message:          "Newsletter signup",
+        message: "Newsletter signup",
+      });
+      await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          name: name || email.split("@")[0],
+          template: "welcome",
+        })
       });
       setState("success");
       setEmail("");
@@ -100,9 +109,9 @@ export default function NewsletterSignup() {
         {/* Trust badges */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
           {[
-            { icon: "🔒", label: "No spam ever"      },
-            { icon: "📩", label: "1 email / week"    },
-            { icon: "👥", label: "500+ subscribers"  },
+            { icon: "🔒", label: "No spam ever" },
+            { icon: "📩", label: "1 email / week" },
+            { icon: "👥", label: "500+ subscribers" },
           ].map((b) => (
             <div key={b.label} className="flex items-center gap-1.5 text-[11px] text-slate-400">
               <span>{b.icon}</span>

@@ -1,40 +1,74 @@
+﻿// ─────────────────────────────────────────────────────────────────
+// lib/api.ts  —  VAREX Platform  (complete)
+// ─────────────────────────────────────────────────────────────────
 import axios from "axios";
+import Cookies from "js-cookie";
 import type {
-  User, Subscription, ContentItem,
-  PortfolioProject as Project, TeamMember, Certification,
+  Tokens, User, Subscription, ContentItem,
+  Project, TeamMember, Certification, Achievement,
   FAQ, Workshop, Lead,
 } from "./types";
+import { setTokens as storeTokens } from "./auth";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (process.env.NODE_ENV === "production"
-    ? (() => { throw new Error("NEXT_PUBLIC_API_BASE_URL is not set in production"); })()
-    : "http://localhost:8000");
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
-  withCredentials: true, // Crucial for sending httpOnly cookies
 });
 
-import { refreshAccessToken } from "./auth";
+// ── Request interceptor: attach Bearer token ──────────────────────
+api.interceptors.request.use((config) => {
+  const token = Cookies.get("access_token");
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// ── Response interceptor: extract data or throw proper error ───────
+// ── Response interceptor: auto-refresh on 401 ────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const success = await refreshAccessToken();
-      if (success) {
-        return api(originalRequest);
+      const refreshToken = Cookies.get("refresh_token");
+      if (refreshToken) {
+        try {
+          const res = await axios.post<Tokens>(
+            `${API_BASE_URL}/api/v1/auth/refresh`,
+            { refresh_token: refreshToken }
+          );
+          storeTokens(res.data);
+          originalRequest.headers = originalRequest.headers ?? {};
+          originalRequest.headers.Authorization = `Bearer ${res.data.access_token}`;
+          return api(originalRequest);
+        } catch {
+          // refresh failed — fall through
+        }
       }
     }
-    return Promise.reject(error.response?.data || error);
+    return Promise.reject(error);
   }
 );
 
-// Authentication is handled in @/lib/auth.ts
+// ════════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════════
+export interface LoginPayload    { email: string; password: string }
+export interface RegisterPayload { name: string; email: string; password: string }
+
+export async function login(payload: LoginPayload): Promise<Tokens> {
+  const res = await api.post<Tokens>("/auth/login", payload);
+  return res.data;
+}
+
+export async function register(payload: RegisterPayload) {
+  const res = await api.post("/auth/register", payload);
+  return res.data;
+}
 
 // ════════════════════════════════════════════════════════════════
 // USER
@@ -84,7 +118,7 @@ export async function listProjects(
 ): Promise<Project[]> {
   const params = new URLSearchParams();
   if (category) params.append("category", category);
-  if (featured) params.append("featured_only", "true");
+  if (featured)  params.append("featured_only", "true");
   const res = await api.get<Project[]>(`/portfolio?${params}`);
   return res.data;
 }
@@ -116,7 +150,10 @@ export async function listCertifications(domain?: string): Promise<Certification
   return res.data;
 }
 
-
+export async function listAchievements(): Promise<Achievement[]> {
+  const res = await api.get<Achievement[]>("/certifications/achievements");
+  return res.data;
+}
 
 // ════════════════════════════════════════════════════════════════
 // FAQ
@@ -160,48 +197,5 @@ export interface LeadPayload {
 
 export async function submitLead(payload: LeadPayload): Promise<Lead> {
   const res = await api.post<Lead>("/leads", payload);
-  // Email sending is now handled concurrently inside the components (e.g., contact/page.tsx)
-  return res.data;
-}
-
-// ════════════════════════════════════════════════════════════════
-// ANALYTICS & INTERVIEW (Newly Added)
-// ════════════════════════════════════════════════════════════════
-export async function getAnalytics() {
-  const res = await api.get("/analytics/");
-  return res.data;
-}
-
-export async function createJobDescription(payload: {
-  title: string; company?: string; description: string; skills?: string[];
-}) {
-  const res = await api.post("/interview/jd", payload);
-  return res.data;
-}
-
-export async function uploadResume(jobId: string, file: File, candidateName: string, candidateEmail: string) {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("job_id", jobId);
-  form.append("name", candidateName);
-  form.append("email", candidateEmail);
-  const res = await api.post("/interview/candidate", form, {
-    headers: { "Content-Type": "multipart/form-data" }
-  });
-  return res.data;
-}
-
-export async function startInterviewSession(jobId: string, candidateId: string) {
-  const res = await api.post("/interview/session", { job_id: jobId, candidate_id: candidateId });
-  return res.data;
-}
-
-export async function submitInterviewAnswer(sessionId: string, answer: string) {
-  const res = await api.post(`/interview/session/${sessionId}/answer`, { answer });
-  return res.data;
-}
-
-export async function getInterviewReport(sessionId: string) {
-  const res = await api.get(`/interview/session/${sessionId}/report`);
   return res.data;
 }

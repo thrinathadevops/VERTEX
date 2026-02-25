@@ -3,14 +3,14 @@ import { useState } from "react";
 import { submitLead } from "@/lib/api";
 
 const SERVICES = [
-  { value: "devsecops",     label: "DevSecOps Implementation" },
+  { value: "devsecops", label: "DevSecOps Implementation" },
   { value: "cybersecurity", label: "Cybersecurity & Audit" },
-  { value: "sap_sd",        label: "SAP SD Consulting" },
-  { value: "ai_hiring",     label: "AI-Powered Hiring" },
-  { value: "consulting",    label: "General Consulting" },
-  { value: "training",      label: "Corporate Training" },
-  { value: "workshop",      label: "Workshop Registration" },
-  { value: "other",         label: "Other" },
+  { value: "sap_sd", label: "SAP SD Consulting" },
+  { value: "ai_hiring", label: "AI-Powered Hiring" },
+  { value: "consulting", label: "General Consulting" },
+  { value: "training", label: "Corporate Training" },
+  { value: "workshop", label: "Workshop Registration" },
+  { value: "other", label: "Other" },
 ];
 
 export default function ContactPage() {
@@ -30,6 +30,17 @@ export default function ContactPage() {
     setLoading(true); setError(null);
     try {
       await submitLead(form);
+      const serviceLabel = SERVICES.find(s => s.value === form.service_interest)?.label || form.service_interest;
+      await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: form.email,
+          name: form.name,
+          template: "lead_confirmation",
+          data: { service: serviceLabel }
+        })
+      });
       setSuccess(true);
     } catch (err: any) {
       setError(err.message ?? "Submission failed. Please try again.");
