@@ -4,15 +4,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.dependencies.auth import require_admin
-from app.models.faq import FAQ, FAQCategory
+from app.models.faq import FAQ
 from app.models.user import User
 from app.schemas.faq import FAQCreate, FAQResponse
 
 router = APIRouter()
 
 @router.get("/", response_model=list[FAQResponse], summary="List FAQs (optionally by category)")
-async def list_faqs(category: FAQCategory | None = None, db: AsyncSession = Depends(get_db)):
-    q = select(FAQ).where(FAQ.is_published == True).order_by(FAQ.category, FAQ.order_rank)
+async def list_faqs(category: str | None = None, db: AsyncSession = Depends(get_db)):
+    q = select(FAQ).where(FAQ.is_published == True).order_by(FAQ.category, FAQ.display_order)
     if category:
         q = q.where(FAQ.category == category)
     result = await db.execute(q)

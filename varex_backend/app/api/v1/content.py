@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies.auth import get_current_active_user, require_premium, require_roles
+from app.dependencies.auth import get_current_active_user, require_premium, require_admin
 from app.models.content import Content, AccessLevel
 from app.models.user import User, UserRole
 from app.schemas.content import ContentCreate, ContentResponse
@@ -35,7 +35,7 @@ async def list_premium_content(
 @router.post("/", response_model=ContentResponse, status_code=status.HTTP_201_CREATED)
 async def create_content(
     payload: ContentCreate,
-    _: User = Depends(require_roles(UserRole.admin)),
+    _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     content = Content(**payload.model_dump())

@@ -1,0 +1,43 @@
+﻿.\venv\Scripts\python : 
+ImportError while loading 
+conftest 'C:\Users\ThrinathaR
+eddy\PycharmProjects\VERTEX\v
+arex_backend\tests\conftest.p
+y'.
+At line:1 char:1
++ .\venv\Scripts\python -m 
+pytest tests/ > 
+test_error.txt 2>&1 ; Get-Co 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~
+    + CategoryInfo           
+   : NotSpecified: (ImportE  
+  rror whi...s\conftest.py   
+ '.:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+tests\conftest.py:10: in 
+<module>
+    from app.main import app
+app\main.py:39: in <module>
+    from app.api.v1 import (
+app\api\v1\interview.py:20: 
+in <module>
+    from 
+app.schemas.interview import 
+(
+app\schemas\interview.py:12: 
+in <module>
+    from 
+app.dependencies.auth import 
+(
+E   ImportError: cannot 
+import name 'require_free' 
+from 'app.dependencies.auth' 
+(C:\Users\ThrinathaReddy\Pych
+armProjects\VERTEX\varex_back
+end\app\dependencies\auth.py)

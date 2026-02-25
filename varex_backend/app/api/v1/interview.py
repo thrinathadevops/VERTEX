@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.dependencies.auth import (
-    get_current_active_user, require_admin, require_premium, require_free
+    get_current_active_user, require_admin, require_premium
 )
 from app.models.user import User, UserRole
-from app.models.interview import (
+from app.models.interview_models import (
     JobDescription, CandidateProfile, InterviewSession,
-    ScoreReport, InterviewTurn, InterviewRound, InterviewStatus
+    ScoreReport, InterviewTurn, InterviewStatus
 )
 from app.schemas.interview import (
     JobDescriptionCreate, JobDescriptionResponse,
@@ -23,7 +23,7 @@ from app.schemas.interview import (
     ATSScanRequest, ATSScanResponse,
     SessionCreate, SessionResponse,
     TurnAnswerRequest, TurnResponse,
-    ScoreReportResponse,
+    ScoreReportResponse, InterviewRound,
 )
 from app.services.ats_service import run_ats_scan
 from app.services.interview_service import (
@@ -60,7 +60,7 @@ async def create_jd(
 @router.get("/jd", response_model=list[JobDescriptionResponse],
             summary="List all active job descriptions")
 async def list_jds(
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -131,7 +131,7 @@ async def upload_resume(
 @router.get("/candidates/{candidate_id}", response_model=CandidateResponse)
 async def get_candidate(
     candidate_id: UUID,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     candidate = await db.get(CandidateProfile, candidate_id)
@@ -148,7 +148,7 @@ async def get_candidate(
              summary="Run ATS scan: compare resume vs JD + team-lead prompt")
 async def screen_candidate(
     payload: ATSScanRequest,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -174,7 +174,7 @@ async def screen_candidate(
              summary="Create a new AI interview session")
 async def create_session(
     payload: SessionCreate,
-    current_user: User = Depends(require_free),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -206,7 +206,7 @@ async def create_session(
              summary="Start the AI interview — AI asks the first question")
 async def start_interview(
     session_id: UUID,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -257,7 +257,7 @@ async def answer_question(
             summary="List all Q&A turns for a session")
 async def list_turns(
     session_id: UUID,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -271,7 +271,7 @@ async def list_turns(
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
 async def get_session(
     session_id: UUID,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     session = await db.get(InterviewSession, session_id)
@@ -288,7 +288,7 @@ async def get_session(
             summary="Get full AI-generated score report")
 async def get_score_report(
     session_id: UUID,
-    _: User = Depends(require_free),
+    _: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """

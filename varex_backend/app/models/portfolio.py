@@ -2,7 +2,7 @@ import uuid, enum
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Enum, DateTime, Boolean, JSON, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from app.db.base import Base
+from app.db.base_class import Base
 
 class ProjectCategory(str, enum.Enum):
     devops       = "devops"

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, Enum, DateTime, Boolean, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.db.base import Base
+from app.db.base_class import Base
 
 class PlanType(str, enum.Enum):
     free       = "free"           # ₹0  – basic access

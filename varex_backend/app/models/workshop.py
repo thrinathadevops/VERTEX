@@ -2,7 +2,7 @@ import uuid, enum
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Enum, DateTime, Boolean, Integer, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from app.db.base import Base
+from app.db.base_class import Base
 
 class WorkshopMode(str, enum.Enum):
     online  = "online"
