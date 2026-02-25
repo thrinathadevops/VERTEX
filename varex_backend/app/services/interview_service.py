@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models.interview import (
+from app.models.interview_models import (
     InterviewSession, InterviewTurn, ScoreReport, InterviewStatus, CandidateProfile, JobDescription
 )
 

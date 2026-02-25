@@ -7,11 +7,23 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
 
+import sqlalchemy.dialects.postgresql as pg
+from sqlalchemy.types import JSON, Uuid
+
+class DummyArray(JSON):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+# Patch PostgreSQL specific types for SQLite compatibility
+pg.UUID = Uuid
+pg.JSONB = JSON
+pg.ARRAY = DummyArray
+
 from app.main import app
 from app.db.base import Base
 from app.db.session import get_db
 
-TEST_DB_URL = "postgresql+asyncpg://varex:varexpassword@localhost:5432/varex_test"
+TEST_DB_URL = "sqlite+aiosqlite:///./test.db"
 
 engine_test = create_async_engine(TEST_DB_URL, poolclass=NullPool)
 TestSession  = async_sessionmaker(engine_test, expire_on_commit=False)

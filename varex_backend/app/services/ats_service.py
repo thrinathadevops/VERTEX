@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.interview import (
-    CandidateProfile, JobDescription, ScreeningStatus
+from app.models.interview_models import (
+    CandidateProfile, JobDescription
 )
 
 
@@ -33,11 +33,11 @@ async def run_ats_scan(db: AsyncSession, candidate_id: UUID) -> dict:
     if not candidate:
         raise ValueError("Candidate not found")
 
-    jd = await db.get(JobDescription, candidate.job_description_id)
+    jd = await db.get(JobDescription, candidate.job_id)
     if not jd:
         raise ValueError("Job description not found")
 
-    required_skills: list[str] = jd.required_skills or []
+    required_skills: list[str] = jd.skills or []
     resume_text: str = candidate.resume_text or ""
 
     if not settings.GEMINI_API_KEY:
@@ -71,14 +71,7 @@ async def run_ats_scan(db: AsyncSession, candidate_id: UUID) -> dict:
 
     # Persist
     candidate.ats_score = ats_score
-    candidate.ats_report = report
-    candidate.screening_status = (
-        ScreeningStatus.shortlisted
-        if recommendation == "Shortlist"
-        else ScreeningStatus.rejected
-        if recommendation == "Reject"
-        else ScreeningStatus.screened
-    )
+    candidate.ats_feedback = report
     await db.commit()
     await db.refresh(candidate)
 
@@ -86,5 +79,4 @@ async def run_ats_scan(db: AsyncSession, candidate_id: UUID) -> dict:
         "candidate_id": candidate.id,
         "ats_score": ats_score,
         **report,
-        "screening_status": candidate.screening_status,
     }

@@ -4,7 +4,7 @@
 
 import uuid
 import enum
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, Float, func
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, Float, Boolean, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -27,6 +27,7 @@ class JobDescription(Base):
     description = Column(Text,        nullable=False)
     skills      = Column(JSONB,       nullable=True)   # list of required skills
     created_by  = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    is_active   = Column(Boolean, default=True)
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
 
     sessions   = relationship("InterviewSession", back_populates="job_description")
