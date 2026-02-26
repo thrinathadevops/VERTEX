@@ -188,7 +188,7 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-5">
             {/* Left: Image */}
             <AnimateIn direction="left" className="hidden lg:block">
-              <div className="relative h-full min-h-[330px] rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
+              <div className="relative w-full aspect-[2/3] max-h-[760px] lg:self-start rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
                 <Image
                   src="/devops.png"
                   alt="VAREX DevOps Services Overview"
