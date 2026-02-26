@@ -212,8 +212,8 @@ export default function HomePage() {
                 { icon: <Database className="w-5 h-5" />, title: "Capacity Planning & Optimization", desc: "Performance and cost optimization for cloud, Kubernetes, and on-prem infrastructure.", href: "/services/capacity-planning-optimization", color: "violet" },
                 { icon: <BarChart3 className="w-5 h-5" />, title: "FinOps & Cost Governance", desc: "Cloud cost visibility, budgeting controls, and spend optimization aligned to engineering velocity.", href: "/services/finops-cost-governance", color: "sky" },
                 { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
-                { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
-                { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
+                // { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
+                // { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
               ].map((s) => (
                 <StaggerItem key={s.title}>
                   <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-3.5 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
