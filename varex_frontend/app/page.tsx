@@ -175,7 +175,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SERVICES SECTION — What We Do
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-slate-950">
+      <section className="py-20 bg-slate-950">
         <div className="max-w-6xl mx-auto px-4">
           <AnimateIn className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
@@ -185,10 +185,10 @@ export default function HomePage() {
             </p>
           </AnimateIn>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Left: Image */}
             <AnimateIn direction="left" className="hidden lg:block">
-              <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
+              <div className="relative h-full min-h-[360px] rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
                 <Image
                   src="/devops.png"
                   alt="VAREX DevOps Services Overview"
@@ -202,7 +202,7 @@ export default function HomePage() {
             </AnimateIn>
 
             {/* Right: Service cards */}
-            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-4" staggerDelay={0.08}>
+            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-3" staggerDelay={0.08}>
               {[
                 { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipeline Setup", desc: "Automated code build, testing, and deployment pipelines using Jenkins and GitHub Actions.", href: "/services/ci-cd-pipeline-setup", color: "blue" },
                 { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure Setup & Automation", desc: "Secure, scalable AWS, Azure, and GCP infrastructure provisioning with IaC.", href: "/services/cloud-infrastructure-automation", color: "sky" },
@@ -216,13 +216,13 @@ export default function HomePage() {
                 { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
               ].map((s) => (
                 <StaggerItem key={s.title}>
-                  <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
+                  <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-4 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
                       {s.icon}
                     </div>
-                    <h4 className="text-base font-bold text-slate-200 mb-1.5 group-hover:text-white transition-colors">{s.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed mb-3">{s.desc}</p>
-                    <span className="inline-flex items-center text-xs font-semibold text-sky-400 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-slate-200 mb-1 group-hover:text-white transition-colors">{s.title}</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">{s.desc}</p>
+                    <span className="inline-flex items-center text-[11px] font-semibold text-sky-400 opacity-0 group-hover:opacity-100 transition-all duration-300">
                       Learn more <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </Link>
