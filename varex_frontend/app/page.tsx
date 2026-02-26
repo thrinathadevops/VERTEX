@@ -48,7 +48,7 @@ export default function HomePage() {
             </AnimateIn>
 
             <AnimateIn delay={0.2} trigger="mount">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
                 Engineering Scalable Systems.{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
                   Securing Digital Futures.
@@ -68,8 +68,9 @@ export default function HomePage() {
 
             <AnimateIn delay={0.35} trigger="mount">
               <p className="text-sm text-slate-300/90 max-w-2xl leading-relaxed border-l-2 border-sky-500/40 pl-4">
-                Goal: Build resilient cloud architectures, strengthen security posture, and deploy
-                high-impact technical talent faster for business-critical execution.
+                Goal: <span className="font-extrabold uppercase tracking-wide text-sky-300">Freelancing-first delivery</span>{" "}
+                with resilient cloud architectures, stronger security posture, and faster deployment of
+                high-impact technical talent for business-critical execution.
               </p>
             </AnimateIn>
 
