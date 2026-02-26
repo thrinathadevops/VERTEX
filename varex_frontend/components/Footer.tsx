@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const FOOTER_LINKS = {
   "Services": [
@@ -71,18 +72,15 @@ export default function Footer() {
 
           {/* Brand column */}
           <div className="lg:col-span-1 space-y-4">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl
-                bg-sky-500/15 text-sky-400 font-bold text-sm border border-sky-500/20
-                group-hover:bg-sky-500/25 transition-colors">
-                V
-              </span>
-              <div className="leading-tight">
-                <p className="text-sm font-bold tracking-tight text-white">VAREX</p>
-                <p className="text-[9px] text-slate-500 tracking-wide uppercase">
-                  Virtual Architecture
-                </p>
-              </div>
+            <Link href="/" className="block">
+              <Image
+                src="/varex-logo.png"
+                alt="VAREX"
+                width={120}
+                height={35}
+                className="object-contain"
+                style={{ maxHeight: "35px", width: "auto" }}
+              />
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed max-w-[200px]">
               Engineering & Talent Acceleration for DevSecOps, Cybersecurity, SAP SD, and AI Hiring.

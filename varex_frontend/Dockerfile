@@ -1,15 +1,19 @@
 # PATH: varex_frontend/Dockerfile
-# FIX 8.3: Multi-stage build for Next.js frontend
+# Multi-stage build for Next.js frontend
 
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+# Force install ALL dependencies (including devDependencies like tailwindcss)
+RUN npm install --include=dev
 
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Ensure NODE_ENV is not set to production during build
+# so Tailwind CSS and PostCSS can compile properly
+ENV NODE_ENV=production
 RUN npm run build
 
 FROM node:20-alpine AS runner
