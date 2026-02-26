@@ -63,10 +63,10 @@ export default function Navbar() {
             <Image
               src="/varex-logo-enterprise.svg"
               alt="VAREX"
-              width={164}
-              height={44}
+              width={188}
+              height={52}
               priority
-              className={`w-auto object-contain transition-[height] duration-300 ${isScrolled ? "h-8" : "h-9"
+              className={`w-auto object-contain transition-[height] duration-300 ${isScrolled ? "h-10" : "h-11"
                 }`}
             />
           </Link>

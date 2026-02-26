@@ -1,34 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" width="360" height="84">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 96" width="470" height="96">
   <defs>
-    <linearGradient id="shieldStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#67E8F9"/>
-      <stop offset="100%" stop-color="#0EA5E9"/>
+    <linearGradient id="shieldEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
     </linearGradient>
-    <linearGradient id="wordAccent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#22D3EE"/>
-      <stop offset="100%" stop-color="#38BDF8"/>
+    <linearGradient id="leftCore" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F2E8A"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="rightCore" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="cyanMark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
     </linearGradient>
     <style>
-      .word { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.16em; }
-      .tag { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.22em; }
+      .brand { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.08em; }
+      .tag { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.11em; }
     </style>
   </defs>
 
-  <!-- Premium minimal badge -->
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="#0B1221" stroke="#1E293B"/>
-  <path d="M18 17 L32 17 L32 34 C32 41 25 47 25 47 C25 47 18 41 18 34 Z"
-        fill="#020617" stroke="url(#shieldStroke)" stroke-width="2.3" stroke-linejoin="round"/>
-  <path d="M21.5 32 L25 35.5 L29 28.5" fill="none" stroke="#67E8F9" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Shield -->
+  <path d="M52 10 L88 20 L88 46 C88 67 73 82 52 90 C31 82 16 67 16 46 L16 20 Z"
+        fill="none" stroke="url(#shieldEdge)" stroke-width="4.2" stroke-linejoin="round"/>
+  <path d="M52 20 L52 80 C37 72 26 59 26 45 L26 27 Z" fill="url(#leftCore)"/>
+  <path d="M52 20 L78 27 L78 45 C78 59 67 72 52 80 Z" fill="url(#rightCore)"/>
+  <path d="M32 36 C42 36 49 45 52 55 C55 45 62 36 72 36 C69 49 61 57 52 67 C43 57 35 49 32 36 Z"
+        fill="url(#cyanMark)"/>
 
-  <!-- Wordmark (minimal + high contrast) -->
-  <text x="73" y="40" class="word" font-size="30" font-weight="800" fill="#E5EDF8">VAREX</text>
-  <!-- Aggressive accent on X -->
-  <line x1="171" y1="24" x2="179" y2="16" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
-  <line x1="179" y1="24" x2="171" y2="16" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+  <!-- Wordmark -->
+  <text x="110" y="56" class="brand" font-size="74" font-weight="800" fill="#F8FAFC">VAREX</text>
 
-  <rect x="73" y="45" width="118" height="2" rx="1" fill="url(#wordAccent)" opacity="0.95"/>
-  <text x="73" y="62" class="tag" font-size="8" font-weight="600" fill="#93A4BD">
-    VIRTUAL ARCHITECTURE · RESILIENCE · EXECUTION
+  <!-- Tagline -->
+  <text x="110" y="83" class="tag" font-size="15" font-weight="600" fill="#CBD5E1">
+    VIRTUAL ARCHITECTURE, RESILIENCE &amp; EXECUTION
   </text>
 </svg>
