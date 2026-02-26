@@ -23,9 +23,9 @@ const headerVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" }
+    transition: { duration: 0.6, ease: "easeOut" as const }
   }
-};
+} as const;
 
 const navLinkVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -108,7 +108,7 @@ export default function Navbar() {
                   className={`flex items-center gap-1.5 px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all duration-300 ${isActive
                     ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/50"
                     : "text-slate-300 hover:text-cyan-300 hover:bg-slate-800/50 border border-transparent hover:border-cyan-500/30"
-                  }`}
+                    }`}
                 >
                   <IconComponent className="w-4 h-4 hidden lg:inline" />
                   <span>{link.label}</span>
@@ -223,7 +223,7 @@ export default function Navbar() {
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${isActive
                         ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/30"
                         : "text-slate-400 hover:text-cyan-300 hover:bg-slate-800/40 border border-transparent hover:border-cyan-500/20"
-                      }`}
+                        }`}
                     >
                       <IconComponent className="w-4 h-4" />
                       {link.label}
