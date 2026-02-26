@@ -133,34 +133,34 @@ export default function HomePage() {
         <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
             {
-              icon: "⚙️",
+              icon: <Server className="w-6 h-6" />,
               color: "sky",
-              title: "Real-World Engineering Expertise",
-              desc: "Learn production-grade DevOps, architecture, and security practices used in enterprise environments.",
+              title: "Freelancing-Ready Engineering Delivery",
+              desc: "Apply production-grade DevOps, cloud architecture, and automation workflows used in real enterprise engagements.",
             },
             {
-              icon: "🛡",
+              icon: <Shield className="w-6 h-6" />,
               color: "indigo",
               title: "Practical Resilience & Security Frameworks",
-              desc: "Implement scalable, secure, and compliant infrastructure patterns with confidence.",
+              desc: "Implement scalable, secure, and compliant infrastructure patterns built for reliability under real workload pressure.",
             },
             {
-              icon: "🎯",
+              icon: <BarChart3 className="w-6 h-6" />,
               color: "emerald",
               title: "Structured Skill Acceleration",
-              desc: "Validate your capabilities through guided assessments and expert-led evaluation.",
+              desc: "Strengthen practical capability through guided milestones, hands-on validation, and expert-led feedback loops.",
             },
             {
-              icon: "🤖",
+              icon: <Cpu className="w-6 h-6" />,
               color: "blue",
               title: "AI-Ready Hiring",
-              desc: "Access structured screening workflows that reduce hiring time and elevate technical standards.",
+              desc: "Use structured AI-assisted screening that shortens hiring cycles and improves technical quality benchmarks.",
             },
           ].map((f) => (
             <StaggerItem key={f.title}>
               <div className="flex items-start gap-5 group">
                 <div className={`flex-shrink-0 p-3.5 rounded-xl group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[f.color]}`}>
-                  <span className="text-xl leading-none">{f.icon}</span>
+                  {f.icon}
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white mb-1.5">{f.title}</h3>
