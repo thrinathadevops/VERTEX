@@ -73,7 +73,7 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="min-h-screen py-20 px-4">
+    <div className="min-h-screen py-20 px-4">
       <div className="max-w-4xl mx-auto text-center mb-14">
         <h1 className="text-3xl font-bold mb-3">Choose Your Plan</h1>
         <p className="text-slate-400">
@@ -150,6 +150,6 @@ export default function PricingPage() {
           Contact Sales
         </a>
       </div>
-    </main>
+    </div>
   );
 }

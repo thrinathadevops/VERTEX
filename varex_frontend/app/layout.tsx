@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "VAREX – Virtual Architecture, Resilience & Execution",
   description:
     "Engineering & Talent Acceleration firm for DevSecOps, Cybersecurity, SAP SD, and AI-powered hiring.",
+  metadataBase: new URL("https://varextech.in"),
   icons: {
     icon:     "/favicon-varex.svg",
     shortcut: "/favicon-varex.svg",

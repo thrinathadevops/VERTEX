@@ -10,6 +10,7 @@ interface AnimateInProps {
     direction?: "up" | "down" | "left" | "right" | "none";
     duration?: number;
     once?: boolean;
+    trigger?: "inView" | "mount";
 }
 
 const getVariants = (direction: string, duration: number): Variants => {
@@ -39,13 +40,17 @@ export default function AnimateIn({
     direction = "up",
     duration = 0.6,
     once = true,
+    trigger = "inView",
 }: AnimateInProps) {
+    const shouldAnimateOnMount = trigger === "mount";
+
     return (
         <motion.div
             variants={getVariants(direction, duration)}
             initial="hidden"
-            whileInView="visible"
-            viewport={{ once, margin: "-50px" }}
+            animate={shouldAnimateOnMount ? "visible" : undefined}
+            whileInView={shouldAnimateOnMount ? undefined : "visible"}
+            viewport={shouldAnimateOnMount ? undefined : { once, margin: "-50px" }}
             transition={{ delay }}
             className={className}
         >

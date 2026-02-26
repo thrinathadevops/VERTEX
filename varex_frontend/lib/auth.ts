@@ -8,10 +8,12 @@
 import { getMe } from "@/lib/api";
 import type { User } from "@/lib/types";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
 // Login — POST to backend, which sets httpOnly cookies
 export async function login(email: string, password: string): Promise<User> {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login`,
+    `${API_BASE_URL}/api/v1/auth/login`,
     {
       method: "POST",
       credentials: "include",          // Send/receive cookies cross-origin
@@ -31,7 +33,7 @@ export async function login(email: string, password: string): Promise<User> {
 export async function logout(): Promise<void> {
   try {
     await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/logout`,
+      `${API_BASE_URL}/api/v1/auth/logout`,
       {
         method: "POST",
         credentials: "include",
@@ -72,7 +74,7 @@ export function getUserFromCookies(): User | null {
 // Register
 export async function register(name: string, email: string, password: string): Promise<void> {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/register`,
+    `${API_BASE_URL}/api/v1/auth/register`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -107,7 +109,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function refreshAccessToken(): Promise<boolean> {
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`,
+      `${API_BASE_URL}/api/v1/auth/refresh`,
       {
         method: "POST",
         credentials: "include",

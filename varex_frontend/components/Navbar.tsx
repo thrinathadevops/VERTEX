@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogIn, Rocket, Menu, X, Home, Briefcase, Award, Briefcase as Portfolio, Users, LayoutDashboard } from "lucide-react";
+import { LogIn, LogOut, Rocket, Menu, X, Home, Briefcase, Award, Briefcase as Portfolio, Users, LayoutDashboard } from "lucide-react";
 import { getUserFromCookies, clearTokens } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
@@ -14,7 +14,6 @@ const NAV_LINKS = [
   { href: "/hire", label: "HIRE", icon: Award },
   { href: "/portfolio", label: "PORTFOLIO", icon: Portfolio },
   { href: "/team", label: "TEAM", icon: Users },
-  { href: "/dashboard", label: "DASHBOARD", icon: LayoutDashboard },
 ];
 
 export default function Navbar() {
@@ -22,10 +21,8 @@ export default function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     setUser(getUserFromCookies());
     setMenuOpen(false);
   }, [pathname]);
@@ -36,7 +33,9 @@ export default function Navbar() {
     router.push("/");
   };
 
-  if (!mounted) return null;
+  const navLinks = user
+    ? [...NAV_LINKS, { href: "/dashboard", label: "DASHBOARD", icon: LayoutDashboard }]
+    : NAV_LINKS;
 
   return (
     <header className="sticky top-0 z-50 bg-[#0B1120] border-b border-slate-800 shadow-xl">
@@ -58,7 +57,7 @@ export default function Navbar() {
 
         {/* ═══ NAV LINKS — CENTER (DESKTOP) ═══ */}
         <nav className="hidden md:flex items-center gap-2 lg:gap-4 flex-1 justify-center px-4">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const IconComponent = link.icon;
             const isActive = pathname === link.href;
             return (
@@ -91,7 +90,7 @@ export default function Navbar() {
                 onClick={handleLogout}
                 className="hidden sm:flex items-center gap-2 rounded-md border border-slate-700 hover:border-red-500 hover:text-red-400 px-4 py-2 text-sm font-medium text-slate-300 transition-colors"
               >
-                <LogIn className="w-4 h-4" />
+                <LogOut className="w-4 h-4" />
                 <span className="hidden lg:inline">Sign out</span>
               </button>
             </div>
@@ -118,6 +117,7 @@ export default function Navbar() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
             {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -127,7 +127,7 @@ export default function Navbar() {
       {/* ═══ MOBILE MENU DROPDOWN ═══ */}
       {menuOpen && (
         <nav className="md:hidden border-t border-slate-800 bg-[#0B1120] px-4 py-4 space-y-2">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const IconComponent = link.icon;
             const isActive = pathname === link.href;
             return (

@@ -12,12 +12,13 @@ jest.mock("next/navigation", () => ({
 describe("Navbar", () => {
   it("renders the VAREX logo", () => {
     render(<Navbar />);
-    expect(screen.getByText(/varex/i)).toBeInTheDocument();
+    expect(screen.getByAltText(/varex/i)).toBeInTheDocument();
   });
 
   it("renders navigation links", () => {
     render(<Navbar />);
     expect(screen.getByRole("link", { name: /services/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /pricing/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /portfolio/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /dashboard/i })).not.toBeInTheDocument();
   });
 });

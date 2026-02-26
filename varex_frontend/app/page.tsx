@@ -8,13 +8,22 @@ import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
 
 export default function HomePage() {
+  const featureToneClasses: Record<string, string> = {
+    sky: "bg-sky-500/10 text-sky-400",
+    indigo: "bg-indigo-500/10 text-indigo-400",
+    emerald: "bg-emerald-500/10 text-emerald-400",
+    blue: "bg-blue-500/10 text-blue-400",
+    violet: "bg-violet-500/10 text-violet-400",
+    teal: "bg-teal-500/10 text-teal-400",
+  };
+
   return (
     <div className="flex flex-col gap-0 pb-0">
 
       {/* ═══════════════════════════════════════════════════════════
           HERO SECTION — Full-bleed with animated background
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4 -mt-8 pt-8">
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4">
         {/* Background layers */}
         <div className="absolute inset-0 -z-20 bg-slate-950" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(14,165,233,0.15),transparent)]" />
@@ -28,7 +37,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
           {/* LEFT: Text content */}
           <div className="space-y-8">
-            <AnimateIn delay={0.1}>
+            <AnimateIn delay={0.1} trigger="mount">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute h-full w-full rounded-full bg-sky-400 opacity-75" />
@@ -38,7 +47,7 @@ export default function HomePage() {
               </div>
             </AnimateIn>
 
-            <AnimateIn delay={0.2}>
+            <AnimateIn delay={0.2} trigger="mount">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
                 Accelerating Your{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
@@ -48,7 +57,7 @@ export default function HomePage() {
               </h1>
             </AnimateIn>
 
-            <AnimateIn delay={0.3}>
+            <AnimateIn delay={0.3} trigger="mount">
               <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
                 VAREX provides a production-ready, highly secure foundation—complete authentication,
                 granular role-based access, and premium content delivery powered by a
@@ -56,7 +65,7 @@ export default function HomePage() {
               </p>
             </AnimateIn>
 
-            <AnimateIn delay={0.4}>
+            <AnimateIn delay={0.4} trigger="mount">
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/register"
                   className="group inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5">
@@ -71,7 +80,7 @@ export default function HomePage() {
             </AnimateIn>
 
             {/* Stats row */}
-            <AnimateIn delay={0.5}>
+            <AnimateIn delay={0.5} trigger="mount">
               <div className="flex items-center gap-8 pt-4">
                 {[
                   { value: "50+", label: "Clients" },
@@ -88,7 +97,7 @@ export default function HomePage() {
           </div>
 
           {/* RIGHT: Hero image */}
-          <AnimateIn delay={0.3} direction="right">
+          <AnimateIn delay={0.3} direction="right" trigger="mount">
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-tr from-sky-500/20 via-indigo-500/10 to-transparent rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-sky-900/20">
@@ -120,7 +129,7 @@ export default function HomePage() {
           ].map((f) => (
             <StaggerItem key={f.title}>
               <div className="flex items-start gap-5 group">
-                <div className={`flex-shrink-0 p-3.5 rounded-xl bg-${f.color}-500/10 text-${f.color}-400 group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`flex-shrink-0 p-3.5 rounded-xl group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[f.color]}`}>
                   {f.icon}
                 </div>
                 <div>
@@ -172,7 +181,7 @@ export default function HomePage() {
               ].map((s) => (
                 <StaggerItem key={s.title}>
                   <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
-                    <div className={`w-10 h-10 rounded-lg bg-${s.color}-500/10 flex items-center justify-center text-${s.color}-400 mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
                       {s.icon}
                     </div>
                     <h4 className="text-base font-bold text-slate-200 mb-1.5 group-hover:text-white transition-colors">{s.title}</h4>

@@ -74,12 +74,12 @@ export default function Footer() {
           <div className="lg:col-span-1 space-y-4">
             <Link href="/" className="block">
               <Image
-                src="/varex-logo.png"
+                src="/varex-logo-enterprise.svg"
                 alt="VAREX"
-                width={120}
-                height={35}
+                width={140}
+                height={40}
                 className="object-contain"
-                style={{ maxHeight: "35px", width: "auto" }}
+                style={{ maxHeight: "40px", width: "auto" }}
               />
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed max-w-[200px]">
@@ -135,7 +135,7 @@ export default function Footer() {
             <Link href="/privacy" className="hover:text-sky-400 transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-sky-400 transition-colors">Terms</Link>
             <Link href="/refund" className="hover:text-sky-400 transition-colors">Refund</Link>
-            <span>Bengaluru, India 🇮🇳</span>
+            <span>Bengaluru, India</span>
           </div>
         </div>
 
