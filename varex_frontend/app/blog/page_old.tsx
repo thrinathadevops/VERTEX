@@ -25,7 +25,7 @@ export default function BlogPage() {
       setFreeItems(freeData);
       setPremiumItems(premiumData);
       const user = getUserFromCookies();
-      setIsPremium(user?.role === "premium_user" || user?.role === "admin");
+      setIsPremium(user?.role === "premium" || user?.role === "admin");
     }
     load();
   }, []);

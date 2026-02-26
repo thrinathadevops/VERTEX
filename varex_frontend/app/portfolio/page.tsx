@@ -32,11 +32,10 @@ export default function PortfolioPage() {
           <button
             key={c.value}
             onClick={() => setActive(c.value)}
-            className={`rounded-full px-3 py-1 text-xs font-medium border ${
-              active === c.value
+            className={`rounded-full px-3 py-1 text-xs font-medium border ${active === c.value
                 ? "bg-sky-500 border-sky-500 text-white"
                 : "border-slate-700 text-slate-300 hover:border-sky-500"
-            }`}
+              }`}
           >
             {c.label}
           </button>
@@ -47,7 +46,7 @@ export default function PortfolioPage() {
         {projects.map((p) => (
           <article key={p.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 hover:border-sky-600/70">
             <span className="inline-block rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-300 mb-2">
-              {p.category.replace("_", " ")}
+              {p.category?.replace("_", " ") || "Uncategorized"}
             </span>
             <h2 className="text-sm font-semibold mb-1">{p.title}</h2>
             <p className="text-xs text-slate-300 mb-3 line-clamp-2">{p.summary}</p>

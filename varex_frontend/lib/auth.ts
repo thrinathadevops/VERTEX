@@ -13,10 +13,10 @@ export async function login(email: string, password: string): Promise<User> {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login`,
     {
-      method:      "POST",
+      method: "POST",
       credentials: "include",          // Send/receive cookies cross-origin
-      headers:     { "Content-Type": "application/json" },
-      body:        JSON.stringify({ email, password }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     }
   );
   if (!res.ok) {
@@ -29,17 +29,44 @@ export async function login(email: string, password: string): Promise<User> {
 
 // Logout — calls backend to blacklist token + clear cookies
 export async function logout(): Promise<void> {
-  await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/logout`,
-    {
-      method:      "POST",
-      credentials: "include",
-    }
-  );
+  try {
+    await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/logout`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+  } catch { }
   // Clear any local state
   if (typeof window !== "undefined") {
     sessionStorage.removeItem("varex_user");
   }
+}
+
+// clearTokens — synchronous helper that clears local state and calls logout async
+export function clearTokens(): void {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("varex_user");
+  }
+  // The original fetch might fail but we just clear state
+  logout().catch(() => { });
+}
+
+// setTokens — stores user in session storage
+export function setTokens(user: User): void {
+  if (typeof window !== "undefined" && user) {
+    sessionStorage.setItem("varex_user", JSON.stringify(user));
+  }
+}
+
+// getUserFromCookies — synchronous helper returning user from session storage
+export function getUserFromCookies(): User | null {
+  if (typeof window !== "undefined") {
+    const cached = sessionStorage.getItem("varex_user");
+    if (cached) return JSON.parse(cached) as User;
+  }
+  return null;
 }
 
 // Register
@@ -47,9 +74,9 @@ export async function register(name: string, email: string, password: string): P
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/register`,
     {
-      method:  "POST",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password }),
     }
   );
   if (!res.ok) {
@@ -82,7 +109,7 @@ export async function refreshAccessToken(): Promise<boolean> {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`,
       {
-        method:      "POST",
+        method: "POST",
         credentials: "include",
       }
     );

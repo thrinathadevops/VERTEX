@@ -7,10 +7,10 @@ import { getProject } from "@/lib/api";
 import type { Project } from "@/lib/types";
 
 export default function ProjectDetailPage() {
-  const { slug }  = useParams<{ slug: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -42,11 +42,11 @@ export default function ProjectDetailPage() {
   if (!project) return null;
 
   const CATEGORY_COLORS: Record<string, string> = {
-    devops:       "bg-sky-500/20 text-sky-300",
-    security:     "bg-red-500/20 text-red-300",
-    sap:          "bg-amber-500/20 text-amber-300",
+    devops: "bg-sky-500/20 text-sky-300",
+    security: "bg-red-500/20 text-red-300",
+    sap: "bg-amber-500/20 text-amber-300",
     architecture: "bg-purple-500/20 text-purple-300",
-    ai_hiring:    "bg-emerald-500/20 text-emerald-300",
+    ai_hiring: "bg-emerald-500/20 text-emerald-300",
   };
 
   return (
@@ -56,9 +56,9 @@ export default function ProjectDetailPage() {
       <nav className="flex items-center gap-1 text-[11px] text-slate-400">
         <Link href="/portfolio" className="hover:text-sky-300">Portfolio</Link>
         <span>/</span>
-        <Link href={`/portfolio?category=${project.category}`}
+        <Link href={`/portfolio?category=${project.category || ''}`}
           className="hover:text-sky-300 capitalize">
-          {project.category.replace("_", " ")}
+          {project.category?.replace("_", " ") || "Uncategorized"}
         </Link>
         <span>/</span>
         <span className="text-slate-300 truncate max-w-[180px]">{project.title}</span>
@@ -67,8 +67,8 @@ export default function ProjectDetailPage() {
       {/* ── Hero ──────────────────────────────────────────────── */}
       <header className="space-y-3">
         <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide
-          ${CATEGORY_COLORS[project.category] ?? "bg-slate-700 text-slate-300"}`}>
-          {project.category.replace("_", " ")}
+          ${CATEGORY_COLORS[project.category || ""] ?? "bg-slate-700 text-slate-300"}`}>
+          {project.category?.replace("_", " ") || "Uncategorized"}
         </span>
         {project.is_featured && (
           <span className="ml-2 inline-block rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">

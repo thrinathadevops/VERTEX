@@ -5,18 +5,14 @@ import type {
   FAQ, Workshop, Lead,
 } from "./types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (process.env.NODE_ENV === "production"
-    ? (() => { throw new Error("NEXT_PUBLIC_API_BASE_URL is not set in production"); })()
-    : "http://localhost:8000");
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   withCredentials: true, // Crucial for sending httpOnly cookies
 });
 
-import { refreshAccessToken } from "./auth";
+import { refreshAccessToken, login as authLogin, register as authRegister } from "./auth";
 
 // ── Response interceptor: extract data or throw proper error ───────
 api.interceptors.response.use(
@@ -42,6 +38,14 @@ api.interceptors.response.use(
 export async function getMe(): Promise<User> {
   const res = await api.get<User>("/users/me");
   return res.data;
+}
+
+export async function login(payload: { email: string; password: string }) {
+  return authLogin(payload.email, payload.password);
+}
+
+export async function register(payload: { name: string; email: string; password: string }) {
+  return authRegister(payload.name, payload.email, payload.password);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -113,6 +117,11 @@ export async function getTeamMember(slug: string): Promise<TeamMember> {
 export async function listCertifications(domain?: string): Promise<Certification[]> {
   const params = domain ? `?domain=${domain}` : "";
   const res = await api.get<Certification[]>(`/certifications${params}`);
+  return res.data;
+}
+
+export async function listAchievements(): Promise<any[]> {
+  const res = await api.get<any[]>("/achievements");
   return res.data;
 }
 
@@ -205,3 +214,5 @@ export async function getInterviewReport(sessionId: string) {
   const res = await api.get(`/interview/session/${sessionId}/report`);
   return res.data;
 }
+
+export default api;

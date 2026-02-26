@@ -14,12 +14,15 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.997.0",
     "@aws-sdk/s3-request-presigner": "^3.997.0",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/typography": "^0.5.19",
     "axios": "1.6.7",
     "js-cookie": "3.0.5",
     "jwt-decode": "^4.0.0",
     "next": "14.1.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

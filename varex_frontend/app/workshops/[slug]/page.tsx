@@ -9,13 +9,13 @@ import type { Workshop } from "@/lib/types";
 
 export default function WorkshopDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const user     = getUserFromCookies();
+  const user = getUserFromCookies();
 
-  const [workshop,    setWorkshop]    = useState<Workshop | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
+  const [workshop, setWorkshop] = useState<Workshop | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
-  const [regMessage,  setRegMessage]  = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [regMessage, setRegMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -28,7 +28,7 @@ export default function WorkshopDetailPage() {
   }, [slug]);
 
   const handleRegister = async () => {
-    if (!user)     { setRegMessage({ type: "error", text: "Please sign in to register." }); return; }
+    if (!user) { setRegMessage({ type: "error", text: "Please sign in to register." }); return; }
     if (!workshop) return;
     setRegistering(true);
     setRegMessage(null);
@@ -65,22 +65,22 @@ export default function WorkshopDetailPage() {
 
   if (!workshop) return null;
 
-  const seatsLeft  = workshop.max_seats - workshop.seats_booked;
+  const seatsLeft = workshop.max_seats - workshop.seats_booked;
   const seatsRatio = workshop.seats_booked / workshop.max_seats;
-  const isFull     = workshop.status === "full" || seatsLeft <= 0;
+  const isFull = workshop.status === "full" || seatsLeft <= 0;
   const isCompleted = workshop.status === "completed";
 
   const STATUS_STYLES: Record<string, string> = {
-    open:      "bg-emerald-500/20 text-emerald-300",
-    upcoming:  "bg-sky-500/20 text-sky-300",
-    full:      "bg-red-500/20 text-red-300",
+    open: "bg-emerald-500/20 text-emerald-300",
+    upcoming: "bg-sky-500/20 text-sky-300",
+    full: "bg-red-500/20 text-red-300",
     completed: "bg-slate-700 text-slate-400",
   };
 
   const MODE_ICONS: Record<string, string> = {
-    online:  "💻 Online",
+    online: "💻 Online",
     offline: "📍 In-person",
-    hybrid:  "🔀 Hybrid",
+    hybrid: "🔀 Hybrid",
   };
 
   return (
@@ -112,7 +112,7 @@ export default function WorkshopDetailPage() {
               weekday: "short", day: "numeric", month: "long", year: "numeric"
             })}</span>
           )}
-          <span>⏱ {workshop.duration_hours} hour{workshop.duration_hours > 1 ? "s" : ""}</span>
+          <span>⏱ {workshop.duration_hours} hour{(workshop.duration_hours ?? 0) > 1 ? "s" : ""}</span>
           <span>💺 {seatsLeft > 0 ? `${seatsLeft} seats left` : "Fully booked"}</span>
           {workshop.price_inr !== undefined && (
             <span>💰 {workshop.price_inr === 0 ? "Free" : `₹${workshop.price_inr.toLocaleString("en-IN")}`}</span>
@@ -123,10 +123,9 @@ export default function WorkshopDetailPage() {
         <div className="space-y-1">
           <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${
-                seatsRatio >= 0.9 ? "bg-red-500" :
-                seatsRatio >= 0.6 ? "bg-amber-500" : "bg-emerald-500"
-              }`}
+              className={`h-full rounded-full transition-all ${seatsRatio >= 0.9 ? "bg-red-500" :
+                  seatsRatio >= 0.6 ? "bg-amber-500" : "bg-emerald-500"
+                }`}
               style={{ width: `${Math.min(seatsRatio * 100, 100)}%` }}
             />
           </div>
@@ -154,11 +153,10 @@ export default function WorkshopDetailPage() {
       )}
 
       {/* ── Registration card ─────────────────────────────────── */}
-      <section className={`rounded-2xl border p-5 space-y-4 ${
-        isFull || isCompleted
+      <section className={`rounded-2xl border p-5 space-y-4 ${isFull || isCompleted
           ? "border-slate-700 bg-slate-900/50"
           : "border-sky-700/50 bg-sky-950/30"
-      }`}>
+        }`}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">
@@ -168,8 +166,8 @@ export default function WorkshopDetailPage() {
               {isCompleted
                 ? "This workshop has concluded. Check upcoming sessions."
                 : isFull
-                ? "All seats are taken. Join the waitlist or check next batch."
-                : `Only ${seatsLeft} seat${seatsLeft > 1 ? "s" : ""} remaining.`}
+                  ? "All seats are taken. Join the waitlist or check next batch."
+                  : `Only ${seatsLeft} seat${seatsLeft > 1 ? "s" : ""} remaining.`}
             </p>
           </div>
           {workshop.price_inr !== undefined && !isCompleted && (
@@ -183,11 +181,10 @@ export default function WorkshopDetailPage() {
         </div>
 
         {regMessage && (
-          <p className={`rounded-md px-3 py-2 text-xs ${
-            regMessage.type === "success"
+          <p className={`rounded-md px-3 py-2 text-xs ${regMessage.type === "success"
               ? "bg-emerald-950/50 text-emerald-300"
               : "bg-red-950/50 text-red-300"
-          }`}>
+            }`}>
             {regMessage.text}
           </p>
         )}
