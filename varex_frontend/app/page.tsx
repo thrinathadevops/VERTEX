@@ -202,12 +202,15 @@ export default function HomePage() {
             {/* Right: Service cards */}
             <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-4" staggerDelay={0.08}>
               {[
-                { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure", desc: "Automated provisioning and scaling on AWS/Azure with Infrastructure as Code.", href: "/services/devsecops", color: "sky" },
-                { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipelines", desc: "End-to-end pipeline automation with DevSecOps tooling and GitOps.", href: "/services/devsecops", color: "blue" },
+                { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipeline Setup", desc: "Automated code build, testing, and deployment pipelines using Jenkins and GitHub Actions.", href: "/services/ci-cd-pipeline-setup", color: "blue" },
+                { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure Setup & Automation", desc: "Secure, scalable AWS, Azure, and GCP infrastructure provisioning with IaC.", href: "/services/cloud-infrastructure-automation", color: "sky" },
+                { icon: <Server className="w-5 h-5" />, title: "Containerization & Orchestration", desc: "Docker and Kubernetes setup for scalable, containerized application deployments.", href: "/services/containerization-orchestration", color: "indigo" },
+                { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring & Logging Solutions", desc: "Real-time monitoring and log management with Prometheus, Grafana, and Loki.", href: "/services/monitoring-logging-solutions", color: "teal" },
+                { icon: <Shield className="w-5 h-5" />, title: "DevSecOps Implementation", desc: "Security scanning and compliance integration embedded directly into CI/CD pipelines.", href: "/services/devsecops-implementation", color: "emerald" },
+                { icon: <Database className="w-5 h-5" />, title: "Capacity Planning & Optimization", desc: "Performance and cost optimization for cloud, Kubernetes, and on-prem infrastructure.", href: "/services/capacity-planning-optimization", color: "violet" },
                 { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
-                { icon: <Database className="w-5 h-5" />, title: "SAP SD", desc: "Enterprise Sales & Distribution module configuration and custom integrations.", href: "/services/sap-sd", color: "violet" },
-                { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring & Logging", desc: "Comprehensive observability with Prometheus, Grafana, and ELK Stack.", href: "/services/devsecops", color: "teal" },
-                { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/hire", color: "emerald" },
+                { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
+                { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
               ].map((s) => (
                 <StaggerItem key={s.title}>
                   <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
