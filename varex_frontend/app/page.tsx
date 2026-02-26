@@ -130,16 +130,37 @@ export default function HomePage() {
           TRUST BAR — Key capabilities
          ═══════════════════════════════════════════════════════════ */}
       <section className="py-16 border-y border-slate-800/50 bg-slate-950">
-        <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
+        <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
-            { icon: <Shield className="w-6 h-6" />, color: "sky", title: "Granular RBAC", desc: "Guest, free, premium, and admin role enforcement out of the box with fine-grained permissions." },
-            { icon: <Server className="w-6 h-6" />, color: "indigo", title: "API-First Design", desc: "Lightning fast Python backend routing with robust JWT Authentication and clean architecture." },
-            { icon: <Cpu className="w-6 h-6" />, color: "emerald", title: "AI-Ready Platform", desc: "Pluggable intelligent evaluation modules for automated screening and advanced analytics." },
+            {
+              icon: "⚙️",
+              color: "sky",
+              title: "Real-World Engineering Expertise",
+              desc: "Learn production-grade DevOps, architecture, and security practices used in enterprise environments.",
+            },
+            {
+              icon: "🛡",
+              color: "indigo",
+              title: "Practical Resilience & Security Frameworks",
+              desc: "Implement scalable, secure, and compliant infrastructure patterns with confidence.",
+            },
+            {
+              icon: "🎯",
+              color: "emerald",
+              title: "Structured Skill Acceleration",
+              desc: "Validate your capabilities through guided assessments and expert-led evaluation.",
+            },
+            {
+              icon: "🤖",
+              color: "blue",
+              title: "AI-Ready Hiring",
+              desc: "Access structured screening workflows that reduce hiring time and elevate technical standards.",
+            },
           ].map((f) => (
             <StaggerItem key={f.title}>
               <div className="flex items-start gap-5 group">
                 <div className={`flex-shrink-0 p-3.5 rounded-xl group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[f.color]}`}>
-                  {f.icon}
+                  <span className="text-xl leading-none">{f.icon}</span>
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white mb-1.5">{f.title}</h3>
