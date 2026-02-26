@@ -18,10 +18,9 @@ depends_on = None
 def upgrade() -> None:
 
     # ── content table ────────────────────────────────────────────
-    op.add_column("content", sa.Column("slug",         sa.String(500), nullable=True))
-    op.add_column("content", sa.Column("category",     sa.String(100), nullable=True))
+    # NOTE: slug/category and ix_content_slug are created in 0001.
+    # Keep only truly new changes here to avoid duplicate-column/index errors.
     op.add_column("content", sa.Column("is_published", sa.Boolean(),   nullable=False, server_default="false"))
-    op.create_index("ix_content_slug",         "content", ["slug"],         unique=True)
     op.create_index("ix_content_access_level", "content", ["access_level"], unique=False)
 
     # ── team_members table ───────────────────────────────────────
@@ -47,8 +46,7 @@ def upgrade() -> None:
     # ── projects (portfolio) table ───────────────────────────────
     op.add_column("projects", sa.Column("is_published",     sa.Boolean(), nullable=False, server_default="false"))
     op.add_column("projects", sa.Column("created_by",       postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True))
-    op.add_column("projects", sa.Column("diagram_s3_key",   sa.Text(), nullable=True))
-    op.add_column("projects", sa.Column("case_study_url",   sa.Text(), nullable=True))
+    # NOTE: diagram_s3_key and case_study_url are created in 0001.
     # Fix JSON vs ARRAY mismatch — tech_stack and outcomes: keep as JSONB
     # (run manually if column already exists as ARRAY):
     # ALTER TABLE projects ALTER COLUMN tech_stack TYPE JSONB USING tech_stack::jsonb;
