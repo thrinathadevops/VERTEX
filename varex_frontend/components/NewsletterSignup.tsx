@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { submitLead } from "@/lib/api";
+import AnimateIn from "@/components/AnimateIn";
+import { Mail, Lock, Users, Send } from "lucide-react";
 
 export default function NewsletterSignup() {
   const [email, setEmail] = useState("");
@@ -43,83 +45,82 @@ export default function NewsletterSignup() {
   };
 
   return (
-    <section className="rounded-2xl border border-sky-800/40 bg-sky-950/20 p-6 sm:p-8">
-      <div className="max-w-xl mx-auto text-center space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-sky-400">
-          Stay Sharp
-        </p>
-        <h2 className="text-xl font-bold">
-          Weekly DevSecOps & Architecture insights
-        </h2>
-        <p className="text-sm text-slate-300">
-          One email per week. Real case studies, architecture breakdowns, and
-          interview patterns — straight from our consulting work.
-        </p>
+    <AnimateIn>
+      <section className="relative rounded-3xl border border-sky-800/30 bg-gradient-to-br from-sky-950/40 via-slate-900/60 to-indigo-950/40 p-8 sm:p-12 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-sky-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px]" />
 
-        {state === "success" ? (
-          <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 px-6 py-5 space-y-1">
-            <p className="text-2xl">🎉</p>
-            <p className="text-sm font-semibold text-emerald-300">You are in!</p>
-            <p className="text-xs text-slate-300">
-              Check your inbox for a confirmation. First issue lands this week.
-            </p>
+        <div className="relative z-10 max-w-xl mx-auto text-center space-y-5">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20 mx-auto">
+            <Mail className="w-7 h-7" />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="Your name (optional)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5
-                  text-xs text-slate-100 placeholder:text-slate-500
-                  focus:border-sky-500 focus:outline-none"
-              />
-              <input
-                type="email"
-                required
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5
-                  text-xs text-slate-100 placeholder:text-slate-500
-                  focus:border-sky-500 focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-shrink-0 rounded-lg bg-sky-500 px-4 py-2.5 text-xs font-semibold
-                  text-white hover:bg-sky-400 disabled:opacity-60 transition whitespace-nowrap"
-              >
-                {submitting ? "Subscribing..." : "Subscribe free →"}
-              </button>
+
+          <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase">
+            Stay Sharp
+          </h2>
+          <h3 className="text-2xl md:text-3xl font-extrabold text-white">
+            Weekly DevSecOps & Architecture Insights
+          </h3>
+          <p className="text-base text-slate-300 leading-relaxed">
+            One email per week. Real case studies, architecture breakdowns, and
+            interview patterns — straight from our consulting work.
+          </p>
+
+          {state === "success" ? (
+            <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 px-6 py-6 space-y-2">
+              <p className="text-3xl">🎉</p>
+              <p className="text-base font-bold text-emerald-300">You&apos;re in!</p>
+              <p className="text-sm text-slate-300">
+                Check your inbox for a confirmation. First issue lands this week.
+              </p>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Your name (optional)"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3
+                    text-sm text-slate-100 placeholder:text-slate-500
+                    focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/50 transition-all"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3
+                    text-sm text-slate-100 placeholder:text-slate-500
+                    focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/50 transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 hover:bg-sky-400 px-6 py-3 text-sm font-bold
+                    text-white disabled:opacity-60 transition-all shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 whitespace-nowrap"
+                >
+                  <Send className="w-4 h-4" />
+                  {submitting ? "Subscribing..." : "Subscribe free"}
+                </button>
+              </div>
 
-            {state === "error" && (
-              <p className="text-[11px] text-red-400">{errorMsg}</p>
-            )}
+              {state === "error" && (
+                <p className="text-sm text-red-400">{errorMsg}</p>
+              )}
 
-            <p className="text-[11px] text-slate-500">
-              No spam. Unsubscribe anytime. Read by 500+ engineers.
-            </p>
-          </form>
-        )}
-
-        {/* Trust badges */}
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-          {[
-            { icon: "🔒", label: "No spam ever" },
-            { icon: "📩", label: "1 email / week" },
-            { icon: "👥", label: "500+ subscribers" },
-          ].map((b) => (
-            <div key={b.label} className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <span>{b.icon}</span>
-              <span>{b.label}</span>
-            </div>
-          ))}
+              <div className="flex flex-wrap items-center justify-center gap-6 pt-1 text-sm text-slate-500">
+                <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> No spam ever</span>
+                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> 1 email / week</span>
+                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> 500+ subscribers</span>
+              </div>
+            </form>
+          )}
         </div>
-      </div>
-    </section>
+      </section>
+    </AnimateIn>
   );
 }

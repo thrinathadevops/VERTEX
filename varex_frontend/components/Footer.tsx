@@ -63,41 +63,42 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-20 border-t border-slate-800 bg-slate-950">
-      <div className="mx-auto max-w-6xl px-4 py-12">
+    <footer className="border-t border-slate-800 bg-slate-950">
+      <div className="mx-auto max-w-6xl px-4 py-16">
 
         {/* ── Top: Brand + Links grid ───────────────────────── */}
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
 
           {/* Brand column */}
-          <div className="lg:col-span-1 space-y-3">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg
-                bg-sky-500/15 text-sky-400 font-bold text-sm">
+          <div className="lg:col-span-1 space-y-4">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl
+                bg-sky-500/15 text-sky-400 font-bold text-sm border border-sky-500/20
+                group-hover:bg-sky-500/25 transition-colors">
                 V
               </span>
               <div className="leading-tight">
-                <p className="text-sm font-semibold tracking-tight">VAREX</p>
-                <p className="text-[9px] text-slate-500 tracking-wide">
-                  VIRTUAL ARCHITECTURE
+                <p className="text-sm font-bold tracking-tight text-white">VAREX</p>
+                <p className="text-[9px] text-slate-500 tracking-wide uppercase">
+                  Virtual Architecture
                 </p>
               </div>
             </Link>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-[180px]">
+            <p className="text-sm text-slate-400 leading-relaxed max-w-[200px]">
               Engineering & Talent Acceleration for DevSecOps, Cybersecurity, SAP SD, and AI Hiring.
             </p>
 
             {/* Social icons */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-2">
               {SOCIAL_LINKS.map((s) => (
                 <a key={s.label}
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="flex items-center justify-center h-7 w-7 rounded-md
+                  className="flex items-center justify-center h-9 w-9 rounded-lg
                     border border-slate-700 text-slate-400
-                    hover:border-sky-500 hover:text-sky-400 transition">
+                    hover:border-sky-500/50 hover:text-sky-400 hover:bg-sky-500/10 transition-all duration-300">
                   {s.icon}
                 </a>
               ))}
@@ -107,15 +108,15 @@ export default function Footer() {
           {/* Link columns */}
           {Object.entries(FOOTER_LINKS).map(([section, links]) => (
             <div key={section}>
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-300">
                 {section}
               </p>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-xs text-slate-400 hover:text-sky-300 transition"
+                      className="text-sm text-slate-400 hover:text-sky-400 transition-colors duration-200"
                     >
                       {link.label}
                     </Link>
@@ -127,15 +128,15 @@ export default function Footer() {
         </div>
 
         {/* ── Divider ───────────────────────────────────────── */}
-        <div className="mt-10 border-t border-slate-800 pt-6
-          flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-[11px] text-slate-500">
+        <div className="mt-12 border-t border-slate-800 pt-8
+          flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-slate-500">
             © {year} VAREX Technologies. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-[11px] text-slate-500">
-            <Link href="/privacy" className="hover:text-sky-400 transition">Privacy</Link>
-            <Link href="/terms" className="hover:text-sky-400 transition">Terms</Link>
-            <Link href="/refund" className="hover:text-sky-400 transition">Refund</Link>
+          <div className="flex items-center gap-6 text-sm text-slate-500">
+            <Link href="/privacy" className="hover:text-sky-400 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-sky-400 transition-colors">Terms</Link>
+            <Link href="/refund" className="hover:text-sky-400 transition-colors">Refund</Link>
             <span>Bengaluru, India 🇮🇳</span>
           </div>
         </div>

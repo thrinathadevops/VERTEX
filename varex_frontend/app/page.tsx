@@ -1,143 +1,332 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap } from "lucide-react";
+import AnimateIn, { StaggerContainer, StaggerItem } from "@/components/AnimateIn";
 import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col gap-24 pb-20">
+    <div className="flex flex-col gap-0 pb-0">
 
-      {/* ── Hero Section ──────────────────────────────────────── */}
-      <section className="relative pt-20 pb-12 lg:pt-32 lg:pb-24 border-b border-slate-800/50">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/20 via-slate-950 to-slate-950"></div>
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-6">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-            Enterprise SaaS Infrastructure
-          </div>
+      {/* ═══════════════════════════════════════════════════════════
+          HERO SECTION — Full-bleed with animated background
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4 -mt-8 pt-8">
+        {/* Background layers */}
+        <div className="absolute inset-0 -z-20 bg-slate-950" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(14,165,233,0.15),transparent)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent -z-10" />
 
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
-            Accelerating Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">DevOps & Cloud</span> Journey With Confidence
-          </h1>
+        {/* Floating animated blobs */}
+        <div className="absolute top-20 -left-32 w-72 h-72 bg-sky-500/10 rounded-full blur-[100px] animate-blob" />
+        <div className="absolute top-40 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-20 left-1/3 w-64 h-64 bg-brand-500/10 rounded-full blur-[100px] animate-blob animation-delay-4000" />
 
-          <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            VAREX provides a production-ready, highly secure foundation equipped with complete authentication, granular role-based access, and premium content delivery—all backed by a resilient FastAPI core.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-3.5 rounded-lg font-semibold transition-all shadow-lg shadow-sky-500/20">
-              Deploy Your Infrastructure
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link href="/dashboard"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-8 py-3.5 rounded-lg border border-slate-700 font-semibold transition-all">
-              View Architecture
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features List (Trust Bar) ───────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-4 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 border-y border-slate-800/50">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-lg bg-sky-500/10 text-sky-400"><Shield className="w-6 h-6" /></div>
-            <div>
-              <h3 className="text-slate-200 font-bold mb-1">Granular RBAC</h3>
-              <p className="text-sm text-slate-400">Guest, free, premium, and admin role enforcement out of the box.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-lg bg-indigo-500/10 text-indigo-400"><Server className="w-6 h-6" /></div>
-            <div>
-              <h3 className="text-slate-200 font-bold mb-1">API-First Design</h3>
-              <p className="text-sm text-slate-400">Lightning fast Python backend routing with robust JWT Authentication.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400"><Cpu className="w-6 h-6" /></div>
-            <div>
-              <h3 className="text-slate-200 font-bold mb-1">Ready for AI</h3>
-              <p className="text-sm text-slate-400">Pluggable intelligent evaluation modules for screening and analytics.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── What We Do (Services Section) ─────────────────────── */}
-      <section className="max-w-6xl mx-auto px-4 w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
-          <h3 className="text-3xl md:text-4xl font-extrabold text-white">Comprehensive Engineering Solutions</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[
-            { icon: <Cloud className="w-6 h-6" />, title: "Cloud Infrastructure Setup", desc: "Automated provisioning and scaling of robust AWS/Azure environments using IaC.", href: "/services/devsecops" },
-            { icon: <Blocks className="w-6 h-6" />, title: "CI/CD Pipeline Automation", desc: "Seamless integration and deployment paths utilizing modern DevSecOps tools.", href: "/services/devsecops" },
-            { icon: <Shield className="w-6 h-6" />, title: "Cybersecurity & VAPT", desc: "Continuous threat modeling, compliance checks, and infrastructure hardening.", href: "/services/cybersecurity" },
-            { icon: <Database className="w-6 h-6" />, title: "SAP SD Integration", desc: "Enterprise Sales & Distribution configurations and module optimization.", href: "/services/sap-sd" },
-          ].map((s) => (
-            <Link key={s.title} href={s.href} className="group block h-full bg-slate-900/50 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 p-6 rounded-2xl transition-all">
-              <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 group-hover:text-sky-400 group-hover:bg-sky-500/10 transition-colors mb-5">
-                {s.icon}
+        <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
+          {/* LEFT: Text content */}
+          <div className="space-y-8">
+            <AnimateIn delay={0.1}>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute h-full w-full rounded-full bg-sky-400 opacity-75" />
+                  <span className="relative rounded-full h-2 w-2 bg-sky-500" />
+                </span>
+                Enterprise SaaS Platform
               </div>
-              <h4 className="text-lg font-bold text-slate-200 mb-2">{s.title}</h4>
-              <p className="text-sm text-slate-400 leading-relaxed mb-4">{s.desc}</p>
-              <div className="flex items-center text-sm font-semibold text-sky-400 group-hover:text-sky-300">
-                Learn more <ArrowRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+            </AnimateIn>
 
-      {/* ── About Us Component ────────────────────────────────── */}
-      <section className="bg-slate-900 border-y border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 py-20 flex flex-col md:flex-row items-center gap-12">
-          <div className="md:w-1/2 space-y-6">
-            <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase">About VAREX</h2>
-            <h3 className="text-3xl font-bold text-white leading-tight">Empowering scalable, secure digital transformations.</h3>
-            <p className="text-slate-400 leading-relaxed">
-              We are a dedicated team of cloud architects, security researchers, and software engineers on a mission to bring enterprise-grade tooling to businesses of all sizes. From automated container orchestration to deep SAP functional knowledge, we build architectures designed to last.
-            </p>
-            <ul className="space-y-3 pt-4">
-              {[
-                "Modern Containerization & Orchestration",
-                "Advanced Monitoring & Logging Solutions",
-                "Migration, Modernization & Optimization",
-                "Proprietary AI Engineer Vetting"
-              ].map(item => (
-                <li key={item} className="flex items-center gap-3 text-slate-300 text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="md:w-1/2 w-full">
-            <div className="rounded-2xl border border-slate-700 bg-slate-950 p-8 shadow-2xl relative overflow-hidden flex flex-col items-center text-center justify-center">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 blur-[60px] rounded-full"></div>
-              <Cpu className="w-16 h-16 text-sky-400 mb-6" />
-              <h4 className="text-xl font-bold text-white mb-2">Need to hire top-tier talent?</h4>
-              <p className="text-sm text-slate-400 mb-6">
-                Are you open to engaging pre-vetted freelance, remote, or full-time engineers? Our AI-powered screening process delivers talent in just 7 days.
+            <AnimateIn delay={0.2}>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
+                Accelerating Your{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
+                  DevOps &amp; Cloud
+                </span>{" "}
+                Journey With Confidence
+              </h1>
+            </AnimateIn>
+
+            <AnimateIn delay={0.3}>
+              <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
+                VAREX provides a production-ready, highly secure foundation—complete authentication,
+                granular role-based access, and premium content delivery powered by a
+                resilient <strong className="text-slate-200">FastAPI</strong> core.
               </p>
-              <Link href="/hire" className="bg-white text-slate-900 hover:bg-slate-200 px-6 py-2.5 rounded-lg text-sm font-bold transition-colors">
-                Explore Talent Solutions
-              </Link>
+            </AnimateIn>
+
+            <AnimateIn delay={0.4}>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link href="/register"
+                  className="group inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5">
+                  Get Started Free
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link href="/contact"
+                  className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-xl border border-slate-700 hover:border-slate-600 font-semibold text-sm transition-all">
+                  Request a Demo
+                </Link>
+              </div>
+            </AnimateIn>
+
+            {/* Stats row */}
+            <AnimateIn delay={0.5}>
+              <div className="flex items-center gap-8 pt-4">
+                {[
+                  { value: "50+", label: "Clients" },
+                  { value: "99.9%", label: "Uptime" },
+                  { value: "7 Days", label: "Talent Delivery" },
+                ].map((s) => (
+                  <div key={s.label}>
+                    <p className="text-2xl font-extrabold text-white">{s.value}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </AnimateIn>
+          </div>
+
+          {/* RIGHT: Hero image */}
+          <AnimateIn delay={0.3} direction="right">
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-tr from-sky-500/20 via-indigo-500/10 to-transparent rounded-3xl blur-2xl" />
+              <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-sky-900/20">
+                <Image
+                  src="/hero-cloud-infra.png"
+                  alt="VAREX Cloud Infrastructure"
+                  width={700}
+                  height={450}
+                  className="w-full h-auto object-cover"
+                  priority
+                />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+              </div>
             </div>
+          </AnimateIn>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          TRUST BAR — Key capabilities
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-16 border-y border-slate-800/50 bg-slate-950">
+        <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
+          {[
+            { icon: <Shield className="w-6 h-6" />, color: "sky", title: "Granular RBAC", desc: "Guest, free, premium, and admin role enforcement out of the box with fine-grained permissions." },
+            { icon: <Server className="w-6 h-6" />, color: "indigo", title: "API-First Design", desc: "Lightning fast Python backend routing with robust JWT Authentication and clean architecture." },
+            { icon: <Cpu className="w-6 h-6" />, color: "emerald", title: "AI-Ready Platform", desc: "Pluggable intelligent evaluation modules for automated screening and advanced analytics." },
+          ].map((f) => (
+            <StaggerItem key={f.title}>
+              <div className="flex items-start gap-5 group">
+                <div className={`flex-shrink-0 p-3.5 rounded-xl bg-${f.color}-500/10 text-${f.color}-400 group-hover:scale-110 transition-transform duration-300`}>
+                  {f.icon}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1.5">{f.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          SERVICES SECTION — What We Do
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-slate-950">
+        <div className="max-w-6xl mx-auto px-4">
+          <AnimateIn className="text-center mb-16">
+            <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
+            <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-4">Comprehensive Engineering Solutions</h3>
+            <p className="text-slate-400 max-w-2xl mx-auto">
+              From CI/CD pipelines to threat-resilient production environments, we handle the full spectrum of modern infrastructure challenges.
+            </p>
+          </AnimateIn>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Left: Image */}
+            <AnimateIn direction="left" className="hidden lg:block">
+              <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-800">
+                <Image
+                  src="/services-devops.png"
+                  alt="DevOps Pipeline"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 to-transparent" />
+              </div>
+            </AnimateIn>
+
+            {/* Right: Service cards */}
+            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-4" staggerDelay={0.08}>
+              {[
+                { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure", desc: "Automated provisioning and scaling on AWS/Azure with Infrastructure as Code.", href: "/services/devsecops", color: "sky" },
+                { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipelines", desc: "End-to-end pipeline automation with DevSecOps tooling and GitOps.", href: "/services/devsecops", color: "blue" },
+                { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
+                { icon: <Database className="w-5 h-5" />, title: "SAP SD", desc: "Enterprise Sales & Distribution module configuration and custom integrations.", href: "/services/sap-sd", color: "violet" },
+                { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring & Logging", desc: "Comprehensive observability with Prometheus, Grafana, and ELK Stack.", href: "/services/devsecops", color: "teal" },
+                { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/hire", color: "emerald" },
+              ].map((s) => (
+                <StaggerItem key={s.title}>
+                  <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
+                    <div className={`w-10 h-10 rounded-lg bg-${s.color}-500/10 flex items-center justify-center text-${s.color}-400 mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                      {s.icon}
+                    </div>
+                    <h4 className="text-base font-bold text-slate-200 mb-1.5 group-hover:text-white transition-colors">{s.title}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-3">{s.desc}</p>
+                    <span className="inline-flex items-center text-xs font-semibold text-sky-400 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      Learn more <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </Link>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials & Newsletter ─────────────────────────── */}
-      <div className="space-y-24">
-        <Testimonials />
-        <NewsletterSignup />
-      </div>
+      {/* ═══════════════════════════════════════════════════════════
+          ABOUT SECTION — with image
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-slate-900/50 border-y border-slate-800/50">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
+          {/* Left: Content */}
+          <div className="lg:w-1/2 space-y-6">
+            <AnimateIn>
+              <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase">About VAREX</h2>
+            </AnimateIn>
+            <AnimateIn delay={0.1}>
+              <h3 className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
+                Empowering scalable, secure digital transformations.
+              </h3>
+            </AnimateIn>
+            <AnimateIn delay={0.2}>
+              <p className="text-slate-400 leading-relaxed text-base">
+                We are a dedicated team of cloud architects, security researchers, and software engineers on a mission to bring
+                enterprise-grade tooling to businesses of all sizes. From automated container orchestration to deep SAP functional
+                knowledge, we build architectures designed to last.
+              </p>
+            </AnimateIn>
+
+            <StaggerContainer className="space-y-3 pt-4" staggerDelay={0.08} delayChildren={0.3}>
+              {[
+                "Modern Containerization & Kubernetes Orchestration",
+                "Advanced Monitoring, Logging & Observability Solutions",
+                "Cloud Migration, Modernization & Cost Optimization",
+                "AI-Powered Engineer Vetting & Talent Solutions",
+                "DevSecOps Implementation & Security Hardening",
+              ].map((item) => (
+                <StaggerItem key={item}>
+                  <div className="flex items-center gap-3 text-slate-300 text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+
+            <AnimateIn delay={0.5}>
+              <Link href="/team" className="inline-flex items-center gap-2 text-sky-400 hover:text-sky-300 font-semibold text-sm mt-4 group">
+                Meet Our Team <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </AnimateIn>
+          </div>
+
+          {/* Right: Image */}
+          <AnimateIn delay={0.2} direction="right" className="lg:w-1/2 w-full">
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-bl from-sky-500/15 to-indigo-500/10 rounded-3xl blur-2xl" />
+              <div className="relative rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                <Image
+                  src="/about-team-collab.png"
+                  alt="VAREX Team Collaboration"
+                  width={600}
+                  height={400}
+                  className="w-full h-auto object-cover"
+                />
+              </div>
+            </div>
+          </AnimateIn>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          WHY VAREX — Numbers & CTA
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-slate-950">
+        <div className="max-w-6xl mx-auto px-4">
+          <AnimateIn className="text-center mb-16">
+            <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">Why Choose VAREX</h2>
+            <h3 className="text-3xl md:text-5xl font-extrabold text-white">Built for Scale. Designed to Last.</h3>
+          </AnimateIn>
+
+          <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {[
+              { icon: <Users className="w-7 h-7" />, value: "50+", label: "Enterprise Clients" },
+              { icon: <Zap className="w-7 h-7" />, value: "99.9%", label: "Uptime SLA" },
+              { icon: <BarChart3 className="w-7 h-7" />, value: "12x", label: "Faster Deployments" },
+              { icon: <Shield className="w-7 h-7" />, value: "0", label: "Security Breaches" },
+            ].map((s) => (
+              <StaggerItem key={s.label}>
+                <div className="text-center p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/30 transition-all duration-300 group hover:-translate-y-1">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-sky-500/10 text-sky-400 mb-4 group-hover:scale-110 transition-transform">
+                    {s.icon}
+                  </div>
+                  <p className="text-3xl font-extrabold text-white mb-1">{s.value}</p>
+                  <p className="text-sm text-slate-400">{s.label}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+
+          {/* CTA Banner */}
+          <AnimateIn>
+            <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-gradient-to-r from-sky-950/80 via-slate-900 to-indigo-950/80 p-10 md:p-14 text-center">
+              <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-[120px]" />
+              <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px]" />
+              <div className="relative z-10">
+                <Cpu className="w-12 h-12 text-sky-400 mx-auto mb-6" />
+                <h4 className="text-2xl md:text-3xl font-extrabold text-white mb-4">
+                  Need to Hire Top-Tier Talent?
+                </h4>
+                <p className="text-slate-400 max-w-lg mx-auto mb-8">
+                  Our AI-powered screening process delivers pre-vetted freelance, remote, or full-time engineers in just 7 days.
+                  No recruitment overhead, guaranteed quality.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Link href="/hire" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5">
+                    Explore Talent Solutions <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link href="/contact" className="inline-flex items-center gap-2 border border-slate-600 hover:border-sky-500 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
+                    Book Free Consultation
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </AnimateIn>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          TESTIMONIALS
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-slate-900/30 border-y border-slate-800/50">
+        <div className="max-w-6xl mx-auto px-4">
+          <Testimonials />
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          NEWSLETTER
+         ═══════════════════════════════════════════════════════════ */}
+      <section className="py-24 bg-slate-950">
+        <div className="max-w-6xl mx-auto px-4">
+          <NewsletterSignup />
+        </div>
+      </section>
 
     </div>
   );

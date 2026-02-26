@@ -2,23 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-[#020617] text-slate-50 antialiased overflow-x-hidden selection:bg-brand-500/30 selection:text-brand-100;
+    @apply bg-slate-950 text-slate-50 antialiased overflow-x-hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    @apply bg-sky-500/30 text-sky-100;
   }
 }
 
 @layer utilities {
   .gradient-bg {
-    background: radial-gradient(circle at top, rgba(56,189,248,0.15), transparent 45%),
-                radial-gradient(circle at bottom, rgba(59,130,246,0.1), transparent 45%);
+    background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 45%),
+      radial-gradient(circle at bottom, rgba(59, 130, 246, 0.08), transparent 45%);
   }
 
   .glass-card {
-    @apply bg-slate-900/40 backdrop-blur-md border border-slate-800/60 shadow-xl shadow-brand-900/20;
+    @apply bg-slate-900/40 backdrop-blur-md border border-slate-800/60 shadow-xl;
   }
-  
-  .text-glow {
-    text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
   }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
