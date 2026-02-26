@@ -4,11 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { LogIn, Rocket, Menu, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { getUserFromCookies, clearTokens } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
-const PRIMARY_LINKS = [
+const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/hire", label: "Hire" },
@@ -54,18 +55,11 @@ export default function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setUser(getUserFromCookies());
     setMenuOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const handleLogout = () => {
     clearTokens();
@@ -74,111 +68,116 @@ export default function Navbar() {
   };
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled
-        ? "bg-slate-950/95 backdrop-blur-xl border-b border-slate-800 shadow-lg shadow-slate-950/50"
-        : "bg-transparent border-b border-transparent"
-      }`}>
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 bg-[#0B1120] border-b-2 border-sky-500/60 shadow-lg shadow-sky-900/20">
+      {/* 
+        Main header bar
+        Height: ~60px (≈15mm on standard screen) 
+        Layout: Logo (left) | Nav links (center) | Auth buttons (right)
+      */}
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 h-[60px]">
 
-        {/* ── Logo ──────────────────────────────────────────────── */}
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0 group">
+        {/* ═══ LEFT: Company Logo ═══ */}
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <Image
             src="/varex-logo-enterprise.svg"
             alt="VAREX"
             width={130}
             height={34}
             priority
-            className="group-hover:opacity-90 transition-opacity"
           />
         </Link>
 
-        {/* ── Primary nav links (desktop) ───────────────────────── */}
+        {/* ═══ CENTER: Navigation Links (Desktop) ═══ */}
         <nav className="hidden lg:flex items-center gap-1">
-          {PRIMARY_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${pathname === link.href
-                  ? "text-white"
-                  : "text-slate-400 hover:text-white"
-                }`}
-            >
-              {link.label}
-              {pathname === link.href && (
-                <motion.div
-                  layoutId="nav-active"
-                  className="absolute inset-0 rounded-lg bg-white/10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-            </Link>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive
+                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/30"
+                    : "text-slate-300 hover:text-white hover:bg-white/10"
+                  }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* ── Right side: auth + hamburger ──────────────────────── */}
+        {/* ═══ RIGHT: Auth Buttons + Hamburger ═══ */}
         <div className="flex items-center gap-3">
           {user ? (
             <>
               <span className="hidden md:inline text-slate-400 text-xs">
                 {user.email}
               </span>
-              <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-[11px] capitalize text-sky-300 font-semibold">
+              <span className="rounded-full bg-sky-500/20 px-3 py-1 text-xs capitalize text-sky-300 font-semibold border border-sky-500/30">
                 {user.role.replace("_", " ")}
               </span>
               <button
                 onClick={handleLogout}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-red-500/50 hover:text-red-400 transition-all"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:border-red-500/50 hover:text-red-400 transition-all"
               >
+                <LogIn className="w-4 h-4" />
                 Sign out
               </button>
             </>
           ) : (
             <>
+              {/* Sign In button with icon */}
               <Link
                 href="/login"
-                className="hidden sm:inline rounded-lg border border-slate-700 px-4 py-1.5 text-xs font-medium text-slate-200 hover:border-sky-500/50 hover:text-sky-400 transition-all"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-600 hover:border-sky-400 px-4 py-2 text-sm font-semibold text-slate-200 hover:text-sky-400 transition-all"
               >
+                <LogIn className="w-4 h-4" />
                 Sign in
               </Link>
+
+              {/* Get Started button with icon */}
               <Link
                 href="/register"
-                className="rounded-lg bg-sky-500 hover:bg-sky-400 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-sky-500/20 transition-all"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 px-5 py-2 text-sm font-bold text-white transition-all shadow-md shadow-sky-500/30 hover:shadow-sky-400/40"
               >
+                <Rocket className="w-4 h-4" />
                 Get Started
               </Link>
             </>
           )}
 
-          {/* Hamburger button */}
+          {/* Hamburger / More Menu button */}
           <button
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Open menu"
-            className="ml-1 flex flex-col gap-[5px] p-2 rounded-lg hover:bg-white/5 transition-colors"
+            className="ml-1 p-2 rounded-lg hover:bg-white/10 transition-colors lg:ml-2"
           >
-            <span className={`block h-0.5 w-5 rounded-full bg-slate-300 transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
-            <span className={`block h-0.5 w-5 rounded-full bg-slate-300 transition-all duration-300 ${menuOpen ? "opacity-0 scale-0" : ""}`} />
-            <span className={`block h-0.5 w-5 rounded-full bg-slate-300 transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
+            {menuOpen ? (
+              <X className="w-5 h-5 text-slate-300" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-300" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* ── Hamburger dropdown with animation ──────────────────── */}
+      {/* ═══ Dropdown Mega Menu ═══ */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
-            className="overflow-hidden border-t border-slate-800 bg-slate-950/98 backdrop-blur-xl"
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden border-t border-slate-700 bg-[#0B1120]"
           >
-            <div className="px-4 py-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            <div className="px-6 py-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
               {HAMBURGER_LINKS.map((group, idx) => (
                 <motion.div
                   key={group.section}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05, duration: 0.3 }}
+                  transition={{ delay: idx * 0.05, duration: 0.25 }}
                 >
                   <p className="mb-3 text-xs font-bold text-sky-400 uppercase tracking-wider">
                     {group.section}
@@ -201,9 +200,10 @@ export default function Navbar() {
                   </ul>
                 </motion.div>
               ))}
-              {/* Mobile: primary links */}
-              <div className="lg:hidden col-span-full border-t border-slate-800 pt-4 flex flex-wrap gap-2">
-                {PRIMARY_LINKS.map((link) => (
+
+              {/* Mobile: show primary links too */}
+              <div className="lg:hidden col-span-full border-t border-slate-700 pt-4 flex flex-wrap gap-2">
+                {NAV_LINKS.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
