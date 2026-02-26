@@ -38,30 +38,38 @@ export default function HomePage() {
           {/* LEFT: Text content */}
           <div className="space-y-8">
             <AnimateIn delay={0.1} trigger="mount">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs font-semibold uppercase tracking-wider">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute h-full w-full rounded-full bg-sky-400 opacity-75" />
                   <span className="relative rounded-full h-2 w-2 bg-sky-500" />
                 </span>
-                Enterprise SaaS Platform
+                VAREX: Virtual Architecture, Resilience &amp; Execution
               </div>
             </AnimateIn>
 
             <AnimateIn delay={0.2} trigger="mount">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
-                Accelerating Your{" "}
+                Engineering Scalable Systems.{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
-                  DevOps &amp; Cloud
-                </span>{" "}
-                Journey With Confidence
+                  Securing Digital Futures.
+                </span>
+                {" "}Accelerating Technical Talent.
               </h1>
             </AnimateIn>
 
             <AnimateIn delay={0.3} trigger="mount">
               <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
-                VAREX provides a production-ready, highly secure foundation—complete authentication,
-                granular role-based access, and premium content delivery powered by a
-                resilient <strong className="text-slate-200">FastAPI</strong> core.
+                VAREX is a Cloud Engineering and Talent Acceleration platform focused on
+                Architecture, Resilience, and Execution excellence. We deliver DevSecOps consulting,
+                SAP SD expertise, and scalable, secure, automated infrastructure solutions for
+                startups and enterprises.
+              </p>
+            </AnimateIn>
+
+            <AnimateIn delay={0.35} trigger="mount">
+              <p className="text-sm text-slate-300/90 max-w-2xl leading-relaxed border-l-2 border-sky-500/40 pl-4">
+                Goal: Build resilient cloud architectures, strengthen security posture, and deploy
+                high-impact technical talent faster for business-critical execution.
               </p>
             </AnimateIn>
 
