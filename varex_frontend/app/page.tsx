@@ -1,182 +1,143 @@
 "use client";
 
 import Link from "next/link";
-import { motion, Variants } from "framer-motion";
-import { ChevronRight, Shield, Server, Box, Cpu, ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database } from "lucide-react";
 import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
 
 export default function HomePage() {
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
-  };
-
   return (
-    <div className="relative space-y-32 pb-20 overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-brand-500/20 blur-[120px] rounded-full opacity-50 pointer-events-none -z-10" />
-      <div className="absolute -top-[200px] -right-[200px] w-[600px] h-[600px] bg-varex-blue/10 blur-[150px] rounded-full pointer-events-none -z-10" />
+    <div className="flex flex-col gap-24 pb-20">
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
-        className="grid gap-16 lg:grid-cols-[1.2fr_1fr] items-center pt-16"
-      >
-        <section className="relative z-10">
-          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-1.5 text-xs font-semibold text-sky-300 mb-8 backdrop-blur-sm shadow-[0_0_15px_rgba(14,165,233,0.15)]">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-            </span>
-            VAREX &bull; Virtual Architecture, Resilience & Execution
-          </motion.div>
+      {/* ── Hero Section ──────────────────────────────────────── */}
+      <section className="relative pt-20 pb-12 lg:pt-32 lg:pb-24 border-b border-slate-800/50">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/20 via-slate-950 to-slate-950"></div>
+        <div className="max-w-4xl mx-auto text-center px-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-6">
+            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+            Enterprise SaaS Infrastructure
+          </div>
 
-          <motion.h1 variants={itemVariants} className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
-            Secure SaaS infrastructure for <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-brand-500 to-indigo-400 text-glow">the next generation</span>
-          </motion.h1>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
+            Accelerating Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">DevOps & Cloud</span> Journey With Confidence
+          </h1>
 
-          <motion.p variants={itemVariants} className="text-slate-300 text-lg mb-10 max-w-xl leading-relaxed">
-            VAREX gives you a production-ready foundation: complete authentication, role-based access, and premium content delivery, backed by a resilient <strong className="text-white">FastAPI</strong> core.
-          </motion.p>
+          <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+            VAREX provides a production-ready, highly secure foundation equipped with complete authentication, granular role-based access, and premium content delivery—all backed by a resilient FastAPI core.
+          </p>
 
-          <motion.div variants={itemVariants} className="flex flex-wrap gap-4 mb-14">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/register"
-              className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-brand-600 px-8 py-4 text-sm font-bold text-white shadow-[0_0_40px_-10px_rgba(14,165,233,0.6)] hover:shadow-[0_0_60px_-15px_rgba(14,165,233,0.8)] transition-all duration-300 overflow-hidden">
-              <span className="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
-              <span className="relative z-10">Deploy Now</span>
-              <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform relative z-10" />
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-3.5 rounded-lg font-semibold transition-all shadow-lg shadow-sky-500/20">
+              Deploy Your Infrastructure
+              <ArrowRight className="w-4 h-4" />
             </Link>
-
             <Link href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700/80 bg-slate-900/50 backdrop-blur-md px-8 py-4 text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:border-sky-500/50 transition-all duration-300">
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-8 py-3.5 rounded-lg border border-slate-700 font-semibold transition-all">
               View Architecture
             </Link>
-          </motion.div>
+          </div>
+        </div>
+      </section>
 
-          <motion.dl variants={containerVariants} className="grid grid-cols-3 gap-6 text-sm text-slate-400 border-t border-slate-800/60 pt-8">
-            <motion.div variants={itemVariants} className="space-y-1">
-              <dt className="flex items-center gap-1.5 font-bold text-slate-100"><Shield className="w-4 h-4 text-sky-400" /> RBAC</dt>
-              <dd className="text-xs leading-relaxed">Granular permissions out of the box.</dd>
-            </motion.div>
-            <motion.div variants={itemVariants} className="space-y-1">
-              <dt className="flex items-center gap-1.5 font-bold text-slate-100"><Server className="w-4 h-4 text-brand-400" /> API-First</dt>
-              <dd className="text-xs leading-relaxed">Lightning-fast Python backend routing.</dd>
-            </motion.div>
-            <motion.div variants={itemVariants} className="space-y-1">
-              <dt className="flex items-center gap-1.5 font-bold text-slate-100"><Cpu className="w-4 h-4 text-indigo-400" /> Ready for AI</dt>
-              <dd className="text-xs leading-relaxed">Pluggable intelligent evaluation modules.</dd>
-            </motion.div>
-          </motion.dl>
-        </section>
-
-        {/* Live System Card */}
-        <motion.section
-          variants={itemVariants}
-          className="relative perspective-[1000px] xl:ml-10"
-        >
-          <div className="absolute inset-0 bg-gradient-to-tr from-brand-600/20 to-indigo-500/20 rounded-3xl blur-2xl transform -rotate-6 scale-105 z-0" />
-
-          <div className="relative z-10 glass-card rounded-2xl p-8 border-t-brand-500/30 overflow-hidden transform rotate-2 hover:rotate-0 transition-transform duration-500">
-            {/* Animated bg scanline */}
-            <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(14,165,233,0.05)_50%,transparent_100%)] h-[200%] w-full animate-[blob_10s_linear_infinite]" />
-
-            <div className="flex justify-between items-center mb-6 relative z-10 border-b border-slate-800/80 pb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" /> Live Telemetry</h2>
-              <span className="font-mono text-xs text-sky-400 bg-sky-950/40 px-3 py-1 rounded-full border border-sky-800/50">Production</span>
-            </div>
-
-            <div className="space-y-5 text-sm font-mono text-slate-300 relative z-10">
-              <div className="flex justify-between items-center group">
-                <span className="text-slate-500 group-hover:text-slate-400 transition-colors">API Endpoint</span>
-                <span className="text-emerald-300 flex items-center gap-2">Healthy <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded text-[10px]">99.9%</span></span>
-              </div>
-              <div className="flex justify-between items-center group">
-                <span className="text-slate-500 group-hover:text-slate-400 transition-colors">Auth Provider</span>
-                <span className="text-slate-100">JWT &bull; FastAPI</span>
-              </div>
-              <div className="flex justify-between items-center group">
-                <span className="text-slate-500 group-hover:text-slate-400 transition-colors">Region</span>
-                <span className="text-slate-100">AWS ap-south-1</span>
-              </div>
-              <div className="flex justify-between items-center group">
-                <span className="text-slate-500 group-hover:text-slate-400 transition-colors">Latency</span>
-                <span className="text-sky-300">~42ms</span>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-5 border-t border-slate-800/80 grid grid-cols-2 gap-3 relative z-10">
-              {[
-                { href: "/portfolio", label: "Case Studies" },
-                { href: "/workshops", label: "Live Workshops" },
-              ].map((l) => (
-                <Link key={l.href} href={l.href}
-                  className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/30 px-4 py-2.5 text-xs font-semibold
-                    text-slate-300 hover:border-sky-500/60 hover:text-sky-300 hover:bg-sky-500/10 transition-all group">
-                  {l.label}
-                  <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform opacity-50 group-hover:opacity-100" />
-                </Link>
-              ))}
+      {/* ── Features List (Trust Bar) ───────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-4 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 border-y border-slate-800/50">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-lg bg-sky-500/10 text-sky-400"><Shield className="w-6 h-6" /></div>
+            <div>
+              <h3 className="text-slate-200 font-bold mb-1">Granular RBAC</h3>
+              <p className="text-sm text-slate-400">Guest, free, premium, and admin role enforcement out of the box.</p>
             </div>
           </div>
-        </motion.section>
-      </motion.div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-lg bg-indigo-500/10 text-indigo-400"><Server className="w-6 h-6" /></div>
+            <div>
+              <h3 className="text-slate-200 font-bold mb-1">API-First Design</h3>
+              <p className="text-sm text-slate-400">Lightning fast Python backend routing with robust JWT Authentication.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400"><Cpu className="w-6 h-6" /></div>
+            <div>
+              <h3 className="text-slate-200 font-bold mb-1">Ready for AI</h3>
+              <p className="text-sm text-slate-400">Pluggable intelligent evaluation modules for screening and analytics.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* ── Services Section ────────────────────────────────────── */}
-      <section className="space-y-12">
-        <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">Core Competencies</h2>
-          <h3 className="text-3xl md:text-4xl font-extrabold">Engineering & Talent Solutions</h3>
+      {/* ── What We Do (Services Section) ─────────────────────── */}
+      <section className="max-w-6xl mx-auto px-4 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
+          <h3 className="text-3xl md:text-4xl font-extrabold text-white">Comprehensive Engineering Solutions</h3>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[
-            { icon: <Box className="w-8 h-8" />, title: "DevSecOps", desc: "Automated CI/CD pipelines, Kubernetes orchestration, and resilient architecture.", href: "/services/devsecops" },
-            { icon: <Shield className="w-8 h-8" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and VAPT infrastructure.", href: "/services/cybersecurity" },
-            { icon: <Server className="w-8 h-8" />, title: "SAP SD", desc: "Enterprise Sales & Distribution configuration and custom integrations.", href: "/services/sap-sd" },
-            { icon: <Cpu className="w-8 h-8" />, title: "AI Hiring", desc: "Deploy pre-vetted engineers using our proprietary AI evaluation matrix.", href: "/services/ai-hiring" },
-          ].map((s, idx) => (
-            <motion.div
-              key={s.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1, type: "spring", stiffness: 50 }}
-            >
-              <Link href={s.href}
-                className="group block h-full glass-card hover:bg-slate-800/60 p-8 rounded-3xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-sky-900/30 border-t border-l border-slate-700/50 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-[50px] group-hover:bg-brand-500/20 transition-colors" />
-                <div className="text-slate-400 mb-6 group-hover:text-sky-400 transition-colors group-hover:scale-110 origin-left duration-300">
-                  {s.icon}
-                </div>
-                <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-white transition-colors">{s.title}</h4>
-                <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                  {s.desc}
-                </p>
-                <div className="mt-6 flex items-center text-xs font-bold text-sky-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">
-                  Explore <ArrowRight className="w-3 h-3 ml-1" />
-                </div>
-              </Link>
-            </motion.div>
+            { icon: <Cloud className="w-6 h-6" />, title: "Cloud Infrastructure Setup", desc: "Automated provisioning and scaling of robust AWS/Azure environments using IaC.", href: "/services/devsecops" },
+            { icon: <Blocks className="w-6 h-6" />, title: "CI/CD Pipeline Automation", desc: "Seamless integration and deployment paths utilizing modern DevSecOps tools.", href: "/services/devsecops" },
+            { icon: <Shield className="w-6 h-6" />, title: "Cybersecurity & VAPT", desc: "Continuous threat modeling, compliance checks, and infrastructure hardening.", href: "/services/cybersecurity" },
+            { icon: <Database className="w-6 h-6" />, title: "SAP SD Integration", desc: "Enterprise Sales & Distribution configurations and module optimization.", href: "/services/sap-sd" },
+          ].map((s) => (
+            <Link key={s.title} href={s.href} className="group block h-full bg-slate-900/50 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 p-6 rounded-2xl transition-all">
+              <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 group-hover:text-sky-400 group-hover:bg-sky-500/10 transition-colors mb-5">
+                {s.icon}
+              </div>
+              <h4 className="text-lg font-bold text-slate-200 mb-2">{s.title}</h4>
+              <p className="text-sm text-slate-400 leading-relaxed mb-4">{s.desc}</p>
+              <div className="flex items-center text-sm font-semibold text-sky-400 group-hover:text-sky-300">
+                Learn more <ArrowRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+              </div>
+            </Link>
           ))}
         </div>
       </section>
 
-      {/* ── Testimonials ──────────────────────────────────────── */}
-      <Testimonials />
+      {/* ── About Us Component ────────────────────────────────── */}
+      <section className="bg-slate-900 border-y border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 py-20 flex flex-col md:flex-row items-center gap-12">
+          <div className="md:w-1/2 space-y-6">
+            <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase">About VAREX</h2>
+            <h3 className="text-3xl font-bold text-white leading-tight">Empowering scalable, secure digital transformations.</h3>
+            <p className="text-slate-400 leading-relaxed">
+              We are a dedicated team of cloud architects, security researchers, and software engineers on a mission to bring enterprise-grade tooling to businesses of all sizes. From automated container orchestration to deep SAP functional knowledge, we build architectures designed to last.
+            </p>
+            <ul className="space-y-3 pt-4">
+              {[
+                "Modern Containerization & Orchestration",
+                "Advanced Monitoring & Logging Solutions",
+                "Migration, Modernization & Optimization",
+                "Proprietary AI Engineer Vetting"
+              ].map(item => (
+                <li key={item} className="flex items-center gap-3 text-slate-300 text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="md:w-1/2 w-full">
+            <div className="rounded-2xl border border-slate-700 bg-slate-950 p-8 shadow-2xl relative overflow-hidden flex flex-col items-center text-center justify-center">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 blur-[60px] rounded-full"></div>
+              <Cpu className="w-16 h-16 text-sky-400 mb-6" />
+              <h4 className="text-xl font-bold text-white mb-2">Need to hire top-tier talent?</h4>
+              <p className="text-sm text-slate-400 mb-6">
+                Are you open to engaging pre-vetted freelance, remote, or full-time engineers? Our AI-powered screening process delivers talent in just 7 days.
+              </p>
+              <Link href="/hire" className="bg-white text-slate-900 hover:bg-slate-200 px-6 py-2.5 rounded-lg text-sm font-bold transition-colors">
+                Explore Talent Solutions
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* ── Newsletter ────────────────────────────────────────── */}
-      <NewsletterSignup />
+      {/* ── Testimonials & Newsletter ─────────────────────────── */}
+      <div className="space-y-24">
+        <Testimonials />
+        <NewsletterSignup />
+      </div>
 
     </div>
   );
