@@ -133,6 +133,27 @@ const SERVICES: Record<string, {
     ],
     techStack: ["Kubernetes", "Prometheus", "Grafana", "AWS Cost Explorer", "Azure Monitor", "FinOps tooling"],
   },
+  "finops-cost-governance": {
+    title: "FinOps & Cost Governance",
+    icon: "💹",
+    tagline: "Control cloud spend without slowing delivery.",
+    description: "We establish FinOps operating models that give engineering and finance shared visibility into cloud costs, budgets, and optimization actions.",
+    offerings: [
+      "Cloud cost baseline, tagging strategy, and ownership mapping",
+      "Budget guardrails and spend anomaly alerting workflows",
+      "Service-level cost allocation and unit economics visibility",
+      "Rightsizing, reserved capacity, and commitment planning",
+      "Cost governance policies aligned with delivery teams",
+      "Monthly optimization reviews with actionable execution plans",
+    ],
+    outcomes: [
+      "Improved cost transparency across teams and services",
+      "Reduced waste from overprovisioned infrastructure",
+      "Predictable cloud budgeting with fewer billing surprises",
+      "Higher engineering accountability for cost-performance tradeoffs",
+    ],
+    techStack: ["AWS Cost Explorer", "Azure Cost Management", "GCP Billing", "Kubernetes", "Prometheus", "Grafana"],
+  },
   devsecops: {
     title: "DevSecOps",
     icon: "⚙️",

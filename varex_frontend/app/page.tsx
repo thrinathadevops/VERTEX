@@ -190,8 +190,8 @@ export default function HomePage() {
             <AnimateIn direction="left" className="hidden lg:block">
               <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-800">
                 <Image
-                  src="/services-devops.png"
-                  alt="DevOps Pipeline"
+                  src="/devops.png"
+                  alt="VAREX DevOps Services Overview"
                   fill
                   className="object-cover"
                 />
@@ -208,6 +208,7 @@ export default function HomePage() {
                 { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring & Logging Solutions", desc: "Real-time monitoring and log management with Prometheus, Grafana, and Loki.", href: "/services/monitoring-logging-solutions", color: "teal" },
                 { icon: <Shield className="w-5 h-5" />, title: "DevSecOps Implementation", desc: "Security scanning and compliance integration embedded directly into CI/CD pipelines.", href: "/services/devsecops-implementation", color: "emerald" },
                 { icon: <Database className="w-5 h-5" />, title: "Capacity Planning & Optimization", desc: "Performance and cost optimization for cloud, Kubernetes, and on-prem infrastructure.", href: "/services/capacity-planning-optimization", color: "violet" },
+                { icon: <BarChart3 className="w-5 h-5" />, title: "FinOps & Cost Governance", desc: "Cloud cost visibility, budgeting controls, and spend optimization aligned to engineering velocity.", href: "/services/finops-cost-governance", color: "sky" },
                 { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
                 { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
                 { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
