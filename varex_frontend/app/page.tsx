@@ -188,14 +188,16 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Left: Image */}
             <AnimateIn direction="left" className="hidden lg:block">
-              <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-800">
+              <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
                 <Image
                   src="/devops.png"
                   alt="VAREX DevOps Services Overview"
-                  fill
-                  className="object-cover"
+                  width={1024}
+                  height={1536}
+                  className="w-full h-full object-contain object-center"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-950/20 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 ring-1 ring-sky-500/10 rounded-2xl pointer-events-none" />
               </div>
             </AnimateIn>
 
