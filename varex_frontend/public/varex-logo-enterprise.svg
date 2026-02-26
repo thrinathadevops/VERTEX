@@ -1,18 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" width="360" height="84">
   <defs>
+    <linearGradient id="shieldStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67E8F9"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <linearGradient id="wordAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
     <style>
-      .v-logo { font-family: "Inter", "Helvetica Neue", sans-serif; letter-spacing: 0.12em; }
+      .word { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.16em; }
+      .tag { font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.22em; }
     </style>
   </defs>
-  <!-- Shield icon (flat, minimal) -->
-  <path d="M18 12 L36 12 L36 36 Q36 48 27 54 Q18 48 18 36 Z"
-        fill="none" stroke="#0EA5E9" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M22 30 L26 34 L33 25" stroke="#0EA5E9" stroke-width="2" fill="none"
+
+  <!-- Premium minimal badge -->
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#0B1221" stroke="#1E293B"/>
+  <path d="M18 17 L32 17 L32 34 C32 41 25 47 25 47 C25 47 18 41 18 34 Z"
+        fill="#020617" stroke="url(#shieldStroke)" stroke-width="2.3" stroke-linejoin="round"/>
+  <path d="M21.5 32 L25 35.5 L29 28.5" fill="none" stroke="#67E8F9" stroke-width="2.2"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- VAREX wordmark -->
-  <text x="48" y="46" class="v-logo"
-        font-size="30" font-weight="700" fill="#F1F5F9" letter-spacing="6">VAREX</text>
-  <!-- Tagline -->
-  <text x="49" y="62" font-family="Inter, sans-serif"
-        font-size="8" fill="#64748B" letter-spacing="2">VIRTUAL ARCHITECTURE · RESILIENCE · EXECUTION</text>
+
+  <!-- Wordmark (minimal + high contrast) -->
+  <text x="73" y="40" class="word" font-size="30" font-weight="800" fill="#E5EDF8">VAREX</text>
+  <!-- Aggressive accent on X -->
+  <line x1="171" y1="24" x2="179" y2="16" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+  <line x1="179" y1="24" x2="171" y2="16" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+
+  <rect x="73" y="45" width="118" height="2" rx="1" fill="url(#wordAccent)" opacity="0.95"/>
+  <text x="73" y="62" class="tag" font-size="8" font-weight="600" fill="#93A4BD">
+    VIRTUAL ARCHITECTURE · RESILIENCE · EXECUTION
+  </text>
 </svg>

@@ -21,11 +21,19 @@ export default function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     setUser(getUserFromCookies());
     setMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleLogout = () => {
     clearTokens();
@@ -38,25 +46,34 @@ export default function Navbar() {
     : NAV_LINKS;
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B1120] border-b border-slate-800 shadow-xl">
-      <div className="mx-auto max-w-7xl flex items-center justify-between px-4 sm:px-6 lg:px-8 h-[70px]">
+    <header
+      className={`sticky top-0 z-50 border-b transition-all duration-300 ${isScrolled
+          ? "border-slate-700/80 bg-[#0B1120]/92 backdrop-blur-md shadow-2xl shadow-black/20"
+          : "border-slate-800 bg-[#0B1120] shadow-xl"
+        }`}
+    >
+      <div
+        className={`mx-auto max-w-7xl flex items-center justify-between px-3 sm:px-5 lg:px-7 transition-[height] duration-300 ${isScrolled ? "h-[62px]" : "h-[68px]"
+          }`}
+      >
 
         {/* ═══ LOGO — LEFT ═══ */}
         <div className="flex-shrink-0">
-          <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105 duration-200">
+          <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-[1.02] duration-200">
             <Image
               src="/varex-logo-enterprise.svg"
               alt="VAREX"
-              width={140}
-              height={40}
+              width={164}
+              height={44}
               priority
-              className="h-10 w-auto object-contain"
+              className={`w-auto object-contain transition-[height] duration-300 ${isScrolled ? "h-8" : "h-9"
+                }`}
             />
           </Link>
         </div>
 
         {/* ═══ NAV LINKS — CENTER (DESKTOP) ═══ */}
-        <nav className="hidden md:flex items-center gap-2 lg:gap-4 flex-1 justify-center px-4">
+        <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5 flex-1 justify-center px-3">
           {navLinks.map((link) => {
             const IconComponent = link.icon;
             const isActive = pathname === link.href;
@@ -64,9 +81,9 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-md text-xs lg:text-sm font-medium transition-colors ${isActive
-                    ? "bg-slate-800 text-cyan-400"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                className={`flex items-center gap-1.5 px-2.5 lg:px-3.5 py-1.5 rounded-md text-[11px] lg:text-xs font-semibold tracking-wide transition-colors ${isActive
+                    ? "bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/40"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800/70"
                   }`}
               >
                 <IconComponent className="w-4 h-4 hidden lg:inline" />
@@ -79,36 +96,36 @@ export default function Navbar() {
         {/* ═══ AUTH BUTTONS — RIGHT ═══ */}
         <div className="flex items-center gap-3 md:gap-4 ml-auto">
           {user ? (
-            <div className="flex items-center gap-3">
-              <span className="hidden lg:inline text-slate-400 text-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="hidden xl:inline text-slate-400 text-xs">
                 {user.email}
               </span>
-              <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs capitalize text-cyan-400 border border-cyan-500/20">
+              <span className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-[11px] capitalize text-cyan-300 border border-cyan-500/20">
                 {user.role.replace("_", " ")}
               </span>
               <button
                 onClick={handleLogout}
-                className="hidden sm:flex items-center gap-2 rounded-md border border-slate-700 hover:border-red-500 hover:text-red-400 px-4 py-2 text-sm font-medium text-slate-300 transition-colors"
+                className="hidden sm:flex items-center gap-1.5 rounded-md border border-slate-700 hover:border-red-500 hover:text-red-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden lg:inline">Sign out</span>
+                <span className="hidden xl:inline">Sign out</span>
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-1.5 md:gap-2">
               <Link
                 href="/login"
-                className="hidden sm:flex items-center gap-2 rounded-md border border-slate-700 hover:border-cyan-400 hover:text-cyan-400 px-4 py-2 text-sm font-medium text-slate-300 transition-colors"
+                className="hidden sm:flex items-center gap-1.5 rounded-md border border-slate-700 hover:border-cyan-400 hover:text-cyan-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
-                <span className="hidden lg:inline">Sign in</span>
+                <span className="hidden xl:inline">Sign in</span>
               </Link>
               <Link
                 href="/register"
-                className="inline-flex items-center gap-2 rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium text-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
               >
                 <Rocket className="w-4 h-4" />
-                <span className="hidden lg:inline">Get Started</span>
+                <span className="hidden xl:inline">Get Started</span>
               </Link>
             </div>
           )}
