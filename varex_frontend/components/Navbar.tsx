@@ -6,62 +6,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getUserFromCookies, clearTokens } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import {
-  Home,
-  Briefcase,
-  Award,
-  Users,
-  LayoutDashboard,
-  LogIn,
-  Rocket,
-  Menu,
-  X,
-  FolderOpen,
-} from "lucide-react";
 
-/* ── Navigation data ─────────────────────────────────── */
 const NAV_LINKS = [
-  { href: "/", label: "Home", Icon: Home },
-  { href: "/services", label: "Services", Icon: Briefcase },
-  { href: "/hire", label: "Hire", Icon: Award },
-  { href: "/portfolio", label: "Portfolio", Icon: FolderOpen },
-  { href: "/team", label: "Team", Icon: Users },
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/", label: "HOME" },
+  { href: "/services", label: "SERVICES" },
+  { href: "/hire", label: "HIRE" },
+  { href: "/portfolio", label: "PORTFOLIO" },
+  { href: "/team", label: "TEAM" },
+  { href: "/dashboard", label: "DASHBOARD" },
 ];
 
-const MEGA_MENU = [
-  {
-    section: "Learnings", links: [
-      { href: "/blog", label: "All Posts" },
-      { href: "/blog/devops", label: "DevOps" },
-      { href: "/blog/security", label: "Security" },
-      { href: "/blog/sap", label: "SAP SD" },
-      { href: "/blog/architecture", label: "Architecture" },
-    ]
-  },
-  {
-    section: "Company", links: [
-      { href: "/portfolio", label: "Projects" },
-      { href: "/certifications", label: "Certifications" },
-      { href: "/team", label: "Our Team" },
-    ]
-  },
-  {
-    section: "Programs", links: [
-      { href: "/workshops", label: "Workshops" },
-      { href: "/learnings", label: "Premium Learning" },
-      { href: "/hire", label: "Hire in 7 Days" },
-    ]
-  },
-  {
-    section: "Connect", links: [
-      { href: "/contact", label: "Get Free Consultation" },
-      { href: "/faq", label: "FAQ" },
-    ]
-  },
-];
-
-/* ── Component ───────────────────────────────────────── */
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -80,132 +34,84 @@ export default function Navbar() {
   };
 
   return (
-    <header
-      className="sticky top-0 z-50 border-b-[3px] border-cyan-400 shadow-[0_4px_30px_rgba(6,182,212,0.25)]"
-      style={{ background: "linear-gradient(90deg, #0a1628 0%, #162044 50%, #0a1628 100%)" }}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6"
-        style={{ height: "68px" }}>
+    <header className="sticky top-0 z-50 bg-[#0f172a] border-b-[3px] border-[#06b6d4]">
+      <div className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
 
-        {/* ═══ LEFT — Company Logo (PNG) ═══ */}
+        {/* LOGO — left */}
         <Link href="/" className="flex-shrink-0">
           <Image
             src="/varex-logo.png"
-            alt="VAREX – Virtual Architecture, Resilience & Execution"
-            width={160}
-            height={45}
+            alt="VAREX"
+            width={140}
+            height={40}
             priority
-            className="object-contain"
-            style={{ maxHeight: "45px", width: "auto" }}
+            className="h-10 w-auto object-contain"
           />
         </Link>
 
-        {/* ═══ CENTER — Desktop Nav Links ═══ */}
-        <nav className="hidden lg:flex items-center gap-1 ml-8">
-          {NAV_LINKS.map(({ href, label, Icon }) => {
-            const active = pathname === href;
-            return (
-              <Link key={href} href={href}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
-                  transition-all duration-200
-                  ${active
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/40"
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                  }
-                `}>
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            );
-          })}
+        {/* NAV LINKS — center (desktop) */}
+        <nav className="hidden md:flex items-center gap-6">
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href}
+              className={`text-sm font-semibold tracking-wide transition-colors ${pathname === link.href
+                  ? "text-[#06b6d4]"
+                  : "text-gray-300 hover:text-white"
+                }`}>
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        {/* ═══ RIGHT — Auth + Hamburger ═══ */}
-        <div className="flex items-center gap-3 ml-auto">
+        {/* AUTH — right */}
+        <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="hidden md:inline text-slate-400 text-xs">{user.email}</span>
-              <span className="rounded-full bg-cyan-500/20 border border-cyan-500/40
-                               px-3 py-1 text-xs capitalize text-cyan-300 font-semibold">
+              <span className="hidden lg:inline text-gray-400 text-xs">{user.email}</span>
+              <span className="text-xs text-[#06b6d4] font-semibold capitalize">
                 {user.role.replace("_", " ")}
               </span>
               <button onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-lg border-2 border-slate-600
-                           hover:border-red-500 px-4 py-2 text-sm font-semibold text-slate-200
-                           hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
-                <LogIn className="w-4 h-4" /> Sign out
+                className="text-sm text-gray-300 hover:text-red-400 transition-colors">
+                Sign out
               </button>
             </>
           ) : (
             <>
               <Link href="/login"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border-2
-                           border-cyan-400/60 hover:border-cyan-300 px-4 py-2 text-sm font-semibold
-                           text-slate-200 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all duration-200">
-                <LogIn className="w-4 h-4" /> Sign in
+                className="hidden sm:block text-sm font-medium text-gray-300 hover:text-white transition-colors">
+                Sign in
               </Link>
               <Link href="/register"
-                className="inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-bold
-                           text-white shadow-lg shadow-cyan-500/40 transition-all duration-200
-                           hover:shadow-cyan-400/50"
-                style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)" }}>
-                <Rocket className="w-4 h-4" /> Get Started
+                className="text-sm font-bold text-white bg-[#06b6d4] hover:bg-[#0891b2] px-4 py-2 rounded-md transition-colors">
+                Get Started
               </Link>
             </>
           )}
 
-          {/* Hamburger */}
-          <button onClick={() => setMenuOpen(v => !v)} aria-label="Toggle menu"
-            className="ml-2 p-2 rounded-lg hover:bg-cyan-500/20 transition-colors duration-200">
-            {menuOpen
-              ? <X className="w-5 h-5 text-cyan-400" />
-              : <Menu className="w-5 h-5 text-cyan-400" />}
+          {/* HAMBURGER — mobile */}
+          <button onClick={() => setMenuOpen(v => !v)} className="md:hidden p-1"
+            aria-label="Menu">
+            <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {menuOpen
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* ═══ Mega-menu dropdown (pure CSS transition) ═══ */}
-      <div className={`
-        overflow-hidden transition-all duration-300 ease-in-out border-t-2 border-cyan-400/30
-        ${menuOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0 border-t-0"}
-      `}
-        style={{ background: "linear-gradient(180deg, #0d1a30ee, #162044ee)" }}>
-        <div className="px-6 py-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-          {MEGA_MENU.map((group) => (
-            <div key={group.section}>
-              <p className="mb-3 text-xs font-bold text-cyan-400 uppercase tracking-widest">
-                {group.section}
-              </p>
-              <ul className="space-y-1">
-                {group.links.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} onClick={() => setMenuOpen(false)}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-all duration-200
-                        ${pathname === link.href
-                          ? "bg-cyan-500/15 text-cyan-300 font-medium"
-                          : "text-slate-400 hover:bg-white/5 hover:text-white"
-                        }`}>
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* MOBILE MENU */}
+      {menuOpen && (
+        <nav className="md:hidden border-t border-gray-700 bg-[#0f172a] px-6 py-4 space-y-2">
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}
+              className={`block py-2 text-sm font-semibold ${pathname === link.href ? "text-[#06b6d4]" : "text-gray-300"
+                }`}>
+              {link.label}
+            </Link>
           ))}
-
-          {/* Mobile: primary links */}
-          <div className="lg:hidden col-span-full border-t border-slate-700 pt-4 flex flex-wrap gap-2">
-            {NAV_LINKS.map(({ href, label, Icon }) => (
-              <Link key={href} href={href} onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-700
-                           px-4 py-2 text-sm text-slate-200 transition-colors duration-200">
-                <Icon className="w-4 h-4" /> {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+        </nav>
+      )}
     </header>
   );
 }
