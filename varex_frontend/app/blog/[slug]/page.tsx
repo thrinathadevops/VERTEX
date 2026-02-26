@@ -4,31 +4,15 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getContentBySlug } from "@/lib/api";
-import { getUserFromCookies } from "@/lib/auth";
+
 import type { ContentItem } from "@/lib/types";
 
-
-import { buildMetadata } from "@/lib/metadata";
-
-export async function generateMetadata({ params }) {
-  const post = await getContentBySlug(params.slug);
-  return buildMetadata({
-    title:       post.title,
-    description: post.body.replace(/<[^>]*>/g, "").slice(0, 160),
-    path:        `/blog/${params.slug}`,
-  });
-}
-
-
-
 export default function BlogPostPage() {
-  const { slug }  = useParams<{ slug: string }>();
-  const router    = useRouter();
-  const user      = getUserFromCookies();
-
-  const [post,    setPost]    = useState<ContentItem | null>(null);
+  const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
+  const [post, setPost] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -89,9 +73,9 @@ export default function BlogPostPage() {
 
   const readingMins = Math.ceil((post.body?.split(" ").length ?? 0) / 200);
   const categoryColors: Record<string, string> = {
-    devops:       "bg-sky-500/20 text-sky-300",
-    security:     "bg-red-500/20 text-red-300",
-    sap:          "bg-amber-500/20 text-amber-300",
+    devops: "bg-sky-500/20 text-sky-300",
+    security: "bg-red-500/20 text-red-300",
+    sap: "bg-amber-500/20 text-amber-300",
     architecture: "bg-purple-500/20 text-purple-300",
   };
   const category = (post as any).category ?? "devops";
@@ -114,7 +98,7 @@ export default function BlogPostPage() {
         </span>
         <h1 className="text-2xl font-bold leading-snug">{post.title}</h1>
         <div className="flex items-center gap-4 text-[11px] text-slate-400">
-          <span>📅 {new Date(post.created_at).toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" })}</span>
+          <span>📅 {new Date(post.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</span>
           <span>⏱ {readingMins} min read</span>
           {post.access_level === "premium" && (
             <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300">Premium</span>
