@@ -23,6 +23,7 @@ from .prompts import (
     REPORT_PROMPT,
 )
 from .provider import get_llm_provider
+from .training_data import format_training_context_for_prompt, format_scoring_context_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,13 @@ async def generate_question(
             parts.append("")
         previous_qa = "\n".join(parts)
 
+    # Inject real-world interview training context
+    training_context = format_training_context_for_prompt(
+        role=target_role,
+        turn_number=turn_number,
+        total_turns=total_q,
+    )
+
     prompt = QUESTION_GEN_PROMPT.format(
         target_role=target_role,
         interview_mode=interview_mode,
@@ -150,6 +158,7 @@ async def generate_question(
         candidate_name=candidate_name,
         resume_summary=resume_summary or "Not provided",
         previous_qa=previous_qa,
+        training_context=training_context,
     )
 
     try:
@@ -176,6 +185,9 @@ async def evaluate_answer(
     resume_summary: str | None = None,
 ) -> EvaluationResult:
     """Evaluate a candidate's answer using multi-criteria AI scoring."""
+    # Inject real-world scoring rubric context
+    scoring_context = format_scoring_context_for_prompt(question)
+
     prompt = EVALUATION_PROMPT.format(
         target_role=target_role,
         interview_mode=interview_mode,
@@ -185,6 +197,7 @@ async def evaluate_answer(
         question=question,
         answer=answer,
         resume_summary=resume_summary or "Not provided",
+        scoring_context=scoring_context,
     )
 
     try:
