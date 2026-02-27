@@ -14,8 +14,13 @@ class InterviewSession(Base):
     candidate_name: Mapped[str] = mapped_column(String(150), nullable=False)
     candidate_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     target_role: Mapped[str] = mapped_column(String(150), nullable=False)
+    company_name: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    company_interview_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # "mock_free" | "mock_paid" | "real"
     interview_mode: Mapped[str] = mapped_column(String(20), default="mock_free", nullable=False)
+    package_interviews: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    discount_percent: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    charge_rupees: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

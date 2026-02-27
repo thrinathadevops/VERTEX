@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 
 /* ─── Types ───────────────────────────────────────────────── */
 type InterviewMode = "mock_free" | "mock_paid" | "real";
@@ -9,6 +9,11 @@ type SessionPayload = {
   id: string;
   status: string;
   interview_mode: string;
+  package_interviews: number;
+  discount_percent: number;
+  base_total_rupees: number;
+  charge_rupees: number;
+  payment_required: boolean;
   first_question: string;
 };
 
@@ -37,6 +42,7 @@ type Eligibility = {
   free_mock_used: boolean;
   mock_count: number;
   real_count: number;
+  next_mock_charge_rupees: number;
 };
 
 /* ─── Role Options ────────────────────────────────────────── */
@@ -73,6 +79,9 @@ export default function HomePage() {
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [targetRole, setTargetRole] = useState(ROLE_OPTIONS[0]);
+  const [companyName, setCompanyName] = useState("");
+  const [companyInterviewCode, setCompanyInterviewCode] = useState("");
+  const [realInterviewCount, setRealInterviewCount] = useState(1);
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -88,6 +97,18 @@ export default function HomePage() {
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
     [session, currentQuestion, answer, loading]
   );
+
+  function getRealDiscountPercent(count: number) {
+    if (count >= 20) return 50;
+    if (count >= 10) return 30;
+    if (count >= 5) return 10;
+    if (count >= 2) return 5;
+    return 0;
+  }
+
+  const realDiscount = getRealDiscountPercent(realInterviewCount);
+  const realBaseTotal = realInterviewCount * 500;
+  const realFinalPayable = Math.floor(realBaseTotal * (100 - realDiscount) / 100);
 
   /* ── Eligibility check when email changes ─────────────── */
   useEffect(() => {
@@ -122,6 +143,9 @@ export default function HomePage() {
           candidate_email: candidateEmail,
           target_role: targetRole,
           interview_mode: mode,
+          company_name: mode === "real" ? companyName : undefined,
+          company_interview_code: mode === "real" ? companyInterviewCode : undefined,
+          package_interviews: mode === "real" ? realInterviewCount : 1,
         }),
       });
       if (!res.ok) {
@@ -189,6 +213,7 @@ export default function HomePage() {
   /*  LANDING – Mode Selection                              */
   /* ════════════════════════════════════════════════════════ */
   if (step === "landing") {
+    const nextMockPrice = eligibility?.next_mock_charge_rupees ?? 0;
     return (
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 20px" }}>
         {/* Hero */}
@@ -220,6 +245,25 @@ export default function HomePage() {
           </p>
         </div>
 
+        <div className="animate-fadeInUp delay-100" style={{
+          margin: "0 auto 28px",
+          maxWidth: 740,
+          padding: "12px 16px",
+          borderRadius: 12,
+          border: "1px solid rgba(14,165,233,0.28)",
+          background: "linear-gradient(90deg, rgba(14,165,233,0.12), rgba(139,92,246,0.1))",
+          color: "#cbd5e1",
+          fontSize: 13,
+          textAlign: "center",
+        }}>
+          Pricing policy: <strong>First mock interview is free</strong>. From second mock onwards: <strong>₹50 per attempt</strong>. Real company interviews are <strong>₹500 per interview</strong> with volume discounts.
+          {candidateEmail && (
+            <span style={{ display: "block", marginTop: 6, color: "#93c5fd" }}>
+              Current email next mock charge: {nextMockPrice === 0 ? "FREE" : `₹${nextMockPrice}`}
+            </span>
+          )}
+        </div>
+
         {/* Mode Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginBottom: 48 }}>
           {/* Free Mock */}
@@ -233,7 +277,7 @@ export default function HomePage() {
             iconBg="linear-gradient(135deg, #10b981, #059669)"
             title="Free Mock Interview"
             subtitle="Your first practice is on us"
-            price="FREE"
+            price={eligibility?.free_mock_used ? "Locked" : "FREE"}
             priceSubtext="One-time per email"
             features={["5 curated DevOps questions", "Instant AI scoring & feedback", "Performance report card"]}
             badge={eligibility?.free_mock_used ? "USED" : "RECOMMENDED"}
@@ -251,7 +295,7 @@ export default function HomePage() {
             iconBg="linear-gradient(135deg, #0ea5e9, #0284c7)"
             title="Paid Mock Interview"
             subtitle="Unlimited practice sessions"
-            price="₹50"
+            price={eligibility?.free_mock_used ? "₹50" : "₹50 (2nd+)"}
             priceSubtext="Per session"
             features={["5 expert-level questions", "Detailed scoring breakdown", "Unlimited retakes", "Track improvement over sessions"]}
             badge="POPULAR"
@@ -268,10 +312,10 @@ export default function HomePage() {
             icon="🏢"
             iconBg="linear-gradient(135deg, #8b5cf6, #7c3aed)"
             title="Real Company Interview"
-            subtitle="Official assessment for hiring"
-            price="Enterprise"
-            priceSubtext="Company-sponsored"
-            features={["7 advanced scenario questions", "Production-grade evaluation", "Hiring recommendation report", "Shared with hiring manager"]}
+            subtitle="Official assessment for hiring teams"
+            price="₹500"
+            priceSubtext="Per interview (before package discount)"
+            features={["7 advanced scenario questions", "Production-grade evaluation", "Hiring recommendation report", "Bulk package discounts"]}
             badge="ENTERPRISE"
             badgeColor="#8b5cf6"
           />
@@ -356,6 +400,79 @@ export default function HomePage() {
                 {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
+
+            {mode === "real" && (
+              <>
+                <InputField
+                  label="Company Name"
+                  value={companyName}
+                  onChange={setCompanyName}
+                  placeholder="Acme Technologies Pvt Ltd"
+                  required
+                />
+                <InputField
+                  label="Interview Code"
+                  value={companyInterviewCode}
+                  onChange={setCompanyInterviewCode}
+                  placeholder="ACME-SRE-2026-01"
+                  required
+                />
+                <div>
+                  <label style={labelStyle}>Interviews in This Package (Weekly)</label>
+                  <select
+                    value={realInterviewCount}
+                    onChange={e => setRealInterviewCount(Number(e.target.value))}
+                    style={{ ...inputStyle, cursor: "pointer", appearance: "none" }}
+                  >
+                    {[1, 2, 3, 4, 5, 10, 15, 20, 25, 30].map((n) => (
+                      <option key={n} value={n}>
+                        {n} Interview{n > 1 ? "s" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{
+                  borderRadius: 12,
+                  border: "1px solid rgba(139,92,246,0.35)",
+                  background: "rgba(76,29,149,0.18)",
+                  padding: "12px 14px",
+                  color: "#ddd6fe",
+                  fontSize: 12,
+                  lineHeight: 1.7,
+                }}>
+                  <div><strong>Real Interview Package Quote</strong></div>
+                  <div>Base: ₹500 x {realInterviewCount} = ₹{realBaseTotal}</div>
+                  <div>Discount: {realDiscount}%</div>
+                  <div><strong>Payable: ₹{realFinalPayable}</strong></div>
+                  <div style={{ color: "#c4b5fd", marginTop: 4 }}>
+                    Discount slabs: 2 (5%), 5 (10%), 10 (30%), 20 (50%).
+                  </div>
+                </div>
+                <div style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: 12,
+                  border: "1px solid rgba(139,92,246,0.3)",
+                  background: "rgba(139,92,246,0.1)",
+                  color: "#c4b5fd",
+                }}>
+                  Real interview mode is intended for company-assigned assessments. Package purchase is required before running candidate interviews.
+                </div>
+              </>
+            )}
+
+            {mode === "mock_paid" && (
+              <div style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                fontSize: 12,
+                border: "1px solid rgba(14,165,233,0.35)",
+                background: "rgba(14,165,233,0.12)",
+                color: "#7dd3fc",
+              }}>
+                This attempt is chargeable at <strong>₹50</strong>. Integrate your payment provider before enabling in production.
+              </div>
+            )}
 
             <button type="submit" disabled={loading} style={{
               ...primaryBtnStyle,
@@ -740,7 +857,7 @@ function Spinner() {
 }
 
 /* ─── Shared Styles ──────────────────────────────────────── */
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   background: "rgba(15,23,42,0.6)",
   border: "1px solid rgba(51,65,85,0.4)",
   borderRadius: 20,
@@ -748,19 +865,19 @@ const cardStyle: React.CSSProperties = {
   backdropFilter: "blur(12px)",
 };
 
-const labelStyle: React.CSSProperties = {
+const labelStyle: CSSProperties = {
   display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8",
   marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5,
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: "100%", padding: "12px 16px", borderRadius: 12,
   border: "1px solid rgba(51,65,85,0.6)", background: "rgba(2,6,23,0.6)",
   color: "#f1f5f9", fontSize: 14, outline: "none", transition: "border-color 0.3s ease",
   fontFamily: "'Inter', sans-serif",
 };
 
-const primaryBtnStyle: React.CSSProperties = {
+const primaryBtnStyle: CSSProperties = {
   padding: "14px 32px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 14,
   color: "#fff", cursor: "pointer",
   background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
@@ -769,7 +886,7 @@ const primaryBtnStyle: React.CSSProperties = {
   fontFamily: "'Inter', sans-serif",
 };
 
-const backBtnStyle: React.CSSProperties = {
+const backBtnStyle: CSSProperties = {
   background: "none", border: "none", color: "#64748b", cursor: "pointer",
   fontSize: 13, fontWeight: 500, marginBottom: 20, padding: 0,
   transition: "color 0.2s ease",

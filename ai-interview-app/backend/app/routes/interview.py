@@ -64,6 +64,18 @@ def _feedback_for(score: float) -> str:
     return "Response is too shallow. Add operational details, constraints, and outcomes."
 
 
+def _real_discount_percent(package_interviews: int) -> int:
+    if package_interviews >= 20:
+        return 50
+    if package_interviews >= 10:
+        return 30
+    if package_interviews >= 5:
+        return 10
+    if package_interviews >= 2:
+        return 5
+    return 0
+
+
 # ─── Check Free Mock Eligibility ──────────────────────────────────
 @router.get("/eligibility", response_model=EligibilityResponse)
 def check_eligibility(email: str, db: Session = Depends(get_db)):
@@ -86,6 +98,7 @@ def check_eligibility(email: str, db: Session = Depends(get_db)):
         free_mock_used=free_mock_used,
         mock_count=int(mock_count),
         real_count=int(real_count),
+        next_mock_charge_rupees=50 if free_mock_used else 0,
     )
 
 
@@ -108,11 +121,34 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)):
                 detail="Free mock interview already used. Please select Paid Mock (₹50) to continue.",
             )
 
+    if mode == "real":
+        if not payload.company_name or not payload.company_name.strip():
+            raise HTTPException(status_code=422, detail="Company name is required for real company interviews.")
+        if not payload.company_interview_code or not payload.company_interview_code.strip():
+            raise HTTPException(status_code=422, detail="Company interview code is required for real company interviews.")
+
+    package_interviews = 1
+    discount_percent = 0
+    base_total_rupees = 0
+    charge_rupees = 0
+    if mode == "mock_paid":
+        charge_rupees = 50
+    elif mode == "real":
+        package_interviews = payload.package_interviews
+        discount_percent = _real_discount_percent(package_interviews)
+        base_total_rupees = package_interviews * 500
+        charge_rupees = int(base_total_rupees * (100 - discount_percent) / 100)
+
     session = InterviewSession(
         candidate_name=payload.candidate_name,
         candidate_email=payload.candidate_email,
         target_role=payload.target_role,
+        company_name=payload.company_name.strip() if payload.company_name else None,
+        company_interview_code=payload.company_interview_code.strip() if payload.company_interview_code else None,
         interview_mode=mode,
+        package_interviews=package_interviews,
+        discount_percent=discount_percent,
+        charge_rupees=charge_rupees,
         is_paid=mode in ("mock_paid", "real"),
         status="active",
     )
@@ -129,6 +165,11 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)):
         id=session.id,
         status="active",
         interview_mode=mode,
+        package_interviews=package_interviews,
+        discount_percent=discount_percent,
+        base_total_rupees=base_total_rupees if mode == "real" else charge_rupees,
+        charge_rupees=charge_rupees,
+        payment_required=mode in ("mock_paid", "real"),
         first_question=first_question,
     )
 
