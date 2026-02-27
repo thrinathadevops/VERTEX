@@ -118,14 +118,14 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)):
         if existing_free > 0:
             raise HTTPException(
                 status_code=403,
-                detail="Free mock interview already used. Please select Paid Mock (₹50) to continue.",
+                detail="Your complimentary Practice Interview has already been used. Please select Pro Practice (₹50) to continue.",
             )
 
     if mode == "real":
         if not payload.company_name or not payload.company_name.strip():
-            raise HTTPException(status_code=422, detail="Company name is required for real company interviews.")
+            raise HTTPException(status_code=422, detail="Company name is required for Enterprise Assessments.")
         if not payload.company_interview_code or not payload.company_interview_code.strip():
-            raise HTTPException(status_code=422, detail="Company interview code is required for real company interviews.")
+            raise HTTPException(status_code=422, detail="Interview code is required for Enterprise Assessments.")
 
     package_interviews = 1
     discount_percent = 0

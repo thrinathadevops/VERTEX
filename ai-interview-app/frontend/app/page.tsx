@@ -256,7 +256,7 @@ export default function HomePage() {
           fontSize: 13,
           textAlign: "center",
         }}>
-          Pricing policy: <strong>First mock interview is free</strong>. From second mock onwards: <strong>₹50 per attempt</strong>. Real company interviews are <strong>₹500 per interview</strong> with volume discounts.
+          Pricing: <strong>1st mock interview is complimentary</strong>. Additional practice sessions are <strong>₹50 each</strong>. Enterprise Assessment packages start at <strong>₹500/interview</strong> with volume discounts up to 50%.
           {candidateEmail && (
             <span style={{ display: "block", marginTop: 6, color: "#93c5fd" }}>
               Current email next mock charge: {nextMockPrice === 0 ? "FREE" : `₹${nextMockPrice}`}
@@ -275,8 +275,9 @@ export default function HomePage() {
             borderColor="rgba(16,185,129,0.3)"
             icon="🎯"
             iconBg="linear-gradient(135deg, #10b981, #059669)"
-            title="Free Mock Interview"
-            subtitle="Your first practice is on us"
+            title="Practice Interview"
+            subtitle="Complimentary first assessment"
+            description="Get a feel for our AI evaluation engine with a free practice session. Answer 5 industry-standard DevOps & Cloud questions and receive instant scoring with actionable feedback."
             price={eligibility?.free_mock_used ? "Locked" : "FREE"}
             priceSubtext="One-time per email"
             features={["5 curated DevOps questions", "Instant AI scoring & feedback", "Performance report card"]}
@@ -293,8 +294,9 @@ export default function HomePage() {
             borderColor="rgba(14,165,233,0.3)"
             icon="⚡"
             iconBg="linear-gradient(135deg, #0ea5e9, #0284c7)"
-            title="Paid Mock Interview"
-            subtitle="Unlimited practice sessions"
+            title="Pro Practice Session"
+            subtitle="Sharpen your skills, unlimited retakes"
+            description="Take unlimited practice interviews to refine your answers and benchmark your growth. Each session evaluates your technical depth across real-world production scenarios with detailed feedback."
             price={eligibility?.free_mock_used ? "₹50" : "₹50 (2nd+)"}
             priceSubtext="Per session"
             features={["5 expert-level questions", "Detailed scoring breakdown", "Unlimited retakes", "Track improvement over sessions"]}
@@ -311,11 +313,12 @@ export default function HomePage() {
             borderColor="rgba(139,92,246,0.3)"
             icon="🏢"
             iconBg="linear-gradient(135deg, #8b5cf6, #7c3aed)"
-            title="Real Company Interview"
-            subtitle="Official assessment for hiring teams"
+            title="Enterprise Assessment"
+            subtitle="Official evaluation for hiring teams"
+            description="Purpose-built for companies conducting structured technical hiring. Candidates face 7 advanced architecture & production scenario questions. Results include a hiring recommendation report shared directly with the hiring manager."
             price="₹500"
-            priceSubtext="Per interview (before package discount)"
-            features={["7 advanced scenario questions", "Production-grade evaluation", "Hiring recommendation report", "Bulk package discounts"]}
+            priceSubtext="Per assessment · Volume discounts available"
+            features={["7 advanced architecture scenarios", "Production-grade AI evaluation", "Hiring recommendation report", "Package discounts up to 50%"]}
             badge="ENTERPRISE"
             badgeColor="#8b5cf6"
           />
@@ -335,7 +338,7 @@ export default function HomePage() {
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; e.currentTarget.style.boxShadow = "0 8px 40px rgba(14,165,233,0.4), 0 0 80px rgba(139,92,246,0.2)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; e.currentTarget.style.boxShadow = "0 4px 30px rgba(14,165,233,0.3), 0 0 60px rgba(139,92,246,0.15)"; }}
           >
-            Continue with {mode === "mock_free" ? "Free Mock" : mode === "mock_paid" ? "Paid Mock (₹50)" : "Real Interview"} →
+            Continue with {mode === "mock_free" ? "Practice Interview" : mode === "mock_paid" ? "Pro Practice (₹50)" : "Enterprise Assessment"} →
           </button>
         </div>
 
@@ -349,9 +352,9 @@ export default function HomePage() {
   /* ════════════════════════════════════════════════════════ */
   if (step === "form") {
     const modeLabels: Record<InterviewMode, string> = {
-      mock_free: "🎯 Free Mock Interview",
-      mock_paid: "⚡ Paid Mock Interview – ₹50",
-      real: "🏢 Real Company Interview",
+      mock_free: "🎯 Practice Interview – Free",
+      mock_paid: "⚡ Pro Practice Session – ₹50",
+      real: "🏢 Enterprise Assessment",
     };
 
     return (
@@ -440,7 +443,7 @@ export default function HomePage() {
                   fontSize: 12,
                   lineHeight: 1.7,
                 }}>
-                  <div><strong>Real Interview Package Quote</strong></div>
+                  <div><strong>Enterprise Assessment Package Quote</strong></div>
                   <div>Base: ₹500 x {realInterviewCount} = ₹{realBaseTotal}</div>
                   <div>Discount: {realDiscount}%</div>
                   <div><strong>Payable: ₹{realFinalPayable}</strong></div>
@@ -456,7 +459,7 @@ export default function HomePage() {
                   background: "rgba(139,92,246,0.1)",
                   color: "#c4b5fd",
                 }}>
-                  Real interview mode is intended for company-assigned assessments. Package purchase is required before running candidate interviews.
+                  Enterprise Assessments are designed for structured company hiring. Purchase a weekly package of interviews, assign unique codes to candidates, and receive detailed AI-powered hiring recommendation reports.
                 </div>
               </>
             )}
@@ -517,7 +520,7 @@ export default function HomePage() {
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>VAREX AI Interview</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{session?.interview_mode === "real" ? "Real Assessment" : "Mock Practice"}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{session?.interview_mode === "real" ? "Enterprise Assessment" : "Practice Session"}</div>
             </div>
           </div>
           <div style={{
@@ -675,7 +678,7 @@ export default function HomePage() {
 
           <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Interview Complete</h2>
           <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 24 }}>
-            {report.interview_mode === "real" ? "Real assessment" : "Mock practice"} • {report.answered_turns}/{report.total_questions} questions answered
+            {report.interview_mode === "real" ? "Enterprise Assessment" : "Practice Session"} • {report.answered_turns}/{report.total_questions} questions answered
           </p>
 
           {/* Recommendation Badge */}
@@ -697,7 +700,7 @@ export default function HomePage() {
           }}>
             <StatBox label="Questions" value={`${report.answered_turns}/${report.total_questions}`} />
             <StatBox label="Avg Score" value={`${report.average_score}/10`} />
-            <StatBox label="Mode" value={report.interview_mode === "real" ? "Real" : "Mock"} />
+            <StatBox label="Mode" value={report.interview_mode === "real" ? "Enterprise" : "Practice"} />
           </div>
 
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 24 }}>
@@ -731,11 +734,11 @@ export default function HomePage() {
 
 function ModeCard({
   active, disabled, onClick, gradient, borderColor, icon, iconBg,
-  title, subtitle, price, priceSubtext, features, badge, badgeColor,
+  title, subtitle, description, price, priceSubtext, features, badge, badgeColor,
 }: {
   active: boolean; disabled: boolean; onClick: () => void;
   gradient: string; borderColor: string; icon: string; iconBg: string;
-  title: string; subtitle: string; price: string; priceSubtext: string;
+  title: string; subtitle: string; description?: string; price: string; priceSubtext: string;
   features: string[]; badge: string; badgeColor: string;
 }) {
   return (
@@ -775,7 +778,18 @@ function ModeCard({
       </div>
 
       <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 18 }}>{subtitle}</p>
+      <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 12 }}>{subtitle}</p>
+
+      {/* Description */}
+      {description && (
+        <p style={{
+          fontSize: 12, color: "#64748b", lineHeight: 1.7, marginBottom: 18,
+          padding: "10px 12px", borderRadius: 10,
+          background: "rgba(2,6,23,0.4)", border: "1px solid rgba(51,65,85,0.25)",
+        }}>
+          {description}
+        </p>
+      )}
 
       {/* Price */}
       <div style={{ marginBottom: 18 }}>
