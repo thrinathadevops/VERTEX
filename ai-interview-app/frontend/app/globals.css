@@ -214,6 +214,23 @@ body::before {
   }
 }
 
+/* ── Float animation for AI avatar ───────────────── */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
 /* ── Focus ring ───────────────────────────────────── */
 input:focus,
 textarea:focus,

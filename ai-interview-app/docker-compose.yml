@@ -10,7 +10,7 @@ services:
     volumes:
       - ai_interview_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${AI_INTERVIEW_DB_USER:-ai_interview}"]
+      test: [ "CMD", "pg_isready", "-U", "${AI_INTERVIEW_DB_USER:-ai_interview}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,6 +23,15 @@ services:
     environment:
       DATABASE_URL: ${AI_INTERVIEW_DATABASE_URL:-postgresql+psycopg2://ai_interview:ai_interview_password@ai_interview_db:5432/ai_interview_db}
       ALLOWED_ORIGINS: ${AI_INTERVIEW_ALLOWED_ORIGINS:-http://localhost:3010,http://localhost:3000}
+      # AI Provider config
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
+      MAX_RESUME_SIZE_MB: ${MAX_RESUME_SIZE_MB:-5}
     depends_on:
       ai_interview_db:
         condition: service_healthy

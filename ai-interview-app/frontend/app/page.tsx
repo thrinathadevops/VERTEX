@@ -14,7 +14,9 @@ type SessionPayload = {
   base_total_rupees: number;
   charge_rupees: number;
   payment_required: boolean;
+  ai_introduction: string;
   first_question: string;
+  resume_uploaded: boolean;
 };
 
 type AnswerPayload = {
@@ -24,6 +26,9 @@ type AnswerPayload = {
   status: string;
   turn_number: number;
   total_questions: number;
+  dimension_scores: Record<string, { score: number; comment: string }> | null;
+  improvement_tips: string[] | null;
+  strengths: string[] | null;
 };
 
 type ReportPayload = {
@@ -35,6 +40,14 @@ type ReportPayload = {
   average_score: number;
   recommendation: string;
   generated_at: string;
+  ai_report: {
+    executive_summary?: string;
+    strengths?: string[];
+    areas_for_improvement?: string[];
+    recommendation_reason?: string;
+    skill_ratings?: Record<string, number>;
+    suggested_next_steps?: string;
+  } | null;
 };
 
 type Eligibility = {
@@ -74,7 +87,10 @@ function recommendBadge(r: string) {
 /* ════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   // ── State
-  const [step, setStep] = useState<"landing" | "form" | "interview" | "report">("landing");
+  const [step, setStep] = useState<"landing" | "form" | "intro" | "interview" | "report">("landing");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeParsedSkills, setResumeParsedSkills] = useState<string[]>([]);
   const [mode, setMode] = useState<InterviewMode>("mock_free");
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -159,12 +175,55 @@ export default function HomePage() {
       setAnswer("");
       setLastAnswer(null);
       setReport(null);
-      setStep("interview");
+      setStep("intro");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start session.");
     } finally {
       setLoading(false);
     }
+  }
+
+  /* ── Upload resume after session creation ──────────── */
+  async function uploadResume() {
+    if (!session || !resumeFile) return;
+    setResumeUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", resumeFile);
+      const res = await fetch(`/api/v1/interview/session/${session.id}/upload-resume`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "Failed to upload resume.");
+      }
+      const data = await res.json();
+      setResumeParsedSkills(data.skills || []);
+
+      // Regenerate introduction with resume context
+      const introRes = await fetch(`/api/v1/interview/session/${session.id}/regenerate-intro`, { method: "POST" });
+      if (introRes.ok) {
+        const introData = await introRes.json();
+        setSession(prev => prev ? {
+          ...prev,
+          ai_introduction: introData.ai_introduction,
+          first_question: introData.first_question || prev.first_question,
+          resume_uploaded: true,
+        } : prev);
+        if (introData.first_question) setCurrentQuestion(introData.first_question);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Resume upload failed.");
+    } finally {
+      setResumeUploading(false);
+    }
+  }
+
+  /* ── Transition from intro to actual interview ──────── */
+  function beginInterview() {
+    setStep("interview");
   }
 
   /* ── Submit answer ────────────────────────────────────── */
@@ -207,6 +266,8 @@ export default function HomePage() {
     setReport(null);
     setError("");
     setTurnNumber(1);
+    setResumeFile(null);
+    setResumeParsedSkills([]);
   }
 
   /* ════════════════════════════════════════════════════════ */
@@ -499,6 +560,127 @@ export default function HomePage() {
   }
 
   /* ════════════════════════════════════════════════════════ */
+  /*  INTRO – AI Introduction & Resume Upload               */
+  /* ════════════════════════════════════════════════════════ */
+  if (step === "intro" && session) {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 20px" }}>
+        {/* AI Interviewer Card */}
+        <div className="animate-fadeInUp" style={{
+          ...cardStyle, textAlign: "center", marginBottom: 24, padding: 36,
+          background: "linear-gradient(135deg, rgba(14,165,233,0.08), rgba(139,92,246,0.06))",
+          borderColor: "rgba(14,165,233,0.25)",
+        }}>
+          <div className="animate-float" style={{
+            width: 72, height: 72, borderRadius: 22, margin: "0 auto 16px",
+            background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 36, boxShadow: "0 0 40px rgba(14,165,233,0.3)",
+          }}>
+            🤖
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Meet Aria, Your AI Interviewer</h2>
+          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 20 }}>Senior Technical Interviewer • VAREX AI Platform</p>
+
+          <div style={{
+            textAlign: "left", padding: "18px 20px", borderRadius: 16,
+            background: "rgba(2,6,23,0.5)", border: "1px solid rgba(51,65,85,0.3)",
+            fontSize: 14, lineHeight: 1.8, color: "#cbd5e1",
+            fontStyle: "italic",
+          }}>
+            &ldquo;{session.ai_introduction}&rdquo;
+          </div>
+        </div>
+
+        {/* Resume Upload */}
+        <div className="animate-fadeInUp delay-200" style={{ ...cardStyle, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📄 Upload Your Resume <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>(Optional but recommended)</span></h3>
+          <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16 }}>
+            Uploading your resume helps Aria ask personalised questions based on your skills and experience.
+          </p>
+
+          <div style={{
+            border: "2px dashed rgba(51,65,85,0.5)", borderRadius: 14,
+            padding: "24px 16px", textAlign: "center",
+            background: resumeFile ? "rgba(16,185,129,0.05)" : "rgba(2,6,23,0.3)",
+            borderColor: resumeFile ? "rgba(16,185,129,0.3)" : "rgba(51,65,85,0.5)",
+            transition: "all 0.3s ease",
+          }}>
+            {!resumeFile ? (
+              <>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  id="resume-upload"
+                  style={{ display: "none" }}
+                  onChange={e => setResumeFile(e.target.files?.[0] || null)}
+                />
+                <label htmlFor="resume-upload" style={{ cursor: "pointer" }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📁</div>
+                  <div style={{ fontSize: 13, color: "#94a3b8" }}>
+                    Drop your resume here or <span style={{ color: "#38bdf8", textDecoration: "underline" }}>browse files</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>PDF, DOCX, or TXT • Max 5MB</div>
+                </label>
+              </>
+            ) : (
+              <div>
+                <div style={{ fontSize: 14, color: "#4ade80", marginBottom: 8 }}>✅ {resumeFile.name}</div>
+                {!resumeParsedSkills.length && !resumeUploading && (
+                  <button onClick={uploadResume} style={{ ...primaryBtnStyle, padding: "10px 24px", fontSize: 13 }}>
+                    Upload & Analyse
+                  </button>
+                )}
+                {resumeUploading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", color: "#38bdf8", fontSize: 13 }}>
+                    <Spinner /> Parsing resume with AI...
+                  </div>
+                )}
+                {resumeParsedSkills.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>Detected skills:</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                      {resumeParsedSkills.map((s, i) => (
+                        <span key={i} style={{
+                          padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                          background: "rgba(14,165,233,0.12)", color: "#38bdf8", border: "1px solid rgba(14,165,233,0.2)",
+                        }}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => { setResumeFile(null); setResumeParsedSkills([]); }} style={{
+                  background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 11, marginTop: 8,
+                }}>Remove file</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Begin Interview CTA */}
+        <div className="animate-fadeInUp delay-400" style={{ textAlign: "center" }}>
+          <button onClick={beginInterview} style={{
+            ...primaryBtnStyle, padding: "16px 48px", fontSize: 16,
+            boxShadow: "0 4px 30px rgba(14,165,233,0.3), 0 0 60px rgba(139,92,246,0.15)",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+          >
+            Start Answering Questions →
+          </button>
+          <p style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>
+            {resumeFile && resumeParsedSkills.length > 0
+              ? "✅ Questions will be personalized based on your resume"
+              : "💡 You can still upload your resume above for personalized questions"}
+          </p>
+        </div>
+
+        {error && <ErrorBanner message={error} onDismiss={() => setError("")} />}
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════════════════ */
   /*  INTERVIEW – Question & Answer Flow                    */
   /* ════════════════════════════════════════════════════════ */
   if (step === "interview") {
@@ -631,6 +813,50 @@ export default function HomePage() {
             <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, paddingLeft: 72 }}>
               {lastAnswer.feedback}
             </p>
+
+            {/* Dimension scores — shown for paid modes */}
+            {lastAnswer.dimension_scores && (
+              <div style={{ marginTop: 16, paddingLeft: 72 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                  Evaluation Breakdown
+                </div>
+                {Object.entries(lastAnswer.dimension_scores).map(([key, val]) => (
+                  <div key={key} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                      <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{key.replace(/_/g, " ")}</span>
+                      <span style={{ color: scoreColor(val.score), fontWeight: 700 }}>{val.score}/10</span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2, background: "rgba(51,65,85,0.4)", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", borderRadius: 2, width: `${(val.score / 10) * 100}%`,
+                        background: scoreColor(val.score), transition: "width 0.6s ease",
+                      }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{val.comment}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Improvement tips */}
+            {lastAnswer.improvement_tips && lastAnswer.improvement_tips.length > 0 && (
+              <div style={{ marginTop: 14, paddingLeft: 72 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b", marginBottom: 6 }}>💡 Tips to Improve</div>
+                {lastAnswer.improvement_tips.map((tip, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {tip}</div>
+                ))}
+              </div>
+            )}
+
+            {/* Strengths */}
+            {lastAnswer.strengths && lastAnswer.strengths.length > 0 && (
+              <div style={{ marginTop: 10, paddingLeft: 72 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 6 }}>✅ Strengths</div>
+                {lastAnswer.strengths.map((s, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {s}</div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -706,6 +932,51 @@ export default function HomePage() {
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 24 }}>
             Generated: {new Date(report.generated_at).toLocaleString()}
           </p>
+
+          {/* AI Report Details (paid modes) */}
+          {report.ai_report && (
+            <div style={{ textAlign: "left", marginBottom: 28 }}>
+              {report.ai_report.executive_summary && (
+                <div style={{ marginBottom: 18, padding: "14px 16px", borderRadius: 12, background: "rgba(2,6,23,0.4)", border: "1px solid rgba(51,65,85,0.3)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Executive Summary</div>
+                  <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.7 }}>{report.ai_report.executive_summary}</p>
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
+                {report.ai_report.strengths && (
+                  <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 8 }}>✅ Strengths</div>
+                    {report.ai_report.strengths.map((s, i) => (
+                      <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3 }}>• {s}</div>
+                    ))}
+                  </div>
+                )}
+                {report.ai_report.areas_for_improvement && (
+                  <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#fbbf24", marginBottom: 8 }}>📈 Areas to Improve</div>
+                    {report.ai_report.areas_for_improvement.map((a, i) => (
+                      <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3 }}>• {a}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {report.ai_report.recommendation_reason && (
+                <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(14,165,233,0.06)", border: "1px solid rgba(14,165,233,0.15)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#38bdf8", marginBottom: 4 }}>Recommendation Reason</div>
+                  <p style={{ fontSize: 12, color: "#94a3b8" }}>{report.ai_report.recommendation_reason}</p>
+                </div>
+              )}
+
+              {report.ai_report.suggested_next_steps && (
+                <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", marginBottom: 4 }}>Suggested Next Steps</div>
+                  <p style={{ fontSize: 12, color: "#94a3b8" }}>{report.ai_report.suggested_next_steps}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={resetAll} style={primaryBtnStyle}>

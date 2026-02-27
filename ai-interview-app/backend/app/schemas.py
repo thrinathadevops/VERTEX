@@ -21,7 +21,9 @@ class SessionResponse(BaseModel):
     base_total_rupees: int
     charge_rupees: int
     payment_required: bool
+    ai_introduction: str
     first_question: str
+    resume_uploaded: bool
 
 
 class AnswerSubmit(BaseModel):
@@ -35,6 +37,10 @@ class AnswerResponse(BaseModel):
     status: str
     turn_number: int
     total_questions: int
+    # ── AI-powered detail fields (paid modes only) ────────────
+    dimension_scores: dict | None = None
+    improvement_tips: list[str] | None = None
+    strengths: list[str] | None = None
 
 
 class ReportResponse(BaseModel):
@@ -46,6 +52,8 @@ class ReportResponse(BaseModel):
     average_score: float
     recommendation: str
     generated_at: datetime
+    # ── AI-powered report fields ──────────────────────────────
+    ai_report: dict | None = None
 
 
 class EligibilityResponse(BaseModel):
@@ -54,3 +62,10 @@ class EligibilityResponse(BaseModel):
     mock_count: int
     real_count: int
     next_mock_charge_rupees: int
+
+
+class ResumeUploadResponse(BaseModel):
+    session_id: str
+    resume_parsed: bool
+    skills: list[str]
+    summary: str

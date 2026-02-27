@@ -23,6 +23,12 @@ class InterviewSession(Base):
     charge_rupees: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # ── AI-powered fields ──────────────────────────────────────
+    resume_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resume_parsed: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
+    ai_introduction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_report: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
+    # ───────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     turns = relationship("InterviewTurn", back_populates="session", cascade="all, delete-orphan")
@@ -38,6 +44,11 @@ class InterviewTurn(Base):
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ── AI-powered fields ──────────────────────────────────────
+    dimension_scores: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
+    improvement_tips: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
+    strengths: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
+    # ───────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     session = relationship("InterviewSession", back_populates="turns")
