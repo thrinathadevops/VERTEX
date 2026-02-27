@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -14,7 +14,10 @@ class InterviewSession(Base):
     candidate_name: Mapped[str] = mapped_column(String(150), nullable=False)
     candidate_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     target_role: Mapped[str] = mapped_column(String(150), nullable=False)
+    # "mock_free" | "mock_paid" | "real"
+    interview_mode: Mapped[str] = mapped_column(String(20), default="mock_free", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     turns = relationship("InterviewTurn", back_populates="session", cascade="all, delete-orphan")
