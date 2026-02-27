@@ -23,6 +23,9 @@ services:
     environment:
       DATABASE_URL: ${AI_INTERVIEW_DATABASE_URL:-postgresql+psycopg2://ai_interview:ai_interview_password@ai_interview_db:5432/ai_interview_db}
       ALLOWED_ORIGINS: ${AI_INTERVIEW_ALLOWED_ORIGINS:-http://localhost:3010,http://localhost:3000}
+      # JWT Authentication
+      SECRET_KEY: ${SECRET_KEY:-change-this-to-a-strong-random-secret-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
       # AI Provider config
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -32,6 +35,14 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
       MAX_RESUME_SIZE_MB: ${MAX_RESUME_SIZE_MB:-5}
+      # Timer & Anti-Cheat
+      DEFAULT_TOTAL_TIME_SECONDS: ${DEFAULT_TOTAL_TIME_SECONDS:-2700}
+      DEFAULT_QUESTION_TIME_SECONDS: ${DEFAULT_QUESTION_TIME_SECONDS:-300}
+      MAX_TAB_SWITCHES_BEFORE_FLAG: ${MAX_TAB_SWITCHES_BEFORE_FLAG:-3}
+      # Question counts
+      QUESTIONS_MOCK_FREE: ${QUESTIONS_MOCK_FREE:-5}
+      QUESTIONS_MOCK_PAID: ${QUESTIONS_MOCK_PAID:-8}
+      QUESTIONS_ENTERPRISE: ${QUESTIONS_ENTERPRISE:-12}
     depends_on:
       ai_interview_db:
         condition: service_healthy

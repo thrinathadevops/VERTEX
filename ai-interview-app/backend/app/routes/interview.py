@@ -1,8 +1,13 @@
 """
-AI-Powered Interview Routes
-────────────────────────────
-All question generation, answer evaluation, and reporting is
-handled by the AI engine. Falls back gracefully if LLM is unreachable.
+AI-Powered Interview Routes — v2
+─────────────────────────────────
+Full interview lifecycle with:
+  - 7-phase AI interview flow
+  - Difficulty level selection
+  - Async background evaluation
+  - Anti-cheat event recording
+  - Per-question + total timers
+  - Status FSM: scheduled → in_progress → evaluating → completed
 """
 
 from __future__ import annotations
@@ -10,40 +15,43 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..ai import engine as ai_engine
 from ..ai.resume_parser import extract_text, parse_resume_with_llm
+from ..auth.deps import get_optional_user
 from ..config import settings
 from ..database import get_db
-from ..models import InterviewSession, InterviewTurn
+from ..models import AntiCheatEvent, InterviewSession, InterviewTurn, User
 from ..schemas import (
+    AntiCheatEventCreate,
+    AntiCheatSummary,
     AnswerResponse,
     AnswerSubmit,
     EligibilityResponse,
+    PricingRequest,
+    PricingResponse,
     ReportResponse,
     ResumeUploadResponse,
+    ScoreBreakdown,
     SessionCreate,
     SessionResponse,
 )
+from ..services.anti_cheat import get_session_anti_cheat_summary, record_event
+from ..services.evaluation import evaluate_answer_background
+from ..services.interview_timer import (
+    check_question_timeout,
+    check_total_interview_timeout,
+    get_question_time_limit,
+    get_total_time_limit,
+)
+from ..services.pricing import calculate_pricing
 
 router = APIRouter(prefix="/api/v1/interview", tags=["AI Interview"])
 
 QUESTION_COUNTS = ai_engine.QUESTION_COUNTS
-
-
-def _real_discount_percent(package_interviews: int) -> int:
-    if package_interviews >= 20:
-        return 50
-    if package_interviews >= 10:
-        return 30
-    if package_interviews >= 5:
-        return 10
-    if package_interviews >= 2:
-        return 5
-    return 0
 
 
 def _get_resume_summary(session: InterviewSession) -> str | None:
@@ -66,30 +74,69 @@ def _get_previous_turns(db: Session, session_id: str) -> list[dict]:
         .where(InterviewTurn.session_id == session_id)
         .order_by(InterviewTurn.turn_number.asc())
     ).all()
-    result = []
-    for t in turns:
-        result.append({
+    return [
+        {
             "turn": t.turn_number,
             "question": t.question,
             "answer": t.answer,
             "score": t.score,
-        })
-    return result
+        }
+        for t in turns
+    ]
 
 
-# ─── Eligibility ──────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  PRICING CALCULATOR
+# ═══════════════════════════════════════════════════════════════════
+
+@router.post("/pricing", response_model=PricingResponse)
+def calculate_price(
+    payload: PricingRequest,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """Calculate interview pricing with discounts."""
+    free_mock_used = False
+    if user:
+        free_mock_used = user.free_mock_used
+    elif payload.interview_mode == "mock_free":
+        # For unauthenticated users, check by email later in create_session
+        free_mock_used = False
+
+    result = calculate_pricing(
+        interview_mode=payload.interview_mode,
+        package_interviews=payload.package_interviews,
+        free_mock_used=free_mock_used,
+    )
+
+    return PricingResponse(
+        interview_mode=result.interview_mode,
+        package_interviews=result.package_interviews,
+        base_price_per_interview=result.base_price_per_interview,
+        discount_percent=result.discount_percent,
+        base_total_rupees=result.base_total_rupees,
+        discount_amount_rupees=result.discount_amount_rupees,
+        final_charge_rupees=result.final_charge_rupees,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  ELIGIBILITY CHECK
+# ═══════════════════════════════════════════════════════════════════
+
 @router.get("/eligibility", response_model=EligibilityResponse)
 def check_eligibility(email: str, db: Session = Depends(get_db)):
+    """Check if a user is eligible for free mock interview."""
     mock_count = db.scalar(
         select(func.count(InterviewSession.id)).where(
             InterviewSession.candidate_email == email,
             InterviewSession.interview_mode.in_(["mock_free", "mock_paid"]),
         )
     ) or 0
-    real_count = db.scalar(
+    enterprise_count = db.scalar(
         select(func.count(InterviewSession.id)).where(
             InterviewSession.candidate_email == email,
-            InterviewSession.interview_mode == "real",
+            InterviewSession.interview_mode == "enterprise",
         )
     ) or 0
 
@@ -98,57 +145,94 @@ def check_eligibility(email: str, db: Session = Depends(get_db)):
         eligible=True,
         free_mock_used=free_mock_used,
         mock_count=int(mock_count),
-        real_count=int(real_count),
+        enterprise_count=int(enterprise_count),
         next_mock_charge_rupees=50 if free_mock_used else 0,
     )
 
 
-# ─── Resume Upload ───────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  RESUME UPLOAD
+# ═══════════════════════════════════════════════════════════════════
+
 @router.post("/session/{session_id}/upload-resume", response_model=ResumeUploadResponse)
-async def upload_resume(session_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_resume(
+    session_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload and parse resume for an interview session."""
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found.")
 
-    # Validate file size
     contents = await file.read()
     max_bytes = settings.MAX_RESUME_SIZE_MB * 1024 * 1024
     if len(contents) > max_bytes:
-        raise HTTPException(status_code=413, detail=f"Resume must be under {settings.MAX_RESUME_SIZE_MB}MB.")
+        raise HTTPException(
+            status_code=413,
+            detail=f"Resume must be under {settings.MAX_RESUME_SIZE_MB}MB.",
+        )
 
     filename = file.filename or "resume.pdf"
 
-    # Extract text
     try:
         resume_text = extract_text(contents, filename)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     if len(resume_text.strip()) < 50:
-        raise HTTPException(status_code=422, detail="Could not extract enough text from the resume. Please upload a valid PDF, DOCX, or TXT file.")
+        raise HTTPException(
+            status_code=422,
+            detail="Could not extract enough text. Upload a valid PDF, DOCX, or TXT.",
+        )
 
     session.resume_text = resume_text
 
     # Parse with LLM
     parsed = await parse_resume_with_llm(resume_text)
     session.resume_parsed = json.dumps(parsed, default=str)
+
+    # Generate structured skill profile
+    skill_profile = {
+        "experience": parsed.get("years_experience", 0),
+        "primary_skills": parsed.get("primary_skills", parsed.get("key_skills", []))[:5],
+        "secondary_skills": parsed.get("secondary_skills", [])[:5],
+    }
+    session.skill_profile = json.dumps(skill_profile)
     db.commit()
 
     return ResumeUploadResponse(
         session_id=session_id,
         resume_parsed=True,
-        skills=parsed.get("key_skills", []),
+        skill_profile=skill_profile,
+        skills=skill_profile["primary_skills"] + skill_profile["secondary_skills"],
         summary=parsed.get("summary", ""),
     )
 
 
-# ─── Create Session ──────────────────────────────────────────────
-@router.post("/session", response_model=SessionResponse)
-async def create_session(payload: SessionCreate, db: Session = Depends(get_db)):
-    mode = payload.interview_mode
+# ═══════════════════════════════════════════════════════════════════
+#  CREATE SESSION
+# ═══════════════════════════════════════════════════════════════════
 
-    # Enforce: only one free mock per email
+@router.post("/session", response_model=SessionResponse)
+async def create_session(
+    payload: SessionCreate,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+):
+    """Create a new interview session with pricing, difficulty, and AI intro."""
+    mode = payload.interview_mode
+    difficulty = payload.difficulty_level
+
+    # ── Enforce free mock limit ───────────────────────────────
     if mode == "mock_free":
+        # Check via user model first
+        if user and user.free_mock_used:
+            raise HTTPException(
+                status_code=403,
+                detail="Your free Practice Interview has been used. Select Pro Practice (₹50) to continue.",
+            )
+        # Fallback: check by email
         existing_free = db.scalar(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.candidate_email == payload.candidate_email,
@@ -158,85 +242,116 @@ async def create_session(payload: SessionCreate, db: Session = Depends(get_db)):
         if existing_free > 0:
             raise HTTPException(
                 status_code=403,
-                detail="Your complimentary Practice Interview has already been used. Please select Pro Practice (₹50) to continue.",
+                detail="Your free Practice Interview has been used. Select Pro Practice (₹50) to continue.",
             )
 
-    if mode == "real":
+    # ── Enterprise validation ─────────────────────────────────
+    if mode == "enterprise":
         if not payload.company_name or not payload.company_name.strip():
             raise HTTPException(status_code=422, detail="Company name is required for Enterprise Assessments.")
         if not payload.company_interview_code or not payload.company_interview_code.strip():
             raise HTTPException(status_code=422, detail="Interview code is required for Enterprise Assessments.")
 
-    # Pricing
-    package_interviews = 1
-    discount_percent = 0
-    base_total_rupees = 0
-    charge_rupees = 0
-    if mode == "mock_paid":
-        charge_rupees = 50
-    elif mode == "real":
-        package_interviews = payload.package_interviews
-        discount_percent = _real_discount_percent(package_interviews)
-        base_total_rupees = package_interviews * 500
-        charge_rupees = int(base_total_rupees * (100 - discount_percent) / 100)
+    # ── Calculate pricing ─────────────────────────────────────
+    free_mock_used = False
+    if user:
+        free_mock_used = user.free_mock_used
 
-    # Create session
+    pricing = calculate_pricing(
+        interview_mode=mode,
+        package_interviews=payload.package_interviews,
+        free_mock_used=free_mock_used,
+    )
+
+    # ── Timer settings ────────────────────────────────────────
+    total_time = get_total_time_limit(difficulty)
+    question_time = get_question_time_limit(difficulty)
+    total_q = QUESTION_COUNTS.get(mode, 5)
+
+    # ── Create session ────────────────────────────────────────
     session = InterviewSession(
+        user_id=user.id if user else None,
         candidate_name=payload.candidate_name,
         candidate_email=payload.candidate_email,
         target_role=payload.target_role,
         company_name=payload.company_name.strip() if payload.company_name else None,
         company_interview_code=payload.company_interview_code.strip() if payload.company_interview_code else None,
         interview_mode=mode,
-        package_interviews=package_interviews,
-        discount_percent=discount_percent,
-        charge_rupees=charge_rupees,
-        is_paid=mode in ("mock_paid", "real"),
-        status="active",
+        difficulty_level=difficulty,
+        package_interviews=pricing.package_interviews,
+        discount_percent=pricing.discount_percent,
+        charge_rupees=pricing.final_charge_rupees,
+        is_paid=mode in ("mock_paid", "enterprise"),
+        status="scheduled",
+        total_time_limit_seconds=total_time,
     )
     db.add(session)
     db.flush()
 
-    # Generate AI introduction
+    # ── Mark free mock as used ────────────────────────────────
+    if mode == "mock_free" and user:
+        user.free_mock_used = True
+
+    # ── Generate AI introduction (Phase 1) ────────────────────
     introduction = await ai_engine.generate_introduction(
         candidate_name=payload.candidate_name,
         target_role=payload.target_role,
         interview_mode=mode,
+        difficulty_level=difficulty,
         resume_summary=None,  # Resume uploaded separately
     )
     session.ai_introduction = introduction
 
-    # Generate first question via AI
-    total_q = QUESTION_COUNTS.get(mode, 5)
-    first_question = await ai_engine.generate_question(
+    # ── Generate first question via AI (Phase 2: ice_breaker) ─
+    first_question, first_phase = await ai_engine.generate_question(
         candidate_name=payload.candidate_name,
         target_role=payload.target_role,
         interview_mode=mode,
         turn_number=1,
+        difficulty_level=difficulty,
         resume_summary=None,
     )
 
-    db.add(InterviewTurn(session_id=session.id, turn_number=1, question=first_question))
+    db.add(InterviewTurn(
+        session_id=session.id,
+        turn_number=1,
+        question=first_question,
+        question_phase=first_phase,
+        time_limit_seconds=question_time,
+    ))
+
+    # Mark session as in_progress
+    session.status = "in_progress"
+    session.started_at = datetime.now(timezone.utc)
     db.commit()
 
     return SessionResponse(
         id=session.id,
-        status="active",
+        status=session.status,
         interview_mode=mode,
-        package_interviews=package_interviews,
-        discount_percent=discount_percent,
-        base_total_rupees=base_total_rupees if mode == "real" else charge_rupees,
-        charge_rupees=charge_rupees,
-        payment_required=mode in ("mock_paid", "real"),
+        difficulty_level=difficulty,
+        package_interviews=pricing.package_interviews,
+        discount_percent=pricing.discount_percent,
+        base_total_rupees=pricing.base_total_rupees,
+        charge_rupees=pricing.final_charge_rupees,
+        payment_required=mode in ("mock_paid", "enterprise"),
         ai_introduction=introduction,
         first_question=first_question,
+        first_question_phase=first_phase,
         resume_uploaded=False,
+        total_questions=total_q,
+        total_time_limit_seconds=total_time,
+        question_time_limit_seconds=question_time,
     )
 
 
-# ─── Regenerate Introduction (after resume upload) ───────────────
+# ═══════════════════════════════════════════════════════════════════
+#  REGENERATE INTRODUCTION (after resume upload)
+# ═══════════════════════════════════════════════════════════════════
+
 @router.post("/session/{session_id}/regenerate-intro")
 async def regenerate_introduction(session_id: str, db: Session = Depends(get_db)):
+    """Regenerate AI introduction and first question using resume context."""
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
@@ -247,40 +362,77 @@ async def regenerate_introduction(session_id: str, db: Session = Depends(get_db)
         candidate_name=session.candidate_name,
         target_role=session.target_role,
         interview_mode=session.interview_mode,
+        difficulty_level=session.difficulty_level,
         resume_summary=resume_summary,
     )
     session.ai_introduction = introduction
 
-    # Also regenerate the first question if unanswered
+    # Regenerate first question if unanswered
     first_turn = db.scalar(
         select(InterviewTurn)
         .where(InterviewTurn.session_id == session_id, InterviewTurn.turn_number == 1)
     )
     if first_turn and first_turn.answer is None:
-        new_question = await ai_engine.generate_question(
+        new_question, new_phase = await ai_engine.generate_question(
             candidate_name=session.candidate_name,
             target_role=session.target_role,
             interview_mode=session.interview_mode,
             turn_number=1,
+            difficulty_level=session.difficulty_level,
             resume_summary=resume_summary,
         )
         first_turn.question = new_question
+        first_turn.question_phase = new_phase
         db.commit()
-        return {"ai_introduction": introduction, "first_question": new_question, "resume_contextualized": True}
+        return {
+            "ai_introduction": introduction,
+            "first_question": new_question,
+            "first_question_phase": new_phase,
+            "resume_contextualized": True,
+        }
 
     db.commit()
     return {"ai_introduction": introduction, "first_question": None, "resume_contextualized": True}
 
 
-# ─── Submit Answer ───────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  SUBMIT ANSWER (with async background evaluation)
+# ═══════════════════════════════════════════════════════════════════
+
 @router.post("/session/{session_id}/answer", response_model=AnswerResponse)
-async def submit_answer(session_id: str, payload: AnswerSubmit, db: Session = Depends(get_db)):
+async def submit_answer(
+    session_id: str,
+    payload: AnswerSubmit,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Submit an answer. The answer is saved immediately.
+    Evaluation runs in the background — scores are NOT shown during the interview.
+    The next question is generated immediately so the candidate isn't waiting.
+    """
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found.")
 
+    if session.status not in ("in_progress", "scheduled"):
+        raise HTTPException(status_code=409, detail=f"Interview is {session.status}. Cannot submit answers.")
+
     total_q = QUESTION_COUNTS.get(session.interview_mode, 5)
 
+    # ── Check total interview timeout ─────────────────────────
+    timer_check = check_total_interview_timeout(
+        session.started_at, session.total_time_limit_seconds
+    )
+    if timer_check["expired"]:
+        session.status = "evaluating"
+        db.commit()
+        raise HTTPException(
+            status_code=409,
+            detail="Interview time has expired. Your answers are being evaluated.",
+        )
+
+    # ── Find pending turn ─────────────────────────────────────
     pending_turn = db.scalar(
         select(InterviewTurn)
         .where(InterviewTurn.session_id == session_id, InterviewTurn.answer.is_(None))
@@ -290,13 +442,22 @@ async def submit_answer(session_id: str, payload: AnswerSubmit, db: Session = De
     if not pending_turn:
         raise HTTPException(status_code=409, detail="No pending question in this session.")
 
+    # ── Save answer immediately ───────────────────────────────
+    pending_turn.answer = payload.answer
+    pending_turn.time_taken_seconds = payload.time_taken_seconds
+    pending_turn.evaluation_status = "evaluating"  # Will be evaluated in background
+
     resume_summary = _get_resume_summary(session)
 
-    # ── AI-powered evaluation ────────────────────────────────
-    evaluation = await ai_engine.evaluate_answer(
+    # ── Queue background evaluation ───────────────────────────
+    background_tasks.add_task(
+        _run_background_evaluation,
+        db_url=str(settings.DATABASE_URL),
+        turn_id=pending_turn.id,
         candidate_name=session.candidate_name,
         target_role=session.target_role,
         interview_mode=session.interview_mode,
+        difficulty_level=session.difficulty_level,
         turn_number=pending_turn.turn_number,
         total_questions=total_q,
         question=pending_turn.question,
@@ -304,95 +465,213 @@ async def submit_answer(session_id: str, payload: AnswerSubmit, db: Session = De
         resume_summary=resume_summary,
     )
 
-    pending_turn.answer = payload.answer
-    pending_turn.score = evaluation.overall_score
-    pending_turn.feedback = evaluation.feedback
-    pending_turn.dimension_scores = json.dumps({
-        "technical_accuracy": evaluation.technical_accuracy,
-        "depth_detail": evaluation.depth_detail,
-        "practical_experience": evaluation.practical_experience,
-        "communication": evaluation.communication,
-        "problem_solving": evaluation.problem_solving,
-    })
-    pending_turn.improvement_tips = json.dumps(evaluation.improvement_tips)
-    pending_turn.strengths = json.dumps(evaluation.strengths)
-
-    # ── Generate next question or complete ───────────────────
+    # ── Generate next question or complete ────────────────────
     next_question = None
+    next_phase = None
+    next_time_limit = None
+
     if pending_turn.turn_number < total_q:
         previous_turns = _get_previous_turns(db, session_id)
         next_turn_number = pending_turn.turn_number + 1
+        question_time = get_question_time_limit(session.difficulty_level)
 
-        next_question = await ai_engine.generate_question(
+        next_question, next_phase = await ai_engine.generate_question(
             candidate_name=session.candidate_name,
             target_role=session.target_role,
             interview_mode=session.interview_mode,
             turn_number=next_turn_number,
+            difficulty_level=session.difficulty_level,
             resume_summary=resume_summary,
             previous_turns=previous_turns,
         )
-        db.add(InterviewTurn(session_id=session_id, turn_number=next_turn_number, question=next_question))
+        next_time_limit = question_time
+
+        db.add(InterviewTurn(
+            session_id=session_id,
+            turn_number=next_turn_number,
+            question=next_question,
+            question_phase=next_phase,
+            time_limit_seconds=question_time,
+        ))
     else:
-        session.status = "completed"
+        # All questions answered → move to evaluating
+        session.status = "evaluating"
 
     db.commit()
 
-    # Determine what detail to expose based on mode
-    show_detail = session.interview_mode in ("mock_paid", "real")
-
     return AnswerResponse(
-        score=evaluation.overall_score,
-        feedback=evaluation.feedback,
-        next_question=next_question,
-        status=session.status,
         turn_number=pending_turn.turn_number,
         total_questions=total_q,
-        dimension_scores={
-            "technical_accuracy": evaluation.technical_accuracy,
-            "depth_detail": evaluation.depth_detail,
-            "practical_experience": evaluation.practical_experience,
-            "communication": evaluation.communication,
-            "problem_solving": evaluation.problem_solving,
-        } if show_detail else None,
-        improvement_tips=evaluation.improvement_tips if show_detail else None,
-        strengths=evaluation.strengths if show_detail else None,
+        status=session.status,
+        evaluation_status="evaluating",
+        next_question=next_question,
+        next_question_phase=next_phase,
+        next_question_time_limit=next_time_limit,
+        # Scores NOT shown during interview
+        score=None,
+        feedback=None,
+        dimension_scores=None,
+        improvement_tips=None,
+        strengths=None,
     )
 
 
-# ─── Get Report ──────────────────────────────────────────────────
+async def _run_background_evaluation(**kwargs):
+    """Wrapper to run async background evaluation."""
+    await evaluate_answer_background(**kwargs)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  ANTI-CHEAT EVENT
+# ═══════════════════════════════════════════════════════════════════
+
+@router.post("/session/{session_id}/anti-cheat")
+def record_anti_cheat_event(
+    session_id: str,
+    payload: AntiCheatEventCreate,
+    db: Session = Depends(get_db),
+):
+    """Record an anti-cheat event (tab switch, window blur, etc.)."""
+    result = record_event(
+        db=db,
+        session_id=session_id,
+        event_type=payload.event_type,
+        details=payload.details,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/session/{session_id}/anti-cheat", response_model=AntiCheatSummary)
+def get_anti_cheat_summary(session_id: str, db: Session = Depends(get_db)):
+    """Get anti-cheat summary for a session."""
+    result = get_session_anti_cheat_summary(db, session_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  INTERVIEW STATUS
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/session/{session_id}/status")
+def get_session_status(session_id: str, db: Session = Depends(get_db)):
+    """Get current session status and evaluation progress."""
+    session = db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    total_q = QUESTION_COUNTS.get(session.interview_mode, 5)
+
+    turns = db.scalars(
+        select(InterviewTurn)
+        .where(InterviewTurn.session_id == session_id)
+        .order_by(InterviewTurn.turn_number.asc())
+    ).all()
+
+    answered = sum(1 for t in turns if t.answer is not None)
+    evaluated = sum(1 for t in turns if t.evaluation_status == "evaluated")
+
+    # Timer info
+    timer = check_total_interview_timeout(
+        session.started_at, session.total_time_limit_seconds
+    )
+
+    return {
+        "session_id": session_id,
+        "status": session.status,
+        "total_questions": total_q,
+        "answered": answered,
+        "evaluated": evaluated,
+        "all_evaluated": evaluated == answered and answered > 0,
+        "timer": timer,
+        "suspicious_activity": session.suspicious_activity,
+        "tab_switch_count": session.tab_switch_count,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  GET REPORT
+# ═══════════════════════════════════════════════════════════════════
+
 @router.get("/session/{session_id}/report", response_model=ReportResponse)
 async def get_report(session_id: str, db: Session = Depends(get_db)):
+    """Get the final interview report. Only available after completion."""
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found.")
+
+    if session.status not in ("completed", "evaluating"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Interview is {session.status}. Report available after completion.",
+        )
 
     total_q = QUESTION_COUNTS.get(session.interview_mode, 5)
 
     answered_turns = db.scalar(
         select(func.count(InterviewTurn.id)).where(
-            InterviewTurn.session_id == session_id, InterviewTurn.answer.is_not(None)
+            InterviewTurn.session_id == session_id,
+            InterviewTurn.answer.is_not(None),
         )
     ) or 0
+
     average_score = db.scalar(
         select(func.coalesce(func.avg(InterviewTurn.score), 0.0)).where(
-            InterviewTurn.session_id == session_id, InterviewTurn.score.is_not(None)
+            InterviewTurn.session_id == session_id,
+            InterviewTurn.score.is_not(None),
         )
     ) or 0.0
 
-    # Generate AI report for paid modes
-    ai_report_data = None
-    if session.interview_mode in ("mock_paid", "real"):
-        turns_data = _get_previous_turns(db, session_id)
-        ai_report_data = await ai_engine.generate_report(
-            candidate_name=session.candidate_name,
-            target_role=session.target_role,
-            interview_mode=session.interview_mode,
-            turns=turns_data,
+    # ── Score breakdown ───────────────────────────────────────
+    breakdown = None
+    if session.score_weighted_total is not None:
+        breakdown = ScoreBreakdown(
+            technical_depth=session.score_technical_depth or 0.0,
+            scenario_handling=session.score_scenario_handling or 0.0,
+            communication=session.score_communication or 0.0,
+            confidence=session.score_confidence or 0.0,
+            weighted_total=session.score_weighted_total or 0.0,
         )
-        session.ai_report = json.dumps(ai_report_data, default=str)
-        db.commit()
 
-    # Determine recommendation
+    # ── AI report ─────────────────────────────────────────────
+    ai_report_data = None
+    if session.ai_report:
+        try:
+            ai_report_data = json.loads(session.ai_report)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # If report not yet generated (still evaluating), trigger generation
+    if ai_report_data is None and session.status == "evaluating":
+        # Check if all turns are evaluated
+        all_evaluated = db.scalar(
+            select(func.count(InterviewTurn.id)).where(
+                InterviewTurn.session_id == session_id,
+                InterviewTurn.evaluation_status != "evaluated",
+                InterviewTurn.answer.is_not(None),
+            )
+        ) or 0
+
+        if all_evaluated == 0 and answered_turns > 0:
+            # All evaluated, generate report now
+            turns_data = _get_previous_turns(db, session_id)
+            if session.interview_mode in ("mock_paid", "enterprise"):
+                ai_report_data = await ai_engine.generate_report(
+                    candidate_name=session.candidate_name,
+                    target_role=session.target_role,
+                    interview_mode=session.interview_mode,
+                    turns=turns_data,
+                )
+                session.ai_report = json.dumps(ai_report_data, default=str)
+
+            session.status = "completed"
+            session.completed_at = datetime.now(timezone.utc)
+            db.commit()
+
+    # Recommendation
     recommendation = "Reject"
     if ai_report_data and "recommendation" in ai_report_data:
         recommendation = ai_report_data["recommendation"]
@@ -401,14 +680,25 @@ async def get_report(session_id: str, db: Session = Depends(get_db)):
     elif average_score >= 7.0:
         recommendation = "Review"
 
+    # Anti-cheat summary
+    anti_cheat = None
+    if session.suspicious_activity or session.tab_switch_count > 0:
+        anti_cheat = {
+            "tab_switches": session.tab_switch_count,
+            "suspicious": session.suspicious_activity,
+        }
+
     return ReportResponse(
         session_id=session_id,
         status=session.status,
         interview_mode=session.interview_mode,
+        difficulty_level=session.difficulty_level,
         answered_turns=int(answered_turns),
         total_questions=total_q,
         average_score=round(float(average_score), 2),
+        score_breakdown=breakdown,
         recommendation=recommendation,
         generated_at=datetime.now(timezone.utc),
         ai_report=ai_report_data,
+        anti_cheat_summary=anti_cheat,
     )

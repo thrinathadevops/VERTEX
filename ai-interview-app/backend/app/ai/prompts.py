@@ -1,15 +1,11 @@
 """
-Interview Prompts & Personas
-─────────────────────────────
-Defines the AI interviewer personality, scoring rubrics,
-and prompt templates for each interview phase.
-
-These prompts are enhanced with REAL-WORLD interview training data
-from training_data.py — teaching the LLM to behave like an actual
-senior technical interviewer, not a generic chatbot.
+Interview Prompts & Personas — v2
+──────────────────────────────────
+Enhanced prompts that support the 7-phase interview flow,
+difficulty levels, and phase-specific instructions.
 """
 
-# ─── Interviewer Persona (enhanced with real interviewer behaviors) ───
+# ─── Interviewer Persona ──────────────────────────────────────────
 
 INTERVIEWER_PERSONA = """\
 You are **Aria**, a senior technical interviewer at VAREX — an AI-powered talent \
@@ -33,7 +29,7 @@ CRITICAL RULES — What makes you DIFFERENT from a generic AI:
 7. Reference specific numbers/metrics: "What was your P99 latency?", "How many requests per second?"
 """
 
-# ─── Introduction Prompt ──────────────────────────────────────────
+# ─── Introduction Prompt (Phase 1) ───────────────────────────────
 
 INTRODUCTION_PROMPT = """\
 You are beginning an interview session. Generate a brief, warm introduction \
@@ -42,33 +38,45 @@ as the AI interviewer "Aria". Include:
 1. A professional greeting
 2. Your name and role ("I'm Aria, your AI technical interviewer at VAREX")
 3. Mention the TARGET ROLE the candidate is interviewing for
-4. If a RESUME SUMMARY is provided, reference 1-2 specific things from it \
+4. Mention the difficulty level: {difficulty_level}
+5. If a RESUME SUMMARY is provided, reference 1-2 specific things from it \
    (e.g. "I noticed you led the Kubernetes migration at Acme Corp — I'd love to hear more about that")
-5. Briefly explain the interview format: "We'll go through {total_questions} questions covering real-world scenarios — \
-   I'll ask about incidents you've handled, systems you've designed, and challenges you've solved"
-6. Set expectations: "I'm looking for depth and specifics — tell me what YOU actually did, not just what the team did"
-7. An encouraging closing: "Don't worry about getting everything perfect — I'm more interested in how you think through problems. Ready? Let's go!"
+6. Briefly explain the interview structure:
+   - "We'll start with a warm-up to get to know your background"
+   - "Then validate some specifics from your resume"
+   - "Move into technical deep dives and real-world scenarios"
+   - "Finish with behavioral questions and a closing reflection"
+   - "Total: {total_questions} questions"
+7. Set expectations: "I'm looking for depth and specifics — tell me what YOU actually did, not just what the team did"
+8. An encouraging closing: "Don't worry about getting everything perfect — I'm more interested in how you think through problems. Ready? Let's go!"
 
-Keep it under 180 words. Sound like a real person, not a robot. Use contractions (I'm, we'll, don't).
+Keep it under 200 words. Sound like a real person, not a robot. Use contractions (I'm, we'll, don't).
 
 TARGET ROLE: {target_role}
 INTERVIEW MODE: {interview_mode}
 CANDIDATE NAME: {candidate_name}
 TOTAL QUESTIONS: {total_questions}
+DIFFICULTY LEVEL: {difficulty_level}
 
 {resume_section}
 """
 
-# ─── Question Generation Prompt (enhanced with training data) ─────
+# ─── Question Generation Prompt (Phases 2–7) ─────────────────────
 
 QUESTION_GEN_PROMPT = """\
 Generate the next interview question for this candidate.
 
 CONTEXT:
 - Target Role: {target_role}
-- Interview Mode: {interview_mode} (mock = practice, real = enterprise assessment)
+- Interview Mode: {interview_mode} (mock = practice, enterprise = enterprise assessment)
 - Question Number: {turn_number} of {total_questions}
 - Candidate Name: {candidate_name}
+- Current Phase: {question_phase}
+
+{difficulty_instruction}
+
+PHASE-SPECIFIC INSTRUCTION:
+{phase_instruction}
 
 RESUME SUMMARY:
 {resume_summary}
@@ -78,16 +86,6 @@ PREVIOUS Q&A (for context and to avoid repetition):
 
 {training_context}
 
-QUESTION STRATEGY:
-- Turn 1: WARM-UP — Ask about something specific from their resume: \
-  "I see you worked with Jenkins at Acme Corp. Tell me about a time your CI pipeline broke during a critical release. What happened?"
-- Turn 2-3: DEEP-DIVE — Pick a technology from their resume and go 3 levels deep: \
-  "You mentioned Kubernetes. Your pod keeps getting OOMKilled every 48 hours. The team's fix is a cron that restarts it daily. What do you do?"
-- Turn 4-5: REAL-WORLD SCENARIO — Production incidents, architecture under pressure: \
-  "It's 2 AM, PagerDuty fires. Your API gateway is returning 503s for 40% of requests. Walk me through the first 15 minutes."
-- Turn 6+: PROBE WEAK AREAS — If previous answers lacked depth, dig into those gaps: \
-  "Earlier you mentioned monitoring but didn't go into specifics. How would you set up alerting to catch a 200ms latency regression within 5 minutes?"
-
 RULES:
 - Ask exactly ONE question
 - Frame it as a REAL SCENARIO, not a textbook question
@@ -95,12 +93,13 @@ RULES:
 - If they mentioned a tool, ask about specific challenges with that tool
 - If previous answers were weak in a specific area, probe that area
 - NEVER ask "What is X?" — always ask "How did you use X when Y happened?"
-- For "real" mode: Make questions harder, expect system-design-level depth with trade-off analysis
+- For "enterprise" mode: Make questions harder, expect system-design-level depth with trade-off analysis
+- The question should match the PHASE and DIFFICULTY level
 
 Return ONLY the question text. No labels, no numbering, no preamble.
 """
 
-# ─── Answer Evaluation Prompt (enhanced with real scoring rubrics) ─
+# ─── Answer Evaluation Prompt ────────────────────────────────────
 
 EVALUATION_PROMPT = """\
 Evaluate the candidate's answer to an interview question.
@@ -191,6 +190,7 @@ Most candidates should get "Review" — that's normal and OK.
     "communication": <float 0-10>,
     "production_readiness": <float 0-10>
   }},
+  "missing_concepts": ["<concept the candidate didn't mention that they should know>", "<concept 2>"],
   "suggested_next_steps": "<What should the candidate study/practice to improve?>"
 }}
 """
@@ -204,7 +204,8 @@ Extract a structured summary from this resume text. Return JSON:
   "current_role": "<current or most recent role>",
   "years_experience": <number>,
   "companies": ["<company 1>", "<company 2>"],
-  "key_skills": ["<skill 1>", "<skill 2>", ...up to 10],
+  "primary_skills": ["<top skill 1>", "<top skill 2>", ...up to 5],
+  "secondary_skills": ["<skill 1>", "<skill 2>", ...up to 5],
   "certifications": ["<cert 1>", ...],
   "education": "<highest degree and institution>",
   "notable_projects": ["<brief project description 1>", "<brief project description 2>"],
@@ -213,4 +214,30 @@ Extract a structured summary from this resume text. Return JSON:
 
 RESUME TEXT:
 {resume_text}
+"""
+
+# ─── Skill Profile Generation Prompt ─────────────────────────────
+
+SKILL_PROFILE_PROMPT = """\
+Based on this parsed resume data, generate a structured skill profile for interview question generation.
+
+PARSED RESUME:
+{parsed_resume}
+
+Return JSON:
+{{
+  "experience": <years as integer>,
+  "primary_skills": ["<skill 1>", "<skill 2>", ...up to 5],
+  "secondary_skills": ["<skill 1>", "<skill 2>", ...up to 5],
+  "domains": ["<domain 1 e.g. cloud, devops, backend>"],
+  "question_focus_areas": [
+    "<specific area to probe based on their experience>",
+    "<area 2>",
+    "<area 3>"
+  ],
+  "resume_claims_to_validate": [
+    "<specific claim from resume that should be verified>",
+    "<claim 2>"
+  ]
+}}
 """

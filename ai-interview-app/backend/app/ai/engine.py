@@ -1,12 +1,25 @@
 """
-AI Interview Engine (Orchestrator)
-──────────────────────────────────
-Coordinates the full AI-powered interview flow:
-  1. Generate interviewer introduction
-  2. Generate contextual questions from resume
-  3. Evaluate answers with multi-criteria scoring
-  4. Generate follow-up questions
-  5. Produce final assessment report
+AI Interview Engine (Orchestrator) — v2
+────────────────────────────────────────
+Coordinates the full 7-phase AI-powered interview flow:
+
+  Phase 1 → AI Introduction
+  Phase 2 → Ice-breaker (warm-up from resume)
+  Phase 3 → Resume summary validation
+  Phase 4 → Technical deep dive
+  Phase 5 → Scenario-based questions
+  Phase 6 → Behavioral evaluation
+  Phase 7 → Closing remarks
+
+The engine adapts question difficulty based on:
+  - Difficulty level (junior / mid / senior / architect)
+  - Resume content
+  - Previous answer quality
+
+Question counts per mode:
+  - mock_free:   5 questions
+  - mock_paid:   8 questions
+  - enterprise: 12 questions
 """
 
 from __future__ import annotations
@@ -15,6 +28,7 @@ import json
 import logging
 from dataclasses import dataclass
 
+from ..config import settings
 from .prompts import (
     EVALUATION_PROMPT,
     INTERVIEWER_PERSONA,
@@ -27,38 +41,116 @@ from .training_data import format_training_context_for_prompt, format_scoring_co
 
 logger = logging.getLogger(__name__)
 
-# Question counts per mode
+# ─── Question counts per mode ────────────────────────────────────
 QUESTION_COUNTS = {
-    "mock_free": 5,
-    "mock_paid": 5,
-    "real": 7,
+    "mock_free": settings.QUESTIONS_MOCK_FREE,
+    "mock_paid": settings.QUESTIONS_MOCK_PAID,
+    "enterprise": settings.QUESTIONS_ENTERPRISE,
 }
 
-# Fallback questions when LLM is unavailable
+
+# ─── 7-Phase Interview Flow ─────────────────────────────────────
+def get_question_phase(turn_number: int, total_questions: int) -> str:
+    """
+    Determine which interview phase a question belongs to.
+
+    Phase mapping (proportional to total questions):
+      Turn 1        → ice_breaker
+      Turn 2        → resume_validation
+      Turns 3–60%   → technical_deep_dive
+      Turns 60%–80% → scenario_based
+      Turns 80%–N-1 → behavioral
+      Last turn     → closing
+    """
+    if turn_number == 1:
+        return "ice_breaker"
+    if turn_number == 2:
+        return "resume_validation"
+    if turn_number == total_questions:
+        return "closing"
+
+    # Proportional splits for the middle turns
+    ratio = turn_number / total_questions
+    if ratio <= 0.60:
+        return "technical_deep_dive"
+    if ratio <= 0.80:
+        return "scenario_based"
+    return "behavioral"
+
+
+# Phase-specific instructions for question generation
+PHASE_INSTRUCTIONS = {
+    "ice_breaker": (
+        "This is the ICE-BREAKER question. Ask something conversational and warm "
+        "that puts the candidate at ease. Reference something specific from their "
+        "resume — a company they worked at, a project they led, or a technology they list. "
+        "Example: 'I see you worked at Acme Corp on their Kubernetes migration. "
+        "Tell me about a moment during that project where things went sideways — what happened?'"
+    ),
+    "resume_validation": (
+        "This is the RESUME VALIDATION question. Verify a specific claim from the resume. "
+        "Pick a skill or achievement they list and ask them to walk through the details. "
+        "Example: 'Your resume mentions you reduced build times by 60%. "
+        "Walk me through exactly how you measured that and what changes you made.'"
+    ),
+    "technical_deep_dive": (
+        "This is a TECHNICAL DEEP DIVE question. Go 3 levels deep into a technology "
+        "or architecture from their experience. Frame it as a real scenario. "
+        "Example: 'Your pod keeps getting OOMKilled every 48 hours. The team's fix is "
+        "a cron that restarts it daily. What do you do?'"
+    ),
+    "scenario_based": (
+        "This is a SCENARIO-BASED question. Present a realistic production situation "
+        "with constraints (time pressure, limited resources, business impact). "
+        "Example: 'It's 2 AM, PagerDuty fires. Your API gateway returns 503s for 40% "
+        "of requests. Walk me through your first 15 minutes.'"
+    ),
+    "behavioral": (
+        "This is a BEHAVIORAL question. Evaluate leadership, teamwork, conflict resolution, "
+        "and decision-making under pressure. "
+        "Example: 'Tell me about a time you disagreed with your manager about a technical "
+        "decision. How did you handle it? What was the outcome?'"
+    ),
+    "closing": (
+        "This is the CLOSING question. Ask something forward-looking and reflective. "
+        "Example: 'If you could redesign the infrastructure at your last company from "
+        "scratch with unlimited budget, what would you change and why?'"
+    ),
+}
+
+
+# ─── Difficulty multipliers ──────────────────────────────────────
+DIFFICULTY_INSTRUCTIONS = {
+    "junior": (
+        "The candidate is JUNIOR level. Ask foundational questions. "
+        "Expect basic understanding, not advanced architecture. "
+        "Still use scenarios, but simpler ones."
+    ),
+    "mid": (
+        "The candidate is MID level. Ask questions that test practical experience. "
+        "Expect them to have handled real production systems."
+    ),
+    "senior": (
+        "The candidate is SENIOR level. Ask complex architectural questions. "
+        "Expect system design thinking, trade-off analysis, and leadership signals. "
+        "Push back hard on vague answers."
+    ),
+    "architect": (
+        "The candidate is ARCHITECT level. Ask the hardest questions. "
+        "Expect multi-region design, cost optimization, org-wide strategic thinking, "
+        "and ability to articulate complex trade-offs. Challenge every assumption."
+    ),
+}
+
+
+# ─── Fallback questions by phase ─────────────────────────────────
 FALLBACK_QUESTIONS = {
-    "mock_free": [
-        "Describe a production incident you handled and how you restored service.",
-        "How do you design CI/CD pipelines for both deployment speed and safe rollback?",
-        "How would you secure container workloads in a multi-tenant Kubernetes cluster?",
-        "Explain your approach for cloud cost optimisation without reducing reliability.",
-        "How do you define SLOs and use observability to improve system resilience?",
-    ],
-    "mock_paid": [
-        "Walk through your approach to building a zero-downtime deployment pipeline.",
-        "A critical microservice is experiencing cascading failures — walk us through your incident response.",
-        "How would you implement Infrastructure as Code for a multi-cloud environment?",
-        "Describe how you would set up comprehensive monitoring and alerting for a microservices platform.",
-        "How do you balance developer velocity with security compliance in a DevSecOps pipeline?",
-    ],
-    "real": [
-        "Architect a zero-downtime deployment pipeline for a financial-grade microservices platform.",
-        "You discover a lateral-movement attempt in your cluster. Walk us through your incident response playbook.",
-        "Your CTO asks you to cut cloud spend by 30% while maintaining 99.95% availability. Detail your strategy.",
-        "Explain how you would migrate a monolith to event-driven microservices with data consistency guarantees.",
-        "Design a multi-region disaster-recovery strategy for a real-time payments SaaS. Include RTO/RPO targets.",
-        "Implement a comprehensive DevSecOps pipeline balancing security scanning, velocity, and compliance.",
-        "Onboard 50 microservices to a service mesh. Cover technical approach, org buy-in, and risk mitigation.",
-    ],
+    "ice_breaker": "Tell me about a project you're really proud of from your recent work. What was your specific contribution?",
+    "resume_validation": "Walk me through your day-to-day responsibilities in your current or most recent role. What tools and processes do you use daily?",
+    "technical_deep_dive": "How would you design a CI/CD pipeline for a microservices architecture with 15 services? Walk me through end to end.",
+    "scenario_based": "It's 2 AM. PagerDuty fires — your main API gateway is returning 503s for 40% of requests. Walk me through your first 15 minutes.",
+    "behavioral": "Tell me about a time you had to make a tough technical decision under pressure. What factors did you weigh?",
+    "closing": "If you could redesign the infrastructure at your last company from scratch, what would you change first and why?",
 }
 
 
@@ -76,15 +168,18 @@ class EvaluationResult:
     follow_up_question: str | None
 
 
-# ─── Generate Introduction ────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  Generate Introduction (Phase 1)
+# ═══════════════════════════════════════════════════════════════════
 
 async def generate_introduction(
     candidate_name: str,
     target_role: str,
     interview_mode: str,
+    difficulty_level: str = "mid",
     resume_summary: str | None = None,
 ) -> str:
-    """Generate the AI interviewer's opening introduction."""
+    """Generate the AI interviewer's opening introduction (Phase 1)."""
     total_q = QUESTION_COUNTS.get(interview_mode, 5)
 
     resume_section = ""
@@ -95,10 +190,11 @@ async def generate_introduction(
 
     prompt = INTRODUCTION_PROMPT.format(
         target_role=target_role,
-        interview_mode="practice" if interview_mode != "real" else "enterprise assessment",
+        interview_mode="practice" if interview_mode != "enterprise" else "enterprise assessment",
         candidate_name=candidate_name,
         total_questions=total_q,
         resume_section=resume_section,
+        difficulty_level=difficulty_level,
     )
 
     try:
@@ -107,27 +203,39 @@ async def generate_introduction(
         return intro.strip()
     except Exception as e:
         logger.warning(f"LLM introduction generation failed: {e}")
-        mode_label = "Enterprise Assessment" if interview_mode == "real" else "Practice Session"
+        mode_label = "Enterprise Assessment" if interview_mode == "enterprise" else "Practice Session"
         return (
             f"Hello {candidate_name}! I'm Aria, your AI technical interviewer at VAREX. "
             f"I'll be conducting your {mode_label} for the {target_role} position today. "
-            f"We'll go through {total_q} questions covering technical depth, real-world scenarios, "
-            f"and problem-solving. Take your time with each answer — depth and specifics matter. Let's begin!"
+            f"We'll go through {total_q} questions covering real-world scenarios, "
+            f"technical depth, and problem-solving. Take your time — depth and specifics matter. "
+            f"I'm looking for what YOU actually did, not just what the team did. Let's begin!"
         )
 
 
-# ─── Generate Question ───────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  Generate Question (Phases 2–7)
+# ═══════════════════════════════════════════════════════════════════
 
 async def generate_question(
     candidate_name: str,
     target_role: str,
     interview_mode: str,
     turn_number: int,
+    difficulty_level: str = "mid",
     resume_summary: str | None = None,
     previous_turns: list[dict] | None = None,
-) -> str:
-    """Generate the next contextual interview question."""
+) -> tuple[str, str]:
+    """
+    Generate the next contextual interview question.
+
+    Returns:
+        Tuple of (question_text, question_phase)
+    """
     total_q = QUESTION_COUNTS.get(interview_mode, 5)
+    phase = get_question_phase(turn_number, total_q)
+    phase_instruction = PHASE_INSTRUCTIONS.get(phase, PHASE_INSTRUCTIONS["technical_deep_dive"])
+    difficulty_instruction = DIFFICULTY_INSTRUCTIONS.get(difficulty_level, DIFFICULTY_INSTRUCTIONS["mid"])
 
     # Build previous Q&A context
     previous_qa = "None yet (this is the first question)."
@@ -159,20 +267,24 @@ async def generate_question(
         resume_summary=resume_summary or "Not provided",
         previous_qa=previous_qa,
         training_context=training_context,
+        phase_instruction=phase_instruction,
+        difficulty_instruction=difficulty_instruction,
+        question_phase=phase,
     )
 
     try:
         provider = get_llm_provider()
         question = await provider.complete(INTERVIEWER_PERSONA, prompt, temperature=0.5)
-        return question.strip()
+        return question.strip(), phase
     except Exception as e:
         logger.warning(f"LLM question generation failed: {e}. Using fallback.")
-        fb = FALLBACK_QUESTIONS.get(interview_mode, FALLBACK_QUESTIONS["mock_free"])
-        idx = min(turn_number - 1, len(fb) - 1)
-        return fb[idx]
+        fallback = FALLBACK_QUESTIONS.get(phase, FALLBACK_QUESTIONS["technical_deep_dive"])
+        return fallback, phase
 
 
-# ─── Evaluate Answer ─────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  Evaluate Answer
+# ═══════════════════════════════════════════════════════════════════
 
 async def evaluate_answer(
     candidate_name: str,
@@ -185,7 +297,6 @@ async def evaluate_answer(
     resume_summary: str | None = None,
 ) -> EvaluationResult:
     """Evaluate a candidate's answer using multi-criteria AI scoring."""
-    # Inject real-world scoring rubric context
     scoring_context = format_scoring_context_for_prompt(question)
 
     prompt = EVALUATION_PROMPT.format(
@@ -224,7 +335,9 @@ async def evaluate_answer(
         return _fallback_score(answer)
 
 
-# ─── Generate Final Report ───────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
+#  Generate Final Report
+# ═══════════════════════════════════════════════════════════════════
 
 async def generate_report(
     candidate_name: str,
