@@ -32,6 +32,12 @@ export default function HirePage() {
           className="inline-block rounded-lg bg-sky-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 hover:bg-sky-400">
           Start Hiring Now
         </Link>
+        <div className="mt-3">
+          <Link href="/ai-interview"
+            className="inline-block rounded-lg border border-slate-700 px-6 py-3 text-sm font-semibold text-slate-200 hover:border-sky-500 hover:text-white">
+            Launch AI Interview App
+          </Link>
+        </div>
       </header>
 
       <section className="grid gap-6 md:grid-cols-3">

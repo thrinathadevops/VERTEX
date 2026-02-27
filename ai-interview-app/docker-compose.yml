@@ -1,0 +1,55 @@
+services:
+  ai_interview_db:
+    image: postgres:16-alpine
+    container_name: ai_interview_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AI_INTERVIEW_DB:-ai_interview_db}
+      POSTGRES_USER: ${AI_INTERVIEW_DB_USER:-ai_interview}
+      POSTGRES_PASSWORD: ${AI_INTERVIEW_DB_PASSWORD:-ai_interview_password}
+    volumes:
+      - ai_interview_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${AI_INTERVIEW_DB_USER:-ai_interview}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai_interview_backend:
+    build:
+      context: ./backend
+    container_name: ai_interview_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${AI_INTERVIEW_DATABASE_URL:-postgresql+psycopg2://ai_interview:ai_interview_password@ai_interview_db:5432/ai_interview_db}
+      ALLOWED_ORIGINS: ${AI_INTERVIEW_ALLOWED_ORIGINS:-http://localhost:3010,http://localhost:3000}
+    depends_on:
+      ai_interview_db:
+        condition: service_healthy
+    expose:
+      - "8010"
+
+  ai_interview_frontend:
+    build:
+      context: ./frontend
+    container_name: ai_interview_frontend
+    restart: unless-stopped
+    depends_on:
+      - ai_interview_backend
+    expose:
+      - "3000"
+
+  ai_interview_web:
+    image: nginx:alpine
+    container_name: ai_interview_web
+    restart: unless-stopped
+    ports:
+      - "3010:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - ai_interview_frontend
+      - ai_interview_backend
+
+volumes:
+  ai_interview_postgres_data:

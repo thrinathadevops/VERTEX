@@ -13,7 +13,7 @@ from app.models.portfolio    import Project       # noqa: F401
 from app.models.team         import TeamMember    # noqa: F401
 from app.models.certification import Certification, Achievement  # noqa: F401
 from app.models.faq          import FAQ           # noqa: F401
-from app.models.interview_models import (         # noqa: F401  FIX: was interview.py
+from app.ai_interview.models.interview_models import (  # noqa: F401
     JobDescription,
     CandidateProfile,
     InterviewSession,

@@ -49,9 +49,9 @@ from app.api.v1 import (
     certifications,
     faq,
     analytics,
-    interview,
     webhooks,
 )
+from app.ai_interview.api.v1 import interview as ai_interview
 
 API_V1 = "/api/v1"
 
@@ -66,7 +66,7 @@ app.include_router(team.router,           prefix=f"{API_V1}/team",          tags
 app.include_router(certifications.router, prefix=f"{API_V1}/certifications",tags=["Certifications"])
 app.include_router(faq.router,            prefix=f"{API_V1}/faq",           tags=["FAQ"])
 app.include_router(analytics.router,      prefix=f"{API_V1}/analytics",     tags=["Analytics"])
-app.include_router(interview.router,      prefix=f"{API_V1}/interview",     tags=["Interview"])
+app.include_router(ai_interview.router,   prefix=f"{API_V1}/interview",     tags=["Interview"])
 app.include_router(webhooks.router,       prefix=f"{API_V1}/webhooks",      tags=["Webhooks"])
 
 

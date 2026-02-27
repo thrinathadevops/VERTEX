@@ -345,6 +345,9 @@ export default function HomePage() {
                   <Link href="/hire" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5">
                     Explore Talent Solutions <ArrowRight className="w-4 h-4" />
                   </Link>
+                  <Link href="/ai-interview" className="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
+                    Open AI Interview App
+                  </Link>
                   <Link href="/contact" className="inline-flex items-center gap-2 border border-slate-600 hover:border-sky-500 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
                     Book Free Consultation
                   </Link>

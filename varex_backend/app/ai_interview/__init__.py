@@ -1,0 +1,2 @@
+"""AI Interview application module."""
+
