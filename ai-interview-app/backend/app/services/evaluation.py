@@ -23,7 +23,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai import engine as ai_engine
-from ..models import InterviewSession, InterviewTurn
+from ..models import AntiCheatEvent, InterviewSession, InterviewTurn
+from .ai_text_detector import analyze_answer_for_ai
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,81 @@ async def evaluate_answer_background(
         turn.strengths = json.dumps(evaluation.strengths)
         turn.evaluation_status = "evaluated"
         db.commit()
+
+        # ── Layer 3: AI-Generated Text Detection ──────────────
+        try:
+            # Load previous answers for consistency analysis
+            prev_turns = db.scalars(
+                select(InterviewTurn)
+                .where(
+                    InterviewTurn.session_id == turn.session_id,
+                    InterviewTurn.turn_number < turn_number,
+                    InterviewTurn.answer.is_not(None),
+                )
+                .order_by(InterviewTurn.turn_number.asc())
+            ).all()
+            prev_answers = [t.answer for t in prev_turns if t.answer]
+
+            ai_detection = analyze_answer_for_ai(
+                answer=answer,
+                time_taken_seconds=turn.time_taken_seconds,
+                previous_answers=prev_answers if prev_answers else None,
+            )
+
+            # Store AI detection results
+            turn.ai_detection_result = json.dumps({
+                "ai_probability": ai_detection.ai_probability,
+                "confidence": ai_detection.confidence,
+                "verdict": ai_detection.verdict,
+                "explanation": ai_detection.explanation,
+                "signals": ai_detection.signals,
+            })
+            turn.ai_probability = ai_detection.ai_probability
+
+            # Apply score penalty if AI detected
+            if ai_detection.penalty_multiplier < 1.0:
+                original_score = turn.score
+                turn.score = round(turn.score * ai_detection.penalty_multiplier, 1)
+                turn.ai_penalty_applied = True
+                turn.feedback = (
+                    f"{turn.feedback}\n\n"
+                    f"⚠️ AI-ASSISTANCE FLAG: {ai_detection.explanation} "
+                    f"(Score adjusted: {original_score} → {turn.score})"
+                )
+
+                # Record anti-cheat event
+                session = db.get(InterviewSession, turn.session_id)
+                if session:
+                    event_type = (
+                        "ai_text_detected"
+                        if ai_detection.verdict == "likely_ai"
+                        else "paste_detected"
+                    )
+                    db.add(AntiCheatEvent(
+                        session_id=session.id,
+                        event_type=event_type,
+                        severity="critical" if ai_detection.verdict == "likely_ai" else "warning",
+                        details=(
+                            f"Turn {turn_number}: {ai_detection.explanation} "
+                            f"(probability: {ai_detection.ai_probability:.0%})"
+                        ),
+                    ))
+                    session.ai_violations_count += 1
+                    deduction = 20 if ai_detection.verdict == "likely_ai" else 10
+                    session.integrity_score = max(0, session.integrity_score - deduction)
+                    if session.integrity_score < 70:
+                        session.suspicious_activity = True
+
+                logger.warning(
+                    f"Turn {turn_id}: AI detection verdict={ai_detection.verdict} "
+                    f"probability={ai_detection.ai_probability:.0%}"
+                )
+
+            db.commit()
+
+        except Exception as ai_err:
+            logger.warning(f"AI text detection failed for turn {turn_id}: {ai_err}")
+            # Non-critical — don't block evaluation
 
         # ── Check if all turns are evaluated → generate report ─
         session = db.get(InterviewSession, turn.session_id)

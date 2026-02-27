@@ -39,7 +39,12 @@ from ..schemas import (
     SessionCreate,
     SessionResponse,
 )
-from ..services.anti_cheat import get_session_anti_cheat_summary, record_event
+from ..services.anti_cheat import (
+    check_proctor_health,
+    get_session_anti_cheat_summary,
+    record_event,
+    record_proctor_heartbeat,
+)
 from ..services.evaluation import evaluate_answer_background
 from ..services.interview_timer import (
     check_question_timeout,
@@ -543,10 +548,51 @@ def record_anti_cheat_event(
     return result
 
 
-@router.get("/session/{session_id}/anti-cheat", response_model=AntiCheatSummary)
+@router.get("/session/{session_id}/anti-cheat")
 def get_anti_cheat_summary(session_id: str, db: Session = Depends(get_db)):
-    """Get anti-cheat summary for a session."""
+    """Get comprehensive anti-cheat summary for a session."""
     result = get_session_anti_cheat_summary(db, session_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ═════════════════════════════════════════════════════════════════
+#  PROCTOR AGENT ENDPOINTS (OS-Level Anti-Cheat)
+# ═════════════════════════════════════════════════════════════════
+
+@router.post("/session/{session_id}/proctor-heartbeat")
+def proctor_heartbeat(
+    session_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """
+    Receive heartbeat from the desktop proctoring agent.
+    The agent sends scan results (running processes, network connections,
+    active windows) every 10 seconds.
+    """
+    result = record_proctor_heartbeat(
+        db=db,
+        session_id=session_id,
+        heartbeat_data=payload,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/session/{session_id}/proctor-health")
+def proctor_health(
+    session_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Check if the proctoring agent is still connected.
+    Called by frontend to show proctor status badge.
+    If proctor stops sending heartbeats, it's flagged.
+    """
+    result = check_proctor_health(db, session_id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -587,8 +633,14 @@ def get_session_status(session_id: str, db: Session = Depends(get_db)):
         "evaluated": evaluated,
         "all_evaluated": evaluated == answered and answered > 0,
         "timer": timer,
+        # Anti-cheat status
         "suspicious_activity": session.suspicious_activity,
         "tab_switch_count": session.tab_switch_count,
+        "ai_violations_count": session.ai_violations_count,
+        "integrity_score": session.integrity_score,
+        # Proctor agent status
+        "proctor_connected": session.proctor_connected,
+        "proctor_heartbeat_count": session.proctor_heartbeat_count,
     }
 
 
@@ -680,12 +732,16 @@ async def get_report(session_id: str, db: Session = Depends(get_db)):
     elif average_score >= 7.0:
         recommendation = "Review"
 
-    # Anti-cheat summary
+    # Anti-cheat summary (enhanced with proctor + AI detection)
     anti_cheat = None
-    if session.suspicious_activity or session.tab_switch_count > 0:
+    if session.suspicious_activity or session.tab_switch_count > 0 or session.ai_violations_count > 0:
         anti_cheat = {
             "tab_switches": session.tab_switch_count,
+            "ai_violations": session.ai_violations_count,
+            "integrity_score": session.integrity_score,
             "suspicious": session.suspicious_activity,
+            "proctor_was_connected": session.proctor_connected or session.proctor_heartbeat_count > 0,
+            "proctor_heartbeats": session.proctor_heartbeat_count,
         }
 
     return ReportResponse(

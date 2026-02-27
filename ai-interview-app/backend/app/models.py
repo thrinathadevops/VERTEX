@@ -160,12 +160,33 @@ class InterviewSession(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # ── Anti-Cheat ────────────────────────────────────────────
+    # ── Anti-Cheat (Browser Level) ─────────────────────────────
     tab_switch_count: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False
     )
     suspicious_activity: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
+    )
+
+    # ── Anti-Cheat (OS-Level Proctor Agent) ──────────────────
+    proctor_connected: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    proctor_heartbeat_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    proctor_last_heartbeat: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ai_violations_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    proctor_environment: Mapped[str | None] = mapped_column(
+        Text, nullable=True  # JSON: VM detection, monitors, remote desktop
+    )
+    # 0-100 integrity score: 100 = fully clean, 0 = definite cheating
+    integrity_score: Mapped[int] = mapped_column(
+        Integer, default=100, nullable=False
     )
 
     # ── Timestamps ────────────────────────────────────────────
@@ -232,6 +253,17 @@ class InterviewTurn(Base):
     )
     time_taken_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # ── AI-Generated Text Detection ──────────────────────────
+    ai_detection_result: Mapped[str | None] = mapped_column(
+        Text, nullable=True  # JSON: full AI detection analysis
+    )
+    ai_probability: Mapped[float | None] = mapped_column(
+        Float, nullable=True  # 0.0 = human, 1.0 = AI
+    )
+    ai_penalty_applied: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+
     # ── Timestamps ────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -254,8 +286,17 @@ class AntiCheatEvent(Base):
         index=True,
     )
 
-    # "tab_switch" | "window_blur" | "copy_paste" | "right_click"
-    event_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Browser-level: "tab_switch" | "window_blur" | "copy_paste" | "right_click"
+    # OS-level (proctor): "ai_app_detected" | "ai_network_connection" |
+    #   "non_browser_window" | "ai_browser_tab" | "virtual_machine_detected" |
+    #   "remote_desktop_detected" | "multiple_monitors_detected" |
+    #   "proctor_started" | "proctor_stopped" | "proctor_heartbeat"
+    # AI text: "ai_text_detected" | "paste_detected"
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    # "info" | "warning" | "critical"
+    severity: Mapped[str] = mapped_column(
+        String(20), default="warning", nullable=False
+    )
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

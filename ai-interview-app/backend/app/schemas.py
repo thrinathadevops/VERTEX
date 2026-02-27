@@ -186,15 +186,34 @@ class ResumeUploadResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════
 
 class AntiCheatEventCreate(BaseModel):
-    event_type: str = Field(pattern="^(tab_switch|window_blur|copy_paste|right_click)$")
+    event_type: str = Field(
+        pattern=(
+            "^(tab_switch|window_blur|copy_paste|right_click"
+            "|ai_app_detected|ai_network_connection|non_browser_window"
+            "|ai_browser_tab|virtual_machine_detected|remote_desktop_detected"
+            "|multiple_monitors_detected|proctor_started|proctor_stopped"
+            "|proctor_disconnected|ai_text_detected|paste_detected)$"
+        )
+    )
     details: str | None = None
 
 
 class AntiCheatSummary(BaseModel):
     session_id: str
+    # Browser-level
     tab_switch_count: int
-    total_events: int
+    # OS-level proctor
+    proctor_connected: bool
+    proctor_heartbeat_count: int
+    proctor_environment: dict | None = None
+    ai_violations_count: int
+    # Aggregated
+    integrity_score: int
+    integrity_grade: str
     suspicious: bool
+    total_events: int
+    critical_events: int
+    warning_events: int
     events: list[dict]
 
 
