@@ -18,7 +18,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col gap-0 pb-0">
+    <div className="flex flex-col gap-8 md:gap-10 pb-4">
 
       {/* ═══════════════════════════════════════════════════════════
           HERO SECTION — Full-bleed with animated background
@@ -129,7 +129,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           TRUST BAR — Key capabilities
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-16 border-y border-slate-800/50 bg-slate-950">
+      <section className="relative overflow-hidden py-16 border-y border-slate-800/50 bg-slate-950 rounded-2xl">
         <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
             {
@@ -175,7 +175,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SERVICES SECTION — What We Do
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-16 bg-slate-950">
+      <section className="relative overflow-hidden py-16 bg-slate-950 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4">
           <AnimateIn className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
@@ -236,7 +236,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           ABOUT SECTION — with image
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-slate-900/50 border-y border-slate-800/50">
+      <section className="relative overflow-hidden py-24 bg-slate-900/50 border-y border-slate-800/50 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
           {/* Left: Content */}
           <div className="lg:w-1/2 space-y-6">
@@ -301,7 +301,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           WHY VAREX — Numbers & CTA
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-slate-950">
+      <section className="relative overflow-hidden py-24 bg-slate-950 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4">
           <AnimateIn className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">Why Choose VAREX</h2>
@@ -361,7 +361,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           TESTIMONIALS
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-slate-900/30 border-y border-slate-800/50">
+      <section className="relative overflow-hidden py-24 bg-slate-900/30 border-y border-slate-800/50 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4">
           <Testimonials />
         </div>
@@ -370,7 +370,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           NEWSLETTER
          ═══════════════════════════════════════════════════════════ */}
-      <section className="py-24 bg-slate-950">
+      <section className="relative overflow-hidden py-24 bg-slate-950 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4">
           <NewsletterSignup />
         </div>
