@@ -218,23 +218,23 @@ const SERVICES: Record<string, {
     techStack: ["SAP S/4HANA", "SAP ECC 6.0", "ABAP", "SAP BTP", "IDOC", "RFC"],
   },
   "ai-hiring": {
-    title: "AI Hiring",
+    title: "AI Interview Platform",
     icon: "🤖",
-    tagline: "Hire the right engineer in 7 days.",
-    description: "We combine AI screening, structured competency interviews, and our pre-vetted talent pool to help you hire DevSecOps, SAP SD, and cloud engineers faster than any traditional recruiter.",
+    tagline: "AI-powered interviews that scale your hiring.",
+    description: "Our AI Interview Platform offers two modes: Mock Interviews for candidates to practice and refine their skills, and AI Interviews for Clients — fully automated enterprise-grade technical assessments with no human interviewer needed.",
     offerings: [
-      "AI-powered resume screening & skills matching",
-      "Structured technical interview design",
-      "Pre-vetted candidate shortlisting within 48 hours",
-      "Interview-to-offer playbooks for hiring managers",
-      "90-day retention guarantee",
-      "Employer branding advisory for engineering roles",
+      "Mock Interview — Candidates practice with an AI interviewer and receive instant feedback",
+      "AI Interview for Clients — Automated technical assessments for enterprise hiring",
+      "7-phase adaptive interview flow: ice-breaker, resume validation, technical deep-dive, scenario-based, behavioral, and closing",
+      "Multi-criteria AI scoring across technical accuracy, depth, communication, and problem-solving",
+      "Resume-aware contextual question generation tailored to candidate experience",
+      "Comprehensive AI-generated assessment reports with hire/reject recommendations",
     ],
     outcomes: [
-      "Time-to-hire reduced from 11 weeks to 7 days",
-      "90%+ offer acceptance rate",
-      "60% lower cost-per-hire vs traditional agencies",
-      "Pre-vetted candidates — zero wasted interview slots",
+      "Eliminate interviewer bottlenecks — run unlimited parallel assessments",
+      "Consistent, bias-free evaluation across all candidates",
+      "Detailed skill-gap analysis with actionable improvement tips",
+      "80% reduction in time-to-assess vs traditional interview panels",
     ],
     techStack: ["Proprietary AI screening", "Structured interviews", "Skills graph matching"],
   },
@@ -260,25 +260,25 @@ const SERVICES: Record<string, {
     techStack: ["SAP S/4HANA", "SAP ECC", "SAP BTP", "ABAP", "IDOC", "RFC"],
   },
   "ai-powered-hiring": {
-    title: "AI-Powered Hiring",
+    title: "AI-Powered Interview Solutions",
     icon: "🤖",
-    tagline: "Reduce hiring time, raise technical quality.",
-    description: "We combine structured AI-assisted screening with expert-led evaluation to help teams hire stronger engineers with better consistency.",
+    tagline: "Two interview modes. Zero human bottlenecks.",
+    description: "VAREX offers a dual-mode AI Interview Platform: Mock Interviews let candidates practice and improve with real-time AI feedback, while AI Interviews for Clients provide fully automated, enterprise-grade technical assessments at scale.",
     offerings: [
-      "Role-aligned screening frameworks for engineering hiring",
-      "AI-assisted candidate shortlisting and fit scoring",
-      "Technical evaluation workflows with structured rubrics",
-      "Interview calibration and decision consistency support",
-      "Hiring pipeline analytics and feedback loops",
-      "Offer-readiness guidance for critical technical roles",
+      "Mock Interview mode with AI-generated questions and instant scoring",
+      "Client Interview mode for automated enterprise hiring assessments",
+      "Configurable difficulty levels: Junior, Mid, Senior, Architect",
+      "Anti-cheat proctoring with OS-level process and network monitoring",
+      "AI-generated final reports with executive summary and recommendations",
+      "Multi-provider AI support: Gemini (free), OpenAI (production), Ollama (offline)",
     ],
     outcomes: [
-      "Shorter hiring cycles for engineering positions",
-      "Higher interview-to-offer conversion quality",
-      "More consistent and transparent technical evaluation",
-      "Reduced noise in top-of-funnel candidate screening",
+      "Run hundreds of interviews simultaneously without human interviewers",
+      "Standardized evaluation criteria across all candidates",
+      "Candidates get actionable feedback to improve technical skills",
+      "Clients receive detailed, data-driven hiring recommendations",
     ],
-    techStack: ["Structured AI screening", "Evaluation scorecards", "Role-based competency frameworks"],
+    techStack: ["AI Interview Engine", "Multi-LLM Provider", "Anti-Cheat Proctoring", "Adaptive Question Flow", "AI Scoring Rubrics"],
   },
 };
 
@@ -286,9 +286,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const s = SERVICES[params.slug];
   if (!s) return {};
   return buildMetadata({
-    title:       `${s.title} Consulting`,
+    title: `${s.title} Consulting`,
     description: s.tagline + " " + s.description.slice(0, 100),
-    path:        `/services/${params.slug}`,
+    path: `/services/${params.slug}`,
   });
 }
 

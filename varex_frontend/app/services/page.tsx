@@ -3,22 +3,22 @@ export default function ServicesPage() {
     {
       icon: "🛠",
       title: "Engineering Services",
-      items: ["Cloud Architecture Design","DevSecOps Implementation","Infrastructure Automation","Security Hardening","CI/CD Pipeline Setup"],
+      items: ["Cloud Architecture Design", "DevSecOps Implementation", "Infrastructure Automation", "Security Hardening", "CI/CD Pipeline Setup"],
     },
     {
       icon: "🛡",
       title: "Cybersecurity & Resilience",
-      items: ["DevSecOps Pipelines","Container Security","Zero Trust Architecture","Compliance & Audit (ISO 27001, SOC2)","VAPT & Threat Modelling"],
+      items: ["DevSecOps Pipelines", "Container Security", "Zero Trust Architecture", "Compliance & Audit (ISO 27001, SOC2)", "VAPT & Threat Modelling"],
     },
     {
       icon: "🗂",
       title: "SAP SD Consulting",
-      items: ["S/4HANA SD Module Implementation","Order-to-Cash Optimisation","SAP SD Integration (CRM/MM)","SAP Support & Rollouts","Pricing & Condition Configuration"],
+      items: ["S/4HANA SD Module Implementation", "Order-to-Cash Optimisation", "SAP SD Integration (CRM/MM)", "SAP Support & Rollouts", "Pricing & Condition Configuration"],
     },
     {
       icon: "🎯",
-      title: "Talent Acceleration & AI Hiring",
-      items: ["AI-driven ATS screening","Expert 30-min technical interview","Pre-vetted DevOps/Security specialists","Hire in 7 Days model","Scorecard + video recording (premium)"],
+      title: "AI-Powered Interview Platform",
+      items: ["Mock Interview — Candidates practice with AI interviewer & get instant feedback", "AI Interview for Clients — Enterprise-grade automated technical assessments", "7-phase adaptive questioning (ice-breaker to deep-dive)", "Multi-criteria AI scoring with detailed evaluation reports", "Resume-aware contextual question generation", "Anti-cheat proctoring & integrity monitoring"],
     },
   ];
 
@@ -27,7 +27,7 @@ export default function ServicesPage() {
       <header className="text-center">
         <h1 className="text-3xl font-bold mb-2">What We Do</h1>
         <p className="text-slate-300 max-w-xl mx-auto text-sm">
-          Four specialised divisions delivering engineering, security, SAP consulting, and AI-powered technical hiring.
+          Four specialised divisions delivering engineering, security, SAP consulting, and AI-powered interview solutions.
         </p>
       </header>
 

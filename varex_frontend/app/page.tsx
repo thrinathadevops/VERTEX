@@ -153,8 +153,8 @@ export default function HomePage() {
             {
               icon: <Cpu className="w-6 h-6" />,
               color: "blue",
-              title: "AI-Ready Hiring",
-              desc: "Use structured AI-assisted screening that shortens hiring cycles and improves technical quality benchmarks.",
+              title: "AI-Powered Interview Platform",
+              desc: "Two modes: Mock Interviews for candidate practice with instant AI feedback, and AI Interviews for clients — automated enterprise-grade assessments.",
             },
           ].map((f) => (
             <StaggerItem key={f.title}>
@@ -261,7 +261,7 @@ export default function HomePage() {
                 "Modern Containerization & Kubernetes Orchestration",
                 "Advanced Monitoring, Logging & Observability Solutions",
                 "Cloud Migration, Modernization & Cost Optimization",
-                "AI-Powered Engineer Vetting & Talent Solutions",
+                "AI-Powered Mock & Client Interview Platform",
                 "DevSecOps Implementation & Security Hardening",
               ].map((item) => (
                 <StaggerItem key={item}>
@@ -335,11 +335,11 @@ export default function HomePage() {
               <div className="relative z-10">
                 <Cpu className="w-12 h-12 text-sky-400 mx-auto mb-6" />
                 <h4 className="text-2xl md:text-3xl font-extrabold text-white mb-4">
-                  Need to Hire Top-Tier Talent?
+                  AI-Powered Interviews — No Human Bottlenecks
                 </h4>
                 <p className="text-slate-400 max-w-lg mx-auto mb-8">
-                  Our AI-powered screening process delivers pre-vetted freelance, remote, or full-time engineers in just 7 days.
-                  No recruitment overhead, guaranteed quality.
+                  Our AI Interview Platform offers two modes: Mock Interviews for candidates to practice and get instant feedback,
+                  and AI Interviews for Clients — fully automated enterprise-grade technical assessments at scale.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Link href="/hire" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5">
