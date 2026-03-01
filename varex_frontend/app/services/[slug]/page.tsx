@@ -2,7 +2,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { buildMetadata } from "@/lib/metadata";
-import type { ComponentProps } from "react";
 import {
   ArrowRightLeft,
   Cloud,
@@ -327,7 +326,7 @@ export async function generateStaticParams() {
 export default function ServiceDetailPage({ params }: { params: { slug: string } }) {
   const service = SERVICES[params.slug];
   if (!service) notFound();
-  const ServiceIcon = SERVICE_ICONS[service.icon] ?? BriefcaseFallback;
+  const ServiceIcon = SERVICE_ICONS[service.icon] ?? Boxes;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -410,8 +409,4 @@ export default function ServiceDetailPage({ params }: { params: { slug: string }
 
     </div>
   );
-}
-
-function BriefcaseFallback(props: ComponentProps<"svg">) {
-  return <Boxes {...props} />;
 }
