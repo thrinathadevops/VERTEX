@@ -2,6 +2,21 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { buildMetadata } from "@/lib/metadata";
+import type { ComponentProps } from "react";
+import {
+  ArrowRightLeft,
+  Cloud,
+  Package,
+  TrendingUp,
+  Shield,
+  BarChart3,
+  Landmark,
+  Cog,
+  Bot,
+  Boxes,
+  Check,
+  type LucideIcon,
+} from "lucide-react";
 
 const SERVICES: Record<string, {
   title: string; icon: string; tagline: string; description: string;
@@ -9,7 +24,7 @@ const SERVICES: Record<string, {
 }> = {
   "ci-cd-pipeline-setup": {
     title: "CI/CD Pipeline Setup",
-    icon: "🔁",
+    icon: "cicd",
     tagline: "Automate delivery from commit to production.",
     description: "We design robust CI/CD pipelines for faster, safer releases with built-in quality gates, rollback strategy, and environment controls.",
     offerings: [
@@ -30,7 +45,7 @@ const SERVICES: Record<string, {
   },
   "cloud-infrastructure-automation": {
     title: "Cloud Infrastructure Setup & Automation",
-    icon: "☁️",
+    icon: "cloud",
     tagline: "Provision secure, scalable cloud foundations.",
     description: "We build cloud-ready landing zones and automate infrastructure across AWS, Azure, and GCP with IaC best practices.",
     offerings: [
@@ -51,7 +66,7 @@ const SERVICES: Record<string, {
   },
   "containerization-orchestration": {
     title: "Containerization & Orchestration",
-    icon: "📦",
+    icon: "container",
     tagline: "Run applications reliably at scale.",
     description: "We containerize workloads and build Kubernetes platforms optimized for high availability, performance, and operational simplicity.",
     offerings: [
@@ -72,7 +87,7 @@ const SERVICES: Record<string, {
   },
   "monitoring-logging-solutions": {
     title: "Monitoring & Logging Solutions",
-    icon: "📈",
+    icon: "monitoring",
     tagline: "Observe, alert, and resolve faster.",
     description: "We implement real-time observability stacks to detect issues early, reduce downtime, and improve incident response maturity.",
     offerings: [
@@ -93,7 +108,7 @@ const SERVICES: Record<string, {
   },
   "devsecops-implementation": {
     title: "DevSecOps Implementation",
-    icon: "🛡",
+    icon: "security",
     tagline: "Embed security in every delivery stage.",
     description: "We integrate security scanning, policy enforcement, and compliance controls directly into your software delivery lifecycle.",
     offerings: [
@@ -114,7 +129,7 @@ const SERVICES: Record<string, {
   },
   "capacity-planning-optimization": {
     title: "Capacity Planning & Optimization",
-    icon: "📊",
+    icon: "analytics",
     tagline: "Balance performance, scale, and spend.",
     description: "We optimize cloud, Kubernetes, and on-prem workloads for cost efficiency, throughput, and long-term capacity resilience.",
     offerings: [
@@ -135,7 +150,7 @@ const SERVICES: Record<string, {
   },
   "finops-cost-governance": {
     title: "FinOps & Cost Governance",
-    icon: "💹",
+    icon: "finops",
     tagline: "Control cloud spend without slowing delivery.",
     description: "We establish FinOps operating models that give engineering and finance shared visibility into cloud costs, budgets, and optimization actions.",
     offerings: [
@@ -156,7 +171,7 @@ const SERVICES: Record<string, {
   },
   devsecops: {
     title: "DevSecOps",
-    icon: "⚙️",
+    icon: "cog",
     tagline: "Secure by design, fast by default.",
     description: "We embed security into your CI/CD pipelines, migrate workloads to Kubernetes, and implement GitOps-driven delivery. From zero to production-grade infrastructure in weeks, not months.",
     offerings: [
@@ -177,7 +192,7 @@ const SERVICES: Record<string, {
   },
   cybersecurity: {
     title: "Cybersecurity",
-    icon: "🛡",
+    icon: "security",
     tagline: "Find it before attackers do.",
     description: "Our certified security engineers conduct penetration tests, architect zero-trust networks, and build compliance programmes for fintech, healthtech, and SaaS companies.",
     offerings: [
@@ -198,7 +213,7 @@ const SERVICES: Record<string, {
   },
   "sap-sd": {
     title: "SAP SD",
-    icon: "📦",
+    icon: "container",
     tagline: "SAP delivery without the delays.",
     description: "VAREX SAP SD consultants have delivered 30+ order-to-cash implementations across manufacturing, FMCG, and pharma. We specialise in complex integrations, migration rescues, and billing optimisation.",
     offerings: [
@@ -219,7 +234,7 @@ const SERVICES: Record<string, {
   },
   "ai-hiring": {
     title: "AI Interview Platform",
-    icon: "🤖",
+    icon: "ai",
     tagline: "AI-powered interviews that scale your hiring.",
     description: "Our AI Interview Platform offers two modes: Mock Interviews for candidates to practice and refine their skills, and AI Interviews for Clients — fully automated enterprise-grade technical assessments with no human interviewer needed.",
     offerings: [
@@ -240,7 +255,7 @@ const SERVICES: Record<string, {
   },
   "sap-solutions": {
     title: "SAP Solutions",
-    icon: "🗂",
+    icon: "sap",
     tagline: "Enterprise SAP execution with business alignment.",
     description: "We provide SAP consulting, implementation support, and integration services to streamline enterprise operations and process continuity.",
     offerings: [
@@ -261,7 +276,7 @@ const SERVICES: Record<string, {
   },
   "ai-powered-hiring": {
     title: "AI-Powered Interview Solutions",
-    icon: "🤖",
+    icon: "ai",
     tagline: "Two interview modes. Zero human bottlenecks.",
     description: "VAREX offers a dual-mode AI Interview Platform: Mock Interviews let candidates practice and improve with real-time AI feedback, while AI Interviews for Clients provide fully automated, enterprise-grade technical assessments at scale.",
     offerings: [
@@ -282,6 +297,19 @@ const SERVICES: Record<string, {
   },
 };
 
+const SERVICE_ICONS: Record<string, LucideIcon> = {
+  cicd: ArrowRightLeft,
+  cloud: Cloud,
+  container: Package,
+  monitoring: TrendingUp,
+  security: Shield,
+  analytics: BarChart3,
+  finops: Landmark,
+  cog: Cog,
+  ai: Bot,
+  sap: Boxes,
+};
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const s = SERVICES[params.slug];
   if (!s) return {};
@@ -299,6 +327,7 @@ export async function generateStaticParams() {
 export default function ServiceDetailPage({ params }: { params: { slug: string } }) {
   const service = SERVICES[params.slug];
   if (!service) notFound();
+  const ServiceIcon = SERVICE_ICONS[service.icon] ?? BriefcaseFallback;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -313,7 +342,9 @@ export default function ServiceDetailPage({ params }: { params: { slug: string }
       {/* Header */}
       <header className="space-y-3">
         <div className="flex items-center gap-3">
-          <span className="text-4xl">{service.icon}</span>
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-sky-300">
+            <ServiceIcon className="h-6 w-6" />
+          </div>
           <h1 className="text-3xl font-bold">{service.title}</h1>
         </div>
         <p className="text-lg text-sky-300 font-medium">{service.tagline}</p>
@@ -339,7 +370,7 @@ export default function ServiceDetailPage({ params }: { params: { slug: string }
           <ul className="space-y-2">
             {service.outcomes.map((o) => (
               <li key={o} className="flex items-start gap-2 text-xs text-slate-300">
-                <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>{o}
+                <Check className="h-3.5 w-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />{o}
               </li>
             ))}
           </ul>
@@ -379,4 +410,8 @@ export default function ServiceDetailPage({ params }: { params: { slug: string }
 
     </div>
   );
+}
+
+function BriefcaseFallback(props: ComponentProps<"svg">) {
+  return <Boxes {...props} />;
 }

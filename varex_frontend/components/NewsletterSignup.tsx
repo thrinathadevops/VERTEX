@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { submitLead } from "@/lib/api";
 import AnimateIn from "@/components/AnimateIn";
-import { Mail, Lock, Users, Send } from "lucide-react";
+import { Mail, Lock, Users, Send, CheckCircle2 } from "lucide-react";
 
 export default function NewsletterSignup() {
   const [email, setEmail] = useState("");
@@ -69,7 +69,7 @@ export default function NewsletterSignup() {
 
           {state === "success" ? (
             <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 px-6 py-6 space-y-2">
-              <p className="text-3xl">🎉</p>
+              <CheckCircle2 className="w-8 h-8 text-emerald-300 mx-auto" />
               <p className="text-base font-bold text-emerald-300">You&apos;re in!</p>
               <p className="text-sm text-slate-300">
                 Check your inbox for a confirmation. First issue lands this week.

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 
 interface Props {
   requiredPlan?: "premium" | "enterprise";
@@ -25,7 +26,7 @@ export default function UpgradeGate({ requiredPlan = "premium", children, userRo
       </div>
       {/* Overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-6 text-center">
-        <span className="text-2xl mb-2">🔒</span>
+        <Lock className="h-6 w-6 mb-2 text-sky-300" />
         <h3 className="text-sm font-semibold mb-1">
           {requiredPlan === "enterprise" ? "Enterprise" : "Premium"} content
         </h3>

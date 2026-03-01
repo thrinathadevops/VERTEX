@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Cookie } from "lucide-react";
 
 type Consent = "accepted" | "rejected" | null;
 
@@ -42,7 +43,10 @@ export default function CookieBanner() {
         z-50 rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-2xl
         shadow-black/40 animate-in slide-in-from-bottom-4 duration-300"
     >
-      <p className="text-xs font-semibold text-slate-100 mb-1">🍪 Cookies</p>
+      <p className="text-xs font-semibold text-slate-100 mb-1 inline-flex items-center gap-1.5">
+        <Cookie className="h-3.5 w-3.5 text-amber-300" />
+        Cookies
+      </p>
       <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
         We use strictly necessary cookies for authentication, and optional analytics
         cookies to improve the platform. See our{" "}

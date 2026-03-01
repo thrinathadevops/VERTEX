@@ -1,22 +1,24 @@
+import { Bot, Briefcase, Shield, Boxes } from "lucide-react";
+
 export default function ServicesPage() {
   const divisions = [
     {
-      icon: "🛠",
+      icon: Briefcase,
       title: "Engineering Services",
       items: ["Cloud Architecture Design", "DevSecOps Implementation", "Infrastructure Automation", "Security Hardening", "CI/CD Pipeline Setup"],
     },
     {
-      icon: "🛡",
+      icon: Shield,
       title: "Cybersecurity & Resilience",
       items: ["DevSecOps Pipelines", "Container Security", "Zero Trust Architecture", "Compliance & Audit (ISO 27001, SOC2)", "VAPT & Threat Modelling"],
     },
     {
-      icon: "🗂",
+      icon: Boxes,
       title: "SAP SD Consulting",
       items: ["S/4HANA SD Module Implementation", "Order-to-Cash Optimisation", "SAP SD Integration (CRM/MM)", "SAP Support & Rollouts", "Pricing & Condition Configuration"],
     },
     {
-      icon: "🎯",
+      icon: Bot,
       title: "AI-Powered Interview Platform",
       items: ["Mock Interview — Candidates practice with AI interviewer & get instant feedback", "AI Interview for Clients — Enterprise-grade automated technical assessments", "7-phase adaptive questioning (ice-breaker to deep-dive)", "Multi-criteria AI scoring with detailed evaluation reports", "Resume-aware contextual question generation", "Anti-cheat proctoring & integrity monitoring"],
     },
@@ -34,7 +36,9 @@ export default function ServicesPage() {
       <section className="grid gap-6 md:grid-cols-2">
         {divisions.map((div) => (
           <div key={div.title} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <span className="text-3xl mb-3 block">{div.icon}</span>
+            <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300">
+              <div.icon className="h-5 w-5" />
+            </div>
             <h2 className="text-base font-semibold mb-3">{div.title}</h2>
             <ul className="space-y-1.5">
               {div.items.map((item) => (

@@ -6,39 +6,33 @@ import { useRouter } from "next/navigation";
 
 export default function AIInterviewRedirect() {
   const [status, setStatus] = useState<"checking" | "up" | "down">("checking");
+  const [targetUrl, setTargetUrl] = useState<string>("");
   const router = useRouter();
 
   useEffect(() => {
-    // Determine the AI app URL dynamically based on current host (assumes AI app runs on port 3010)
-    const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
-    const aiAppUrl = `http://${host}:3010`;
-
     const checkHealth = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 sec timeout
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
 
-        // Ping the health endpoint exposed by Nginx in the AI Interview app
-        const res = await fetch(`${aiAppUrl}/health`, {
+        const res = await fetch(`/api/ai-interview/status`, {
           signal: controller.signal,
           method: "GET",
-          headers: {
-            Accept: "application/json"
-          }
+          headers: { Accept: "application/json" },
         });
         clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
-          if (data.status === "ok") {
+          if (data.ok && data.launchUrl) {
+            setTargetUrl(data.launchUrl);
             setStatus("up");
-            // Redirect to the actual AI application frontend
-            window.location.href = aiAppUrl;
+            window.location.href = data.launchUrl;
             return;
           }
         }
 
-        throw new Error("Service not healthy");
+        throw new Error("AI Interview service unavailable");
       } catch (error) {
         console.error("AI Interview health check failed:", error);
         setStatus("down");
@@ -94,7 +88,7 @@ export default function AIInterviewRedirect() {
           </li>
           <li className="flex justify-between">
             <span>Endpoint:</span>
-            <span>/health</span>
+            <span>{targetUrl ? `${targetUrl}/health` : "/api/ai-interview/status"}</span>
           </li>
           <li className="flex justify-between pt-2 border-t border-slate-800/60">
             <span>Last Status:</span>

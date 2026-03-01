@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 
-function resolveCandidateUrls(): string[] {
+function resolveHostBasedUrl(requestUrl: string): string | null {
+  try {
+    const url = new URL(requestUrl);
+    return `${url.protocol}//${url.hostname}:3010`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCandidateUrls(requestUrl: string): string[] {
+  const hostBased = resolveHostBasedUrl(requestUrl);
   const raw = [
     process.env.AI_INTERVIEW_APP_URL,
     process.env.NEXT_PUBLIC_AI_INTERVIEW_APP_URL,
+    hostBased,
     "http://localhost:3010",
   ].filter(Boolean) as string[];
 
@@ -27,8 +38,8 @@ async function checkHealth(baseUrl: string): Promise<boolean> {
   }
 }
 
-export async function GET() {
-  const urls = resolveCandidateUrls();
+export async function GET(request: Request) {
+  const urls = resolveCandidateUrls(request.url);
 
   for (const url of urls) {
     const healthy = await checkHealth(url);

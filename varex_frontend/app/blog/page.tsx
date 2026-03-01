@@ -6,13 +6,14 @@ import Link from "next/link";
 import { listFreeContent, listPremiumContent } from "@/lib/api";
 import { getUserFromCookies } from "@/lib/auth";
 import type { ContentItem } from "@/lib/types";
+import { Bot, Boxes, Calendar, Clock3, Cpu, Shield, Waypoints, Lock } from "lucide-react";
 
 const CATEGORIES = [
-  { slug: "devops",       label: "DevOps",       icon: "⚙️", color: "border-sky-700/50    text-sky-300"     },
-  { slug: "security",     label: "Cybersecurity", icon: "🛡",  color: "border-red-700/50    text-red-300"     },
-  { slug: "sap",          label: "SAP SD",        icon: "📦", color: "border-amber-700/50  text-amber-300"   },
-  { slug: "architecture", label: "Architecture",  icon: "🏗",  color: "border-purple-700/50 text-purple-300"  },
-  { slug: "ai_hiring",    label: "AI Hiring",     icon: "🤖", color: "border-emerald-700/50 text-emerald-300" },
+  { slug: "devops",       label: "DevOps",        icon: Cpu,      color: "border-sky-700/50 text-sky-300" },
+  { slug: "security",     label: "Cybersecurity", icon: Shield,   color: "border-red-700/50 text-red-300" },
+  { slug: "sap",          label: "SAP SD",        icon: Boxes,    color: "border-amber-700/50 text-amber-300" },
+  { slug: "architecture", label: "Architecture",  icon: Waypoints,color: "border-purple-700/50 text-purple-300" },
+  { slug: "ai_hiring",    label: "AI Hiring",     icon: Bot,      color: "border-emerald-700/50 text-emerald-300" },
 ] as const;
 
 type CategorySlug = typeof CATEGORIES[number]["slug"] | "all";
@@ -62,11 +63,12 @@ export default function BlogPage() {
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {CATEGORIES.map((cat) => {
           const count = items.filter((i) => i.category === cat.slug).length;
+          const Icon = cat.icon;
           return (
             <Link key={cat.slug} href={`/blog/${cat.slug}`}
               className={`rounded-2xl border bg-slate-900/70 p-3 hover:bg-slate-800/70
                 transition cursor-pointer space-y-1 ${cat.color.split(" ")[0]}`}>
-              <span className="text-2xl">{cat.icon}</span>
+              <Icon className="h-5 w-5" />
               <p className={`text-xs font-semibold ${cat.color.split(" ")[1]}`}>{cat.label}</p>
               <p className="text-[11px] text-slate-500">{count} article{count !== 1 ? "s" : ""}</p>
             </Link>
@@ -87,7 +89,7 @@ export default function BlogPage() {
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               filter === cat.slug ? "bg-sky-500 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
             }`}>
-            {cat.icon} {cat.label}
+            {cat.label}
           </button>
         ))}
       </div>
@@ -117,7 +119,7 @@ export default function BlogPage() {
                       px-2 py-0.5 text-[10px] font-medium mb-2
                       ${cat.color.split(" ")[0].replace("border-", "bg-").replace("/50", "/20")}
                       ${cat.color.split(" ")[1]}`}>
-                      {cat.icon} {cat.label}
+                      <cat.icon className="h-3 w-3" /> {cat.label}
                     </span>
                   )}
 
@@ -141,13 +143,20 @@ export default function BlogPage() {
                   {blurred && (
                     <div className="rounded-md border border-dashed border-sky-500/60
                       bg-sky-950/40 px-3 py-2 text-[11px] text-sky-100 mb-2">
-                      🔒 Premium — <Link href="/pricing" className="underline">upgrade to read</Link>
+                      <span className="inline-flex items-center gap-1">
+                        <Lock className="h-3 w-3" />
+                        Premium only - <Link href="/pricing" className="underline">upgrade to read</Link>
+                      </span>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 mt-auto">
-                    <span>📅 {new Date(item.created_at).toLocaleDateString("en-IN")}</span>
-                    <span>⏱ {readingMins(item.body)} min read</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {new Date(item.created_at).toLocaleDateString("en-IN")}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock3 className="h-3 w-3" /> {readingMins(item.body)} min read
+                    </span>
                   </div>
                 </article>
               </Link>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { listFreeContent, listPremiumContent } from "@/lib/api";
 import { getUserFromCookies } from "@/lib/auth";
 import type { ContentItem } from "@/lib/types";
+import { Boxes, Calendar, Clock3, Lock } from "lucide-react";
 
 export default function SAPSDBlogPage() {
   const user      = getUserFromCookies();
@@ -42,7 +43,7 @@ export default function SAPSDBlogPage() {
 
       <header className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-3xl">📦</span>
+          <Boxes className="h-7 w-7 text-amber-300" />
           <h1 className="text-2xl font-bold">SAP SD</h1>
         </div>
         <p className="text-sm text-slate-300 max-w-lg">SAP SD configuration, integration, billing, and delivery management.</p>
@@ -56,7 +57,7 @@ export default function SAPSDBlogPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-16 space-y-3">
-          <p className="text-2xl">📦</p>
+          <Boxes className="h-8 w-8 text-amber-300 mx-auto" />
           <p className="text-sm text-slate-400">No articles yet in this category.</p>
           <Link href="/blog" className="text-xs text-sky-400 hover:text-sky-300">← Back to all posts</Link>
         </div>
@@ -84,12 +85,19 @@ export default function SAPSDBlogPage() {
                   {blurred && (
                     <div className="rounded-md border border-dashed border-sky-500/60
                       bg-sky-950/40 px-3 py-2 text-[11px] text-sky-100 mb-2">
-                      🔒 Premium — <Link href="/pricing" className="underline">upgrade to read</Link>
+                      <span className="inline-flex items-center gap-1">
+                        <Lock className="h-3 w-3" />
+                        Premium only - <Link href="/pricing" className="underline">upgrade to read</Link>
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between text-[10px] text-slate-500 mt-auto">
-                    <span>📅 {new Date(item.created_at).toLocaleDateString("en-IN")}</span>
-                    <span>⏱ {readingMins(item.body)} min read</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {new Date(item.created_at).toLocaleDateString("en-IN")}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock3 className="h-3 w-3" /> {readingMins(item.body)} min read
+                    </span>
                   </div>
                 </article>
               </Link>
