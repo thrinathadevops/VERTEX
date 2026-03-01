@@ -1,0 +1,13 @@
+﻿# Local override for troubleshooting and non-production use.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
+services:
+  frontend:
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://65.0.102.249:8080
+
+  nginx:
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.local.conf:/etc/nginx/nginx.conf:ro

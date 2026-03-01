@@ -1,0 +1,96 @@
+# PATH: varex/docker-compose.yml
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: varex_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: varexdb
+      POSTGRES_USER: varex
+      POSTGRES_PASSWORD: varexpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "varex" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: varex_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./varex_backend
+      dockerfile: Dockerfile
+    container_name: varex_backend
+    restart: unless-stopped
+    env_file:
+      - ./varex_backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://varex:varexpassword@db:5432/varexdb
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./varex_backend:/app
+
+  frontend:
+    build:
+      context: ./varex_frontend
+      dockerfile: Dockerfile
+    container_name: varex_frontend
+    restart: unless-stopped
+    env_file:
+      - ./varex_frontend/.env.local
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: varex_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      - frontend
+      - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: varex_certbot
+    volumes:
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot-webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
