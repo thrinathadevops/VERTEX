@@ -94,9 +94,9 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="flex items-center justify-center h-9 w-9 rounded-lg
+                  className="flex items-center justify-center h-11 w-11 rounded-lg
                     border border-slate-700 text-slate-400
-                    hover:border-sky-500/50 hover:text-sky-400 hover:bg-sky-500/10 transition-all duration-300">
+                    hover:border-sky-500/50 hover:text-sky-400 hover:bg-sky-500/10 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
                   {s.icon}
                 </a>
               ))}
@@ -114,7 +114,7 @@ export default function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-slate-400 hover:text-sky-400 transition-colors duration-200"
+                      className="text-sm text-slate-400 hover:text-sky-400 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded-sm"
                     >
                       {link.label}
                     </Link>
@@ -132,9 +132,9 @@ export default function Footer() {
             © {year} VAREX Technologies. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-slate-500">
-            <Link href="/privacy" className="hover:text-sky-400 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-sky-400 transition-colors">Terms</Link>
-            <Link href="/refund" className="hover:text-sky-400 transition-colors">Refund</Link>
+            <Link href="/privacy" className="hover:text-sky-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded-sm">Privacy</Link>
+            <Link href="/terms" className="hover:text-sky-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded-sm">Terms</Link>
+            <Link href="/refund" className="hover:text-sky-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded-sm">Refund</Link>
             <span>Bengaluru, India</span>
           </div>
         </div>

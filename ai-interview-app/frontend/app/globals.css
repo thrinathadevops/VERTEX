@@ -4,14 +4,36 @@
 
 @layer base {
   :root {
-    --background: #F8FAFC;
-    --foreground: #020617;
+    --background: #020617;
+    --foreground: #e2e8f0;
+    --surface: #0f172a;
+    --surface-2: #152238;
+    --muted: #94a3b8;
+    --ring: #38bdf8;
   }
 
   body {
-    background-color: var(--background);
+    background:
+      radial-gradient(1200px 600px at 8% -15%, rgba(14, 165, 233, 0.2), transparent 60%),
+      radial-gradient(1200px 700px at 92% -10%, rgba(59, 130, 246, 0.16), transparent 60%),
+      linear-gradient(180deg, var(--surface), var(--background));
     color: var(--foreground);
     @apply antialiased selection:bg-[#0369A1] selection:text-white;
+    font-family: var(--font-source-sans), sans-serif;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-lexend), sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950;
   }
 }
 
@@ -21,5 +43,69 @@
     font-weight: 900;
     letter-spacing: -0.05em;
     line-height: 1;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out both;
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-slideInLeft {
+    animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-float {
+    animation: floatSoft 3.5s ease-in-out infinite;
+  }
+
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-400 { animation-delay: 400ms; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes scoreReveal {
+  from { transform: scale(0.9); opacity: 0.5; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }

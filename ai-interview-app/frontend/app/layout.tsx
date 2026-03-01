@@ -1,17 +1,17 @@
-import { Open_Sans, Poppins } from "next/font/google";
+import { Lexend, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import type { ReactNode } from "react";
 
-const openSans = Open_Sans({
+const bodyFont = Source_Sans_3({
   subsets: ["latin"],
-  variable: "--font-open-sans",
+  variable: "--font-source-sans",
   display: "swap",
 });
 
-const poppins = Poppins({
-  weight: ["400", "500", "600", "700", "900"],
+const headingFont = Lexend({
+  weight: ["500", "600", "700", "800"],
   subsets: ["latin"],
-  variable: "--font-poppins",
+  variable: "--font-lexend",
   display: "swap",
 });
 
@@ -24,7 +24,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${openSans.variable} ${poppins.variable}`}>
+    <html lang="en" className={`${bodyFont.variable} ${headingFont.variable}`}>
       <body className="font-body bg-background text-text antialiased selection:bg-cta selection:text-white">
         {children}
       </body>

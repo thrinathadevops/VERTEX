@@ -6,13 +6,43 @@
    Do NOT use @import url() here — it can fail in Docker builds. */
 
 @layer base {
+  :root {
+    --bg-0: #020617;
+    --bg-1: #0f172a;
+    --surface: #111c2f;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --brand: #3b82f6;
+    --accent: #f97316;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-slate-950 text-slate-50 antialiased;
+    @apply antialiased;
+    background:
+      radial-gradient(1200px 500px at 10% -20%, rgba(59, 130, 246, 0.18), transparent 60%),
+      radial-gradient(1000px 500px at 90% -10%, rgba(249, 115, 22, 0.12), transparent 60%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-0));
+    color: var(--text-main);
+    font-family: var(--font-source-sans), sans-serif;
+    line-height: 1.6;
     overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-lexend), sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  a,
+  button,
+  input,
+  textarea,
+  select {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950;
   }
 
   ::selection {
@@ -28,6 +58,45 @@
 
   .animation-delay-4000 {
     animation-delay: 4s;
+  }
+
+  .glass-panel {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.82));
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(24px, -28px) scale(1.08);
+  }
+  66% {
+    transform: translate(-18px, 14px) scale(0.94);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

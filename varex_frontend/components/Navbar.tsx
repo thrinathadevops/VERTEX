@@ -82,7 +82,7 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-1.5 px-2.5 lg:px-3.5 py-1.5 rounded-md text-[11px] lg:text-xs font-semibold tracking-wide transition-colors ${isActive
+                className={`flex min-h-11 items-center gap-1.5 px-2.5 lg:px-3.5 py-1.5 rounded-md text-[11px] lg:text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
                     ? "bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/40"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/70"
                   }`}
@@ -106,7 +106,7 @@ export default function Navbar() {
               </span>
               <button
                 onClick={handleLogout}
-                className="hidden sm:flex items-center gap-1.5 rounded-md border border-slate-700 hover:border-red-500 hover:text-red-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors"
+                className="hidden sm:flex min-h-11 items-center gap-1.5 rounded-md border border-slate-700 hover:border-red-500 hover:text-red-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden xl:inline">Sign out</span>
@@ -116,14 +116,14 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5 md:gap-2">
               <Link
                 href="/login"
-                className="hidden sm:flex items-center gap-1.5 rounded-md border border-slate-700 hover:border-cyan-400 hover:text-cyan-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors"
+                className="hidden sm:flex min-h-11 items-center gap-1.5 rounded-md border border-slate-700 hover:border-cyan-400 hover:text-cyan-400 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
               >
                 <LogIn className="w-4 h-4" />
                 <span className="hidden xl:inline">Sign in</span>
               </Link>
               <Link
                 href="/register"
-                className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
               >
                 <Rocket className="w-4 h-4" />
                 <span className="hidden xl:inline">Get Started</span>
@@ -134,7 +134,7 @@ export default function Navbar() {
           {/* ═══ MOBILE MENU TOGGLE ═══ */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            className="md:hidden min-h-11 min-w-11 p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
             aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           >
             {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -153,7 +153,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${isActive
+                className={`flex min-h-11 items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
                     ? "bg-slate-800 text-cyan-400"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                   }`}

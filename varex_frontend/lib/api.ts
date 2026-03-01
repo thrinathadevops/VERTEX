@@ -5,7 +5,18 @@ import type {
   FAQ, Workshop, Lead,
 } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+function resolveApiBaseUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+
+  // Browser requests should stay same-origin behind Nginx.
+  if (typeof window !== "undefined") return window.location.origin;
+
+  // Server-side fallback (Docker network).
+  return "http://backend:8000";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -216,3 +227,4 @@ export async function getInterviewReport(sessionId: string) {
 }
 
 export default api;
+

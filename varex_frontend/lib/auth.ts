@@ -8,7 +8,15 @@
 import { getMe } from "@/lib/api";
 import type { User } from "@/lib/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+function resolveApiBaseUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+
+  if (typeof window !== "undefined") return window.location.origin;
+  return "http://backend:8000";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 // Login — POST to backend, which sets httpOnly cookies
 export async function login(email: string, password: string): Promise<User> {
@@ -120,3 +128,4 @@ export async function refreshAccessToken(): Promise<boolean> {
     return false;
   }
 }
+

@@ -2,6 +2,7 @@
 
 import { motion, type Variants } from "framer-motion";
 import { type ReactNode } from "react";
+import { useReducedMotion } from "framer-motion";
 
 interface AnimateInProps {
     children: ReactNode;
@@ -42,11 +43,12 @@ export default function AnimateIn({
     once = true,
     trigger = "inView",
 }: AnimateInProps) {
+    const reduceMotion = useReducedMotion();
     const shouldAnimateOnMount = trigger === "mount";
 
     return (
         <motion.div
-            variants={getVariants(direction, duration)}
+            variants={reduceMotion ? getVariants("none", 0.01) : getVariants(direction, duration)}
             initial="hidden"
             animate={shouldAnimateOnMount ? "visible" : undefined}
             whileInView={shouldAnimateOnMount ? undefined : "visible"}
@@ -71,6 +73,7 @@ export function StaggerContainer({
     staggerDelay?: number;
     delayChildren?: number;
 }) {
+    const reduceMotion = useReducedMotion();
     return (
         <motion.div
             initial="hidden"
@@ -80,8 +83,8 @@ export function StaggerContainer({
                 hidden: {},
                 visible: {
                     transition: {
-                        staggerChildren: staggerDelay,
-                        delayChildren,
+                        staggerChildren: reduceMotion ? 0 : staggerDelay,
+                        delayChildren: reduceMotion ? 0 : delayChildren,
                     },
                 },
             }}
@@ -99,14 +102,15 @@ export function StaggerItem({
     children: ReactNode;
     className?: string;
 }) {
+    const reduceMotion = useReducedMotion();
     return (
         <motion.div
             variants={{
-                hidden: { opacity: 0, y: 30 },
+                hidden: reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30 },
                 visible: {
                     opacity: 1,
                     y: 0,
-                    transition: { duration: 0.5, ease: [0.25, 0.4, 0.25, 1] },
+                    transition: { duration: reduceMotion ? 0.01 : 0.5, ease: [0.25, 0.4, 0.25, 1] },
                 },
             }}
             className={className}

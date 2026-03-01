@@ -1,6 +1,7 @@
 "use client";
 
-import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Bot, Building2, Check, CircleHelp, Target, Zap } from "lucide-react";
 
 /* ─── Types ───────────────────────────────────────────────── */
 type InterviewMode = "mock_free" | "mock_paid" | "real";
@@ -286,7 +287,7 @@ export default function HomePage() {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 24, boxShadow: "0 0 30px rgba(14,165,233,0.3)",
             }}>
-              🤖
+              <Bot size={24} color="#ffffff" aria-hidden="true" />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#64748b", textTransform: "uppercase" }}>
               VAREX AI Interview
@@ -334,7 +335,7 @@ export default function HomePage() {
             onClick={() => !eligibility?.free_mock_used && setMode("mock_free")}
             gradient="linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03))"
             borderColor="rgba(16,185,129,0.3)"
-            icon="🎯"
+            icon={<Target size={24} color="#ffffff" aria-hidden="true" />}
             iconBg="linear-gradient(135deg, #10b981, #059669)"
             title="Practice Interview"
             subtitle="Complimentary first assessment"
@@ -353,7 +354,7 @@ export default function HomePage() {
             onClick={() => setMode("mock_paid")}
             gradient="linear-gradient(135deg, rgba(14,165,233,0.12), rgba(14,165,233,0.03))"
             borderColor="rgba(14,165,233,0.3)"
-            icon="⚡"
+            icon={<Zap size={24} color="#ffffff" aria-hidden="true" />}
             iconBg="linear-gradient(135deg, #0ea5e9, #0284c7)"
             title="Pro Practice Session"
             subtitle="Sharpen your skills, unlimited retakes"
@@ -372,7 +373,7 @@ export default function HomePage() {
             onClick={() => setMode("real")}
             gradient="linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.03))"
             borderColor="rgba(139,92,246,0.3)"
-            icon="🏢"
+            icon={<Building2 size={24} color="#ffffff" aria-hidden="true" />}
             iconBg="linear-gradient(135deg, #8b5cf6, #7c3aed)"
             title="Enterprise Assessment"
             subtitle="Official evaluation for hiring teams"
@@ -413,9 +414,9 @@ export default function HomePage() {
   /* ════════════════════════════════════════════════════════ */
   if (step === "form") {
     const modeLabels: Record<InterviewMode, string> = {
-      mock_free: "🎯 Practice Interview – Free",
-      mock_paid: "⚡ Pro Practice Session – ₹50",
-      real: "🏢 Enterprise Assessment",
+      mock_free: "Practice Interview - Free",
+      mock_paid: "Pro Practice Session - ₹50",
+      real: "Enterprise Assessment",
     };
 
     return (
@@ -449,7 +450,7 @@ export default function HomePage() {
                 padding: "10px 14px", borderRadius: 10, fontSize: 13,
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#fbbf24",
               }}>
-                ⚠️ Free mock already used for this email. Switch to <strong>Paid Mock (₹50)</strong>.
+                Free mock already used for this email. Switch to <strong>Paid Mock (₹50)</strong>.
               </div>
             )}
 
@@ -577,7 +578,7 @@ export default function HomePage() {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 36, boxShadow: "0 0 40px rgba(14,165,233,0.3)",
           }}>
-            🤖
+            <Bot size={36} color="#ffffff" aria-hidden="true" />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Meet Aria, Your AI Interviewer</h2>
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 20 }}>Senior Technical Interviewer • VAREX AI Platform</p>
@@ -594,7 +595,7 @@ export default function HomePage() {
 
         {/* Resume Upload */}
         <div className="animate-fadeInUp delay-200" style={{ ...cardStyle, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📄 Upload Your Resume <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>(Optional but recommended)</span></h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Upload Your Resume <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>(Optional but recommended)</span></h3>
           <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16 }}>
             Uploading your resume helps Aria ask personalised questions based on your skills and experience.
           </p>
@@ -616,7 +617,7 @@ export default function HomePage() {
                   onChange={e => setResumeFile(e.target.files?.[0] || null)}
                 />
                 <label htmlFor="resume-upload" style={{ cursor: "pointer" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>📁</div>
+                  <div style={{ display: "inline-flex", marginBottom: 8 }}><Building2 size={24} color="#93c5fd" aria-hidden="true" /></div>
                   <div style={{ fontSize: 13, color: "#94a3b8" }}>
                     Drop your resume here or <span style={{ color: "#38bdf8", textDecoration: "underline" }}>browse files</span>
                   </div>
@@ -625,7 +626,7 @@ export default function HomePage() {
               </>
             ) : (
               <div>
-                <div style={{ fontSize: 14, color: "#4ade80", marginBottom: 8 }}>✅ {resumeFile.name}</div>
+                <div style={{ fontSize: 14, color: "#4ade80", marginBottom: 8 }}>Resume attached: {resumeFile.name}</div>
                 {!resumeParsedSkills.length && !resumeUploading && (
                   <button onClick={uploadResume} style={{ ...primaryBtnStyle, padding: "10px 24px", fontSize: 13 }}>
                     Upload & Analyse
@@ -670,8 +671,8 @@ export default function HomePage() {
           </button>
           <p style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>
             {resumeFile && resumeParsedSkills.length > 0
-              ? "✅ Questions will be personalized based on your resume"
-              : "💡 You can still upload your resume above for personalized questions"}
+              ? "Questions will be personalized based on your resume"
+              : "You can still upload your resume above for personalized questions"}
           </p>
         </div>
 
@@ -698,7 +699,7 @@ export default function HomePage() {
               background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
             }}>
-              🤖
+              <Bot size={18} color="#ffffff" aria-hidden="true" />
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>VAREX AI Interview</div>
@@ -734,7 +735,7 @@ export default function HomePage() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 18, border: "1px solid rgba(14,165,233,0.15)",
               }}>
-                💡
+                <CircleHelp size={18} color="#7dd3fc" aria-hidden="true" />
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
@@ -756,7 +757,7 @@ export default function HomePage() {
                 background: "rgba(2,6,23,0.6)", color: "#f1f5f9", padding: "14px 16px",
                 fontSize: 14, lineHeight: 1.7, resize: "vertical", outline: "none",
                 transition: "border-color 0.3s ease",
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "var(--font-source-sans), sans-serif",
               }}
               onFocus={e => e.target.style.borderColor = "rgba(14,165,233,0.5)"}
               onBlur={e => e.target.style.borderColor = "rgba(51,65,85,0.6)"}
@@ -841,7 +842,7 @@ export default function HomePage() {
             {/* Improvement tips */}
             {lastAnswer.improvement_tips && lastAnswer.improvement_tips.length > 0 && (
               <div style={{ marginTop: 14, paddingLeft: 72 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b", marginBottom: 6 }}>💡 Tips to Improve</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b", marginBottom: 6 }}>Tips to Improve</div>
                 {lastAnswer.improvement_tips.map((tip, i) => (
                   <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {tip}</div>
                 ))}
@@ -851,7 +852,7 @@ export default function HomePage() {
             {/* Strengths */}
             {lastAnswer.strengths && lastAnswer.strengths.length > 0 && (
               <div style={{ marginTop: 10, paddingLeft: 72 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 6 }}>✅ Strengths</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 6 }}>Strengths</div>
                 {lastAnswer.strengths.map((s, i) => (
                   <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {s}</div>
                 ))}
@@ -946,7 +947,7 @@ export default function HomePage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
                 {report.ai_report.strengths && (
                   <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 8 }}>✅ Strengths</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 8 }}>Strengths</div>
                     {report.ai_report.strengths.map((s, i) => (
                       <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3 }}>• {s}</div>
                     ))}
@@ -954,7 +955,7 @@ export default function HomePage() {
                 )}
                 {report.ai_report.areas_for_improvement && (
                   <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#fbbf24", marginBottom: 8 }}>📈 Areas to Improve</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#fbbf24", marginBottom: 8 }}>Areas to Improve</div>
                     {report.ai_report.areas_for_improvement.map((a, i) => (
                       <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3 }}>• {a}</div>
                     ))}
@@ -1008,7 +1009,7 @@ function ModeCard({
   title, subtitle, description, price, priceSubtext, features, badge, badgeColor,
 }: {
   active: boolean; disabled: boolean; onClick: () => void;
-  gradient: string; borderColor: string; icon: string; iconBg: string;
+  gradient: string; borderColor: string; icon: ReactNode; iconBg: string;
   title: string; subtitle: string; description?: string; price: string; priceSubtext: string;
   features: string[]; badge: string; badgeColor: string;
 }) {
@@ -1072,7 +1073,7 @@ function ModeCard({
       <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
         {features.map((f, i) => (
           <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#cbd5e1" }}>
-            <span style={{ color: badgeColor, fontSize: 14 }}>✓</span>
+            <Check size={14} color={badgeColor} aria-hidden="true" />
             {f}
           </li>
         ))}
@@ -1123,7 +1124,10 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
       background: "rgba(127,29,29,0.15)", border: "1px solid rgba(248,113,113,0.35)",
       color: "#fca5a5", fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center",
     }}>
-      <span>⚠️ {message}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <AlertTriangle size={16} aria-hidden="true" />
+        {message}
+      </span>
       <button onClick={onDismiss} style={{
         background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 18, padding: "0 4px",
       }}>×</button>
@@ -1159,7 +1163,7 @@ const inputStyle: CSSProperties = {
   width: "100%", padding: "12px 16px", borderRadius: 12,
   border: "1px solid rgba(51,65,85,0.6)", background: "rgba(2,6,23,0.6)",
   color: "#f1f5f9", fontSize: 14, outline: "none", transition: "border-color 0.3s ease",
-  fontFamily: "'Inter', sans-serif",
+  fontFamily: "var(--font-source-sans), sans-serif",
 };
 
 const primaryBtnStyle: CSSProperties = {
@@ -1168,12 +1172,12 @@ const primaryBtnStyle: CSSProperties = {
   background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
   boxShadow: "0 4px 20px rgba(14,165,233,0.25)",
   transition: "all 0.3s ease",
-  fontFamily: "'Inter', sans-serif",
+  fontFamily: "var(--font-source-sans), sans-serif",
 };
 
 const backBtnStyle: CSSProperties = {
   background: "none", border: "none", color: "#64748b", cursor: "pointer",
   fontSize: 13, fontWeight: 500, marginBottom: 20, padding: 0,
   transition: "color 0.2s ease",
-  fontFamily: "'Inter', sans-serif",
+  fontFamily: "var(--font-source-sans), sans-serif",
 };
