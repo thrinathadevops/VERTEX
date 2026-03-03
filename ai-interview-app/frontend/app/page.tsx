@@ -1,7 +1,7 @@
 "use client";
 
-import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Bot, Building2, Check, CircleHelp, Target, Zap } from "lucide-react";
+import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Bot, Building2, Check, CircleHelp, Mic, MicOff, Volume2, VolumeX, Target, Zap } from "lucide-react";
 
 /* ─── Types ───────────────────────────────────────────────── */
 type InterviewMode = "mock_free" | "mock_paid" | "real";
@@ -110,10 +110,127 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
 
+  // ── Voice state ─────────────────────────────────────────
+  const [voiceMode, setVoiceMode] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [sttSupported, setSttSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoAdvanceRef = useRef(false);
+
   const canSubmit = useMemo(
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
     [session, currentQuestion, answer, loading]
   );
+
+  // ── Detect Web Speech API support ──────────────────────
+  useEffect(() => {
+    setSpeechSupported(typeof window !== "undefined" && "speechSynthesis" in window);
+    setSttSupported(
+      typeof window !== "undefined" &&
+      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
+    );
+  }, []);
+
+  // ── TTS: speak text aloud ──────────────────────────────
+  const speak = useCallback((text: string, onEnd?: () => void) => {
+    if (!speechSupported || !voiceMode) {
+      onEnd?.();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    // Prefer a natural English voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
+      || voices.find(v => v.lang.startsWith("en-") && !v.localService)
+      || voices.find(v => v.lang.startsWith("en"));
+    if (preferred) utterance.voice = preferred;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => { setIsSpeaking(false); onEnd?.(); };
+    utterance.onerror = () => { setIsSpeaking(false); onEnd?.(); };
+    window.speechSynthesis.speak(utterance);
+  }, [speechSupported, voiceMode]);
+
+  const stopSpeaking = useCallback(() => {
+    if (speechSupported) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [speechSupported]);
+
+  // ── STT: start microphone ──────────────────────────────
+  const startListening = useCallback(() => {
+    if (!sttSupported || !voiceMode) return;
+    stopSpeaking();
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRec();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let finalText = "";
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) { finalText += r[0].transcript + " "; }
+        else { interim += r[0].transcript; }
+      }
+      setAnswer(finalText + interim);
+      // Reset silence timer on every result
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        // Auto-stop after 3s silence
+        recognition.stop();
+      }, 3000);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+    recognition.onerror = (e: any) => {
+      console.warn("STT error:", e.error);
+      setIsListening(false);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [sttSupported, voiceMode, stopSpeaking]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    setIsListening(false);
+  }, []);
+
+  // ── Auto-speak questions when they change ──────────────
+  useEffect(() => {
+    if (step === "interview" && currentQuestion && voiceMode && speechSupported && !loading) {
+      speak(currentQuestion, () => {
+        // After speaking the question, auto-start listening
+        if (sttSupported && voiceMode) {
+          setTimeout(() => startListening(), 400);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion, step]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopListening();
+      stopSpeaking();
+    };
+  }, [stopListening, stopSpeaking]);
 
   function getRealDiscountPercent(count: number) {
     if (count >= 20) return 50;
@@ -227,9 +344,11 @@ export default function HomePage() {
     setStep("interview");
   }
 
-  /* ── Submit answer ────────────────────────────────────── */
+  /* ── Submit answer (voice-aware: speak feedback then auto-advance) ── */
   async function submitCurrentAnswer() {
     if (!session) return;
+    stopListening();
+    stopSpeaking();
     setError("");
     setLoading(true);
     try {
@@ -244,11 +363,34 @@ export default function HomePage() {
       setAnswer("");
       setTurnNumber(data.turn_number + 1);
       setTotalQuestions(data.total_questions);
-      setCurrentQuestion(data.next_question ?? "");
+
       if (data.status === "completed") {
+        // Interview done — speak summary then show report
         const rr = await fetch(`/api/v1/interview/session/${session.id}/report`);
         if (rr.ok) setReport(await rr.json());
-        setStep("report");
+        const endMsg = data.feedback
+          ? `${data.feedback}. That completes your interview. Let me generate your report.`
+          : "That completes your interview. Let me generate your report.";
+        if (voiceMode && speechSupported) {
+          speak(endMsg, () => setStep("report"));
+        } else {
+          setStep("report");
+        }
+      } else {
+        // Speak brief feedback, then auto-advance to next question
+        const feedbackText = data.feedback || "Good answer, let's move on.";
+        const briefFeedback = feedbackText.length > 200
+          ? feedbackText.slice(0, 200).replace(/\s+\S*$/, "") + "…"
+          : feedbackText;
+
+        if (voiceMode && speechSupported) {
+          speak(briefFeedback, () => {
+            // After feedback is spoken, set the next question (which triggers auto-speak)
+            setCurrentQuestion(data.next_question ?? "");
+          });
+        } else {
+          setCurrentQuestion(data.next_question ?? "");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit answer.");
@@ -259,6 +401,8 @@ export default function HomePage() {
 
   /* ── Reset ────────────────────────────────────────────── */
   function resetAll() {
+    stopListening();
+    stopSpeaking();
     setStep("landing");
     setSession(null);
     setCurrentQuestion("");
@@ -660,15 +804,46 @@ export default function HomePage() {
 
         {/* Begin Interview CTA */}
         <div className="animate-fadeInUp delay-400" style={{ textAlign: "center" }}>
-          <button onClick={beginInterview} style={{
+          <button onClick={() => {
+            // Speak intro aloud then begin
+            if (voiceMode && speechSupported && session?.ai_introduction) {
+              speak(session.ai_introduction, () => beginInterview());
+            } else {
+              beginInterview();
+            }
+          }} style={{
             ...primaryBtnStyle, padding: "16px 48px", fontSize: 16,
             boxShadow: "0 4px 30px rgba(14,165,233,0.3), 0 0 60px rgba(139,92,246,0.15)",
           }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
           >
-            Start Answering Questions →
+            {voiceMode ? "🎙 Start Voice Interview →" : "Start Answering Questions →"}
           </button>
+
+          {/* Voice toggle */}
+          {speechSupported && (
+            <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+              <button
+                onClick={() => setVoiceMode(!voiceMode)}
+                style={{
+                  background: voiceMode ? "rgba(14,165,233,0.12)" : "rgba(51,65,85,0.3)",
+                  border: `1px solid ${voiceMode ? "rgba(14,165,233,0.3)" : "rgba(51,65,85,0.5)"}`,
+                  borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+                  color: voiceMode ? "#38bdf8" : "#94a3b8", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  transition: "all 0.3s ease",
+                }}
+              >
+                {voiceMode ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                {voiceMode ? "Voice Mode ON" : "Voice Mode OFF"}
+              </button>
+              <span style={{ fontSize: 11, color: "#64748b" }}>
+                {voiceMode ? "AI will speak questions and listen to your answers" : "Text-only mode"}
+              </span>
+            </div>
+          )}
+
           <p style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>
             {resumeFile && resumeParsedSkills.length > 0
               ? "Questions will be personalized based on your resume"
@@ -682,7 +857,7 @@ export default function HomePage() {
   }
 
   /* ════════════════════════════════════════════════════════ */
-  /*  INTERVIEW – Question & Answer Flow                    */
+  /*  INTERVIEW – Voice-First Question & Answer Flow        */
   /* ════════════════════════════════════════════════════════ */
   if (step === "interview") {
     const progress = ((turnNumber - 1) / totalQuestions) * 100;
@@ -706,11 +881,30 @@ export default function HomePage() {
               <div style={{ fontSize: 11, color: "#64748b" }}>{session?.interview_mode === "real" ? "Enterprise Assessment" : "Practice Session"}</div>
             </div>
           </div>
-          <div style={{
-            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-            background: "rgba(14,165,233,0.1)", color: "#38bdf8", border: "1px solid rgba(14,165,233,0.2)",
-          }}>
-            Question {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Voice toggle */}
+            {speechSupported && (
+              <button
+                onClick={() => { setVoiceMode(v => !v); stopSpeaking(); stopListening(); }}
+                title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
+                style={{
+                  background: voiceMode ? "rgba(14,165,233,0.12)" : "rgba(51,65,85,0.3)",
+                  border: `1px solid ${voiceMode ? "rgba(14,165,233,0.3)" : "rgba(51,65,85,0.5)"}`,
+                  borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+                  color: voiceMode ? "#38bdf8" : "#64748b", display: "flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: 600, transition: "all 0.3s ease",
+                }}
+              >
+                {voiceMode ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                {voiceMode ? "Voice" : "Text"}
+              </button>
+            )}
+            <div style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+              background: "rgba(14,165,233,0.1)", color: "#38bdf8", border: "1px solid rgba(14,165,233,0.2)",
+            }}>
+              Question {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
+            </div>
           </div>
         </div>
 
@@ -724,6 +918,38 @@ export default function HomePage() {
             transition: "width 0.6s ease",
           }} />
         </div>
+
+        {/* Speaking indicator */}
+        {isSpeaking && (
+          <div className="animate-fadeIn" style={{
+            display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
+            padding: "10px 16px", borderRadius: 12,
+            background: "linear-gradient(135deg, rgba(14,165,233,0.08), rgba(139,92,246,0.06))",
+            border: "1px solid rgba(14,165,233,0.2)",
+          }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              animation: "pulse-glow 1.5s ease-in-out infinite",
+            }}>
+              <Volume2 size={16} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8" }}>Aria is speaking…</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Listen to the question, then answer</div>
+            </div>
+            <button
+              onClick={stopSpeaking}
+              style={{
+                marginLeft: "auto", background: "rgba(239,68,68,0.12)",
+                border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8,
+                padding: "4px 10px", fontSize: 11, fontWeight: 600,
+                color: "#f87171", cursor: "pointer",
+              }}
+            >⏹ Stop</button>
+          </div>
+        )}
 
         {/* Question Card */}
         {currentQuestion && (
@@ -747,21 +973,67 @@ export default function HomePage() {
               </div>
             </div>
 
-            <textarea
-              rows={8}
-              value={answer}
-              onChange={e => setAnswer(e.target.value)}
-              placeholder="Type your detailed answer here… (minimum 5 characters)"
-              style={{
-                width: "100%", borderRadius: 12, border: "1px solid rgba(51,65,85,0.6)",
-                background: "rgba(2,6,23,0.6)", color: "#f1f5f9", padding: "14px 16px",
-                fontSize: 14, lineHeight: 1.7, resize: "vertical", outline: "none",
-                transition: "border-color 0.3s ease",
-                fontFamily: "var(--font-source-sans), sans-serif",
-              }}
-              onFocus={e => e.target.style.borderColor = "rgba(14,165,233,0.5)"}
-              onBlur={e => e.target.style.borderColor = "rgba(51,65,85,0.6)"}
-            />
+            {/* Voice controls */}
+            {voiceMode && sttSupported && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={isSpeaking || loading}
+                  style={{
+                    width: 48, height: 48, borderRadius: "50%", border: "none",
+                    background: isListening
+                      ? "linear-gradient(135deg, #ef4444, #dc2626)"
+                      : "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: isSpeaking || loading ? "not-allowed" : "pointer",
+                    opacity: isSpeaking || loading ? 0.4 : 1,
+                    boxShadow: isListening ? "0 0 20px rgba(239,68,68,0.4)" : "0 0 20px rgba(14,165,233,0.3)",
+                    transition: "all 0.3s ease",
+                    animation: isListening ? "pulse-glow 1.2s ease-in-out infinite" : "none",
+                  }}
+                >
+                  {isListening ? <MicOff size={20} color="#fff" /> : <Mic size={20} color="#fff" />}
+                </button>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isListening ? "#f87171" : "#94a3b8" }}>
+                    {isListening ? "🔴 Listening… speak your answer" : isSpeaking ? "Wait for Aria to finish…" : "Click mic or start speaking"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b" }}>
+                    {isListening ? "Will auto-stop after 3s of silence" : "Your answer will appear below"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Answer area — live transcript or text input */}
+            <div style={{ position: "relative" }}>
+              <textarea
+                rows={6}
+                value={answer}
+                onChange={e => setAnswer(e.target.value)}
+                placeholder={voiceMode ? "Your spoken answer will appear here… (or type manually)" : "Type your detailed answer here… (minimum 5 characters)"}
+                style={{
+                  width: "100%", borderRadius: 12,
+                  border: `1px solid ${isListening ? "rgba(239,68,68,0.5)" : "rgba(51,65,85,0.6)"}`,
+                  background: isListening ? "rgba(239,68,68,0.03)" : "rgba(2,6,23,0.6)",
+                  color: "#f1f5f9", padding: "14px 16px",
+                  fontSize: 14, lineHeight: 1.7, resize: "vertical", outline: "none",
+                  transition: "all 0.3s ease",
+                  fontFamily: "var(--font-source-sans), sans-serif",
+                }}
+                onFocus={e => { if (!isListening) e.target.style.borderColor = "rgba(14,165,233,0.5)"; }}
+                onBlur={e => { if (!isListening) e.target.style.borderColor = "rgba(51,65,85,0.6)"; }}
+              />
+              {isListening && (
+                <div style={{
+                  position: "absolute", top: 10, right: 12,
+                  display: "flex", alignItems: "center", gap: 4,
+                }}>
+                  <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse-glow 1s ease-in-out infinite" }} />
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 600 }}>LIVE</span>
+                </div>
+              )}
+            </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
               <span style={{ fontSize: 12, color: answer.length >= 5 ? "#64748b" : "#ef4444" }}>
@@ -769,7 +1041,7 @@ export default function HomePage() {
               </span>
               <button
                 disabled={!canSubmit}
-                onClick={submitCurrentAnswer}
+                onClick={() => { stopListening(); submitCurrentAnswer(); }}
                 style={{
                   ...primaryBtnStyle,
                   padding: "12px 32px",
@@ -783,8 +1055,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Last Answer Feedback */}
-        {lastAnswer && (
+        {/* Last Answer Feedback (brief during voice, detailed in text) */}
+        {lastAnswer && !isSpeaking && !loading && (
           <div className="animate-slideInLeft" style={{
             ...cardStyle,
             borderColor: `${scoreColor(lastAnswer.score)}30`,
@@ -858,6 +1130,22 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Loading / evaluating state */}
+        {loading && (
+          <div className="animate-fadeIn" style={{
+            ...cardStyle, textAlign: "center", padding: 28,
+            background: "linear-gradient(135deg, rgba(14,165,233,0.06), rgba(139,92,246,0.04))",
+            borderColor: "rgba(14,165,233,0.2)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <Spinner />
+              <span style={{ fontSize: 14, color: "#94a3b8", fontWeight: 600 }}>
+                Evaluating your answer…
+              </span>
+            </div>
           </div>
         )}
 
