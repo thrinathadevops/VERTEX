@@ -10,6 +10,7 @@ type CalculatorOption = {
   domain: string;
   summary: string;
   examples: { key: string; label: string }[];
+  available?: boolean;
 };
 
 const CALCULATORS: CalculatorOption[] = [
@@ -23,12 +24,12 @@ const CALCULATORS: CalculatorOption[] = [
   { key: "podman", label: "Podman", domain: "Containers", summary: "Container limits, files, and host-level runtime tuning.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
   { key: "k8s", label: "Kubernetes", domain: "Orchestration", summary: "Pod resources, HPA/PDB, spread, and network policies.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
   { key: "os", label: "Linux OS", domain: "Kernel", summary: "Kernel, VM, network, and file descriptor tuning.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
-  { key: "postgresql", label: "PostgreSQL", domain: "Database", summary: "shared_buffers, work_mem, WAL, and planner optimization.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
-  { key: "mysql", label: "MySQL", domain: "Database", summary: "InnoDB buffer pool, I/O capacity, and query tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
-  { key: "mongodb", label: "MongoDB", domain: "Database", summary: "WiredTiger cache, oplog, journal, and replica set tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
-  { key: "haproxy", label: "HAProxy", domain: "Load Balancer", summary: "maxconn, threading, timeouts, and health check tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
-  { key: "docker", label: "Docker", domain: "Containers", summary: "daemon.json, storage driver, log rotation, and security.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
-  { key: "rabbitmq", label: "RabbitMQ", domain: "Messaging", summary: "Memory watermarks, disk limits, Erlang VM, and clustering.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "postgresql", label: "PostgreSQL", domain: "Database", summary: "shared_buffers, work_mem, WAL, and planner optimization.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
+  { key: "mysql", label: "MySQL", domain: "Database", summary: "InnoDB buffer pool, I/O capacity, and query tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
+  { key: "mongodb", label: "MongoDB", domain: "Database", summary: "WiredTiger cache, oplog, journal, and replica set tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
+  { key: "haproxy", label: "HAProxy", domain: "Load Balancer", summary: "maxconn, threading, timeouts, and health check tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
+  { key: "docker", label: "Docker", domain: "Containers", summary: "daemon.json, storage driver, log rotation, and security.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
+  { key: "rabbitmq", label: "RabbitMQ", domain: "Messaging", summary: "Memory watermarks, disk limits, Erlang VM, and clustering.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], available: false },
 ];
 
 export default function CalculatorPage() {
@@ -45,6 +46,7 @@ export default function CalculatorPage() {
     () => CALCULATORS.find((item) => item.key === calculator) ?? CALCULATORS[0],
     [calculator]
   );
+  const calculatorAvailable = selected.available !== false;
 
   const endpointPath = `/api/v1/calculators/${calculator}/calculate`;
 
@@ -55,11 +57,18 @@ export default function CalculatorPage() {
     setErrorText("");
     setOkText("");
     try {
+      if (!calculatorAvailable) {
+        setErrorText(`${selected.label} is coming soon and not available in backend yet.`);
+        return;
+      }
       const data = await getCalculatorExample(calculator, example);
       setPayloadText(JSON.stringify(data, null, 2));
       setOkText("Example payload loaded.");
     } catch (err: any) {
-      setErrorText(err?.detail ?? err?.message ?? "Failed to load example payload.");
+      const detail = Array.isArray(err?.detail)
+        ? err.detail.map((x: any) => x?.msg ?? JSON.stringify(x)).join(", ")
+        : err?.detail;
+      setErrorText(detail ?? err?.message ?? "Failed to load example payload.");
     } finally {
       setLoadingExample(false);
     }
@@ -71,6 +80,10 @@ export default function CalculatorPage() {
     setOkText("");
     setResultText("");
     try {
+      if (!calculatorAvailable) {
+        setErrorText(`${selected.label} is coming soon and not available in backend yet.`);
+        return;
+      }
       const payload = JSON.parse(payloadText) as Record<string, unknown>;
       const result = await runCalculator(calculator, payload);
       setResultText(JSON.stringify(result, null, 2));
@@ -79,7 +92,10 @@ export default function CalculatorPage() {
       if (err instanceof SyntaxError) {
         setErrorText("Payload is not valid JSON.");
       } else {
-        setErrorText(err?.detail ?? err?.message ?? "Calculator request failed.");
+        const detail = Array.isArray(err?.detail)
+          ? err.detail.map((x: any) => x?.msg ?? JSON.stringify(x)).join(", ")
+          : err?.detail;
+        setErrorText(detail ?? err?.message ?? "Calculator request failed.");
       }
     } finally {
       setLoadingRun(false);
@@ -130,14 +146,21 @@ export default function CalculatorPage() {
                       setExample(item.examples[0]?.key ?? "new");
                       setErrorText("");
                       setOkText("");
+                      setResultText("");
+                      if (item.available === false) {
+                        setErrorText(`${item.label} calculator is coming soon.`);
+                      }
                     }}
-                    className={`w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-400 ${active ? "border-cyan-500/70 bg-cyan-500/10" : "border-slate-800 bg-slate-900 hover:border-slate-700"}`}
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-400 ${item.available === false ? "cursor-not-allowed opacity-70" : "cursor-pointer"} ${active ? "border-cyan-500/70 bg-cyan-500/10" : "border-slate-800 bg-slate-900 hover:border-slate-700"}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-semibold ${active ? "text-cyan-200" : "text-slate-100"}`}>{item.label}</span>
                       <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-300">{item.domain}</span>
                     </div>
                     <p className="mt-1 text-xs text-slate-400">{item.summary}</p>
+                    {item.available === false ? (
+                      <p className="mt-1 text-[11px] text-amber-300">Coming soon</p>
+                    ) : null}
                   </button>
                 );
               })}
@@ -173,7 +196,7 @@ export default function CalculatorPage() {
                 <button
                   type="button"
                   onClick={handleLoadExample}
-                  disabled={loadingExample}
+                  disabled={loadingExample || !calculatorAvailable}
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 text-sm font-semibold text-slate-100 transition hover:border-cyan-400 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loadingExample ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />}
@@ -224,7 +247,7 @@ export default function CalculatorPage() {
               <button
                 type="button"
                 onClick={handleRun}
-                disabled={loadingRun}
+                disabled={loadingRun || !calculatorAvailable}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loadingRun ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
