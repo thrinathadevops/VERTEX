@@ -1,27 +1,33 @@
 """
-Anti-Cheat Detection Service — v2 (Multi-Layer)
-─────────────────────────────────────────────────
-5 protection layers:
+Anti-Cheat Detection Service — v3 (Multi-Layer, Improved)
+─────────────────────────────────────────────────────────
+6 protection layers:
 
   Layer 1 — BROWSER LEVEL (client-side)
     Tab switches, window blur, copy/paste, right-click
     → Detected by frontend JavaScript
 
   Layer 2 — OS-LEVEL PROCTOR AGENT (desktop app)
-    Running AI apps, active window monitoring, network connections
+    Running AI apps, active window monitoring, network connections,
+    background window enumeration, Windows service scanning
     → Detected by proctor_agent.py running on candidate's machine
 
-  Layer 3 — AI TEXT DETECTION (server-side)
+  Layer 3 — FACE & AUDIO MONITORING (desktop agent)
+    Camera face presence (frontal + profile cascade), Bluetooth
+    device discovery, audio route validation
+    → Detected by proctor_agent.py FaceMonitor & AudioRouteMonitor
+
+  Layer 4 — AI TEXT DETECTION (server-side)
     Linguistic patterns, paste detection, style consistency
     → Detected by ai_text_detector.py analyzing answers
 
-  Layer 4 — PROCTOR HEARTBEAT MONITORING
+  Layer 5 — PROCTOR HEARTBEAT MONITORING
     Verify proctor agent is running throughout the interview
     → Heartbeat gaps = proctor disconnected or killed
 
-  Layer 5 — INTEGRITY SCORING (aggregation)
+  Layer 6 — INTEGRITY SCORING (aggregation)
     Combine all layers into a 0-100 integrity score
-    → Score-based penalties and report flags
+    → Score-based penalties, cumulative caps, and report flags
 """
 
 from __future__ import annotations
@@ -53,12 +59,13 @@ INTEGRITY_DEDUCTIONS = {
     "ai_browser_tab": 15,           # AI service in browser tab
     "virtual_machine_detected": 15, # Running in VM
     "remote_desktop_detected": 15,  # Remote desktop session
-    "forbidden_app_detected": 12,   # Non-allowed foreground app detected
+    "forbidden_app_detected": 12,   # Non-allowed foreground/background app
+    "kernel_service_detected": 20,  # AI/remote service at kernel/system level
     "camera_unavailable": 20,       # Camera required but unavailable/off
-    "no_face_detected": 8,          # Face not visible during interview
+    "no_face_detected": 5,          # Face not visible (reduced; cumulative-capped)
     "multiple_faces_detected": 18,  # Extra person detected
     "no_local_audio_device": 12,    # No local audio endpoint detected
-    "no_headset_connected": 10,     # No headset/earbud connected to laptop
+    "no_headset_connected": 8,      # No headset/earbud connected (reduced; capped)
     "multiple_monitors_detected": 0,  # Info only, not a deduction
     # AI text detection events
     "ai_text_detected": 20,         # Answer flagged as AI-generated
@@ -67,6 +74,16 @@ INTEGRITY_DEDUCTIONS = {
     "proctor_started": 0,           # Info only
     "proctor_stopped": 10,          # Proctor was closed early
     "proctor_disconnected": 15,     # Heartbeat gap detected
+}
+
+# Cumulative deduction caps — prevents repetitive low-severity events
+# (like face flicker or headset disconnect) from draining the score.
+# Key = event_type, value = max total deduction across all occurrences.
+CUMULATIVE_CAP_EVENTS = {
+    "no_face_detected": 30,       # max 30 pts total (6 occurrences × 5)
+    "no_headset_connected": 20,   # max 20 pts total
+    "tab_switch": 15,             # max 15 pts total (5 × 3)
+    "window_blur": 10,            # max 10 pts total
 }
 
 # Severity mapping
@@ -82,6 +99,7 @@ EVENT_SEVERITY = {
     "virtual_machine_detected": "critical",
     "remote_desktop_detected": "critical",
     "forbidden_app_detected": "critical",
+    "kernel_service_detected": "critical",
     "camera_unavailable": "critical",
     "no_face_detected": "warning",
     "multiple_faces_detected": "critical",
@@ -112,6 +130,7 @@ PROCTOR_EVENT_TYPES = {
     "remote_desktop_detected",
     "multiple_monitors_detected",
     "forbidden_app_detected",
+    "kernel_service_detected",
     "camera_unavailable",
     "no_face_detected",
     "multiple_faces_detected",
@@ -132,6 +151,8 @@ def record_event(
     """
     Record an anti-cheat event (from browser, proctor agent, or AI detection).
     Updates session integrity score and counters.
+    Applies cumulative deduction caps to prevent score drain from
+    repetitive low-severity events.
     """
     session = db.get(InterviewSession, session_id)
     if session is None:
@@ -183,13 +204,34 @@ def record_event(
         session.tab_switch_count += 1
 
     if event_type in ("ai_app_detected", "ai_network_connection",
-                       "ai_browser_tab", "ai_text_detected"):
+                       "ai_browser_tab", "ai_text_detected",
+                       "kernel_service_detected"):
         session.ai_violations_count += 1
 
-    # ── Update integrity score ────────────────────────────────
+    # ── Update integrity score (with cumulative caps) ─────────
     deduction = INTEGRITY_DEDUCTIONS.get(event_type, 0)
     if deduction > 0:
-        session.integrity_score = max(0, session.integrity_score - deduction)
+        # Check cumulative cap for this event type
+        cap = CUMULATIVE_CAP_EVENTS.get(event_type)
+        if cap is not None:
+            # Count how much we've already deducted for this event type
+            past_count = db.scalar(
+                select(func.count())
+                .select_from(AntiCheatEvent)
+                .where(
+                    AntiCheatEvent.session_id == session_id,
+                    AntiCheatEvent.event_type == event_type,
+                )
+            ) or 0
+            # past_count includes the event we just added
+            total_so_far = (past_count - 1) * deduction
+            if total_so_far >= cap:
+                deduction = 0  # cap reached, no more deduction
+            elif total_so_far + deduction > cap:
+                deduction = cap - total_so_far  # partial deduction
+
+        if deduction > 0:
+            session.integrity_score = max(0, session.integrity_score - deduction)
 
     # ── Flag as suspicious ────────────────────────────────────
     if (
@@ -224,6 +266,11 @@ def record_event(
             warning_message = (
                 "🚨 CRITICAL: A non-allowed application window was detected. "
                 "Only the interview browser and approved tools are permitted."
+            )
+        elif event_type == "kernel_service_detected":
+            warning_message = (
+                "🚨 CRITICAL: A suspicious system-level service was detected running. "
+                "This has been flagged and will be included in your interview report."
             )
         elif event_type == "camera_unavailable":
             warning_message = (
@@ -289,6 +336,7 @@ def record_proctor_heartbeat(
     immediate_stop_seen = False
     immediate_stop_types = {
         "forbidden_app_detected",
+        "kernel_service_detected",
         "camera_unavailable",
         "multiple_faces_detected",
         "no_local_audio_device",
