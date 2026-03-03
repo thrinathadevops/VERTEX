@@ -684,19 +684,24 @@ class SystemEnvironmentCheck:
 
 
 class FaceMonitor:
-    """Camera-based face presence monitor with improved accuracy.
+    """Camera-based face + earbud presence monitor (v3).
 
-    Improvements over v1:
-    - Lower scaleFactor (1.1 vs 1.2) and minNeighbors (3 vs 5) for
-      better detection in low light and at angles.
-    - Secondary profile-face cascade to detect side-turned faces.
-    - Face-absence streak counter: only flags after N consecutive
-      frames with no face, reducing false-positive bursts.
-    - Camera recovery resets violation flag so re-failures are reported.
+    Capabilities:
+    - Frontal + profile face detection with relaxed thresholds
+    - Face-absence streak counter
+    - **Earbud detection**: analyzes ear regions for earbud-shaped objects.
+      When earbuds are visible in camera but NOT connected to the laptop's
+      Bluetooth/audio → flags `external_audio_suspected`.
     """
 
-    # Number of consecutive no-face frames before triggering a violation.
     NO_FACE_STREAK_THRESHOLD = 3
+    # Minimum contour area (pixels²) to consider as an earbud in the ear region
+    EARBUD_MIN_CONTOUR_AREA = 80
+    EARBUD_MAX_CONTOUR_AREA = 3000
+    # How circular a contour must be to count as earbud-like (0-1, 1=perfect circle)
+    EARBUD_CIRCULARITY_THRESHOLD = 0.35
+    # Consecutive earbud-detected frames needed before flagging (reduces noise)
+    EARBUD_STREAK_THRESHOLD = 3
 
     def __init__(self):
         self.enabled = HAS_CV2
@@ -706,6 +711,7 @@ class FaceMonitor:
         self.last_error: str | None = None
         self._camera_warned = False
         self.no_face_streak = 0
+        self.earbud_streak = 0
 
         if self.enabled:
             try:
@@ -725,7 +731,6 @@ class FaceMonitor:
         if self.cap is not None and self.cap.isOpened():
             return True
         try:
-            # CAP_DSHOW avoids long camera init delays on Windows.
             flag = cv2.CAP_DSHOW if platform.system() == "Windows" else 0
             self.cap = cv2.VideoCapture(0, flag)
             if self.cap is not None and self.cap.isOpened():
@@ -737,60 +742,136 @@ class FaceMonitor:
         return False
 
     def scan(self) -> dict:
+        base = {
+            "available": False, "faces": None,
+            "no_face_streak": self.no_face_streak,
+            "earbud_suspected": False,
+            "earbud_streak": self.earbud_streak,
+            "error": None,
+        }
         if not self.enabled:
-            return {
-                "available": False, "faces": None,
-                "no_face_streak": self.no_face_streak,
-                "error": self.last_error or "opencv_unavailable",
-            }
+            base["error"] = self.last_error or "opencv_unavailable"
+            return base
         if not self._ensure_camera():
-            return {
-                "available": False, "faces": None,
-                "no_face_streak": self.no_face_streak,
-                "error": self.last_error or "camera_unavailable",
-            }
+            base["error"] = self.last_error or "camera_unavailable"
+            return base
         try:
             ok, frame = self.cap.read()
             if not ok or frame is None:
-                return {
-                    "available": False, "faces": None,
-                    "no_face_streak": self.no_face_streak,
-                    "error": "camera_read_failed",
-                }
+                base["error"] = "camera_read_failed"
+                return base
+
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # Primary: frontal face with relaxed thresholds
+            # --- Face detection (frontal + profile) ---
             faces = self.front_classifier.detectMultiScale(
                 gray, scaleFactor=1.1, minNeighbors=3, minSize=(40, 40),
             )
             face_count = int(len(faces))
+            face_rects = faces
 
-            # Secondary: profile face (catches side-turned faces)
             if face_count == 0 and self.profile_classifier is not None:
                 profile_faces = self.profile_classifier.detectMultiScale(
                     gray, scaleFactor=1.1, minNeighbors=3, minSize=(40, 40),
                 )
                 face_count = int(len(profile_faces))
+                face_rects = profile_faces
 
-            # Update streak counter
+            # Update face streak
             if face_count == 0:
                 self.no_face_streak += 1
             else:
                 self.no_face_streak = 0
 
+            # --- Earbud detection (ear-region analysis) ---
+            earbud_detected = False
+            if face_count > 0:
+                earbud_detected = self._detect_earbuds_in_frame(frame, gray, face_rects)
+
+            if earbud_detected:
+                self.earbud_streak += 1
+            else:
+                self.earbud_streak = max(0, self.earbud_streak - 1)
+
             return {
                 "available": True,
                 "faces": face_count,
                 "no_face_streak": self.no_face_streak,
+                "earbud_suspected": self.earbud_streak >= self.EARBUD_STREAK_THRESHOLD,
+                "earbud_streak": self.earbud_streak,
                 "error": None,
             }
         except Exception as e:
             self.last_error = str(e)
-            return {
-                "available": False, "faces": None,
-                "no_face_streak": self.no_face_streak,
-                "error": str(e),
-            }
+            base["error"] = str(e)
+            return base
+
+    def _detect_earbuds_in_frame(self, frame, gray, faces) -> bool:
+        """Analyze ear regions of detected faces for earbud-like objects.
+
+        For each face, extracts left and right ear regions based on face
+        geometry, then uses Canny edge + contour analysis to detect
+        small circular objects (earbuds/AirPods).
+
+        Returns True if earbud-like object detected in either ear region.
+        """
+        h_frame, w_frame = gray.shape[:2]
+
+        for (fx, fy, fw, fh) in faces:
+            # --- Define ear regions ---
+            # Left ear region: to the left of the face
+            ear_w = int(fw * 0.30)
+            ear_h = int(fh * 0.40)
+            ear_y = fy + int(fh * 0.20)  # ears are roughly in the middle third of face height
+
+            left_ear_x = max(0, fx - ear_w)
+            right_ear_x = min(w_frame, fx + fw)
+
+            for ear_x in [left_ear_x, right_ear_x]:
+                ex2 = min(w_frame, ear_x + ear_w)
+                ey2 = min(h_frame, ear_y + ear_h)
+                if ex2 <= ear_x or ey2 <= ear_y:
+                    continue
+
+                ear_roi = gray[ear_y:ey2, ear_x:ex2]
+                if ear_roi.size == 0:
+                    continue
+
+                # --- Detect earbud-shaped contours ---
+                # Apply Gaussian blur to reduce noise, then Canny edge detection
+                blurred = cv2.GaussianBlur(ear_roi, (5, 5), 0)
+                edges = cv2.Canny(blurred, 30, 100)
+
+                # Dilate edges to connect nearby lines
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+                edges = cv2.dilate(edges, kernel, iterations=1)
+
+                contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                for cnt in contours:
+                    area = cv2.contourArea(cnt)
+                    if area < self.EARBUD_MIN_CONTOUR_AREA or area > self.EARBUD_MAX_CONTOUR_AREA:
+                        continue
+
+                    # Circularity = 4π × area / perimeter²
+                    perimeter = cv2.arcLength(cnt, True)
+                    if perimeter == 0:
+                        continue
+                    circularity = 4 * 3.14159 * area / (perimeter * perimeter)
+
+                    if circularity >= self.EARBUD_CIRCULARITY_THRESHOLD:
+                        # Also check that the contour is roughly convex (earbuds are smooth)
+                        hull = cv2.convexHull(cnt)
+                        hull_area = cv2.contourArea(hull)
+                        if hull_area > 0:
+                            solidity = area / hull_area
+                            if solidity >= 0.5:
+                                logger.debug(
+                                    "Earbud candidate: area=%.0f circ=%.2f solid=%.2f",
+                                    area, circularity, solidity,
+                                )
+                                return True
+        return False
 
     def stop(self):
         try:
@@ -950,6 +1031,415 @@ class AudioRouteMonitor:
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  KERNEL-LEVEL PROCESS SCANNER
+# ═══════════════════════════════════════════════════════════════════
+
+# Known suspicious driver / kernel module patterns
+SUSPICIOUS_DRIVER_NAMES = [
+    "teamviewer", "anydesk", "rustdesk", "parsec",
+    "obs", "screen", "capture", "mirror",
+    "vnc", "remote", "rdp",
+    "cheat", "hack", "inject", "hook",
+]
+
+# Known VPN adapter patterns
+VPN_ADAPTER_PATTERNS = [
+    "tap-windows", "tap0901", "tun", "wintun",
+    "wireguard", "openvpn", "vpn",
+    "nordlynx", "nordvpn", "expressvpn", "surfshark",
+    "protonvpn", "cyberghost", "windscribe", "mullvad",
+    "hotspot shield", "tunnelbear", "pia",
+    "cisco anyconnect", "globalprotect", "forticlient",
+    "tailscale", "zerotier", "cloudflare warp",
+    "softether", "hamachi",
+]
+
+# Known VPN process names
+VPN_PROCESS_NAMES = [
+    "openvpn", "openvpn-gui", "wireguard",
+    "nordvpn", "nordlynx", "nordvpn-service",
+    "expressvpn", "expressvpnd",
+    "surfshark", "surfshark-service",
+    "protonvpn", "protonvpn-service",
+    "cyberghostvpn", "cyberghost",
+    "windscribe", "windscribeservice",
+    "mullvad-vpn", "mullvad-daemon",
+    "pia-service", "privateinternetaccess",
+    "hotspotshield", "hsswd",
+    "tunnelbear",
+    "strongvpn",
+    "ipvanish",
+    "vpnui",                      # Cisco AnyConnect
+    "pangps", "pangpa",           # Palo Alto GlobalProtect
+    "forticlient", "fortisslvpn",
+    "tailscaled", "tailscale",
+    "zerotier-one", "zerotier",
+    "cloudflare-warp", "warp-svc",
+    "softether", "vpnclient",
+    "hamachi",
+    "psiphon",
+    "tor", "tor.exe",
+]
+
+
+class KernelProcessScanner:
+    """Deep kernel-level process and driver detection.
+
+    Three techniques:
+    A) WMI process enumeration (deeper than user-mode psutil)
+    B) Loaded kernel driver scan
+    C) NtQuerySystemInformation comparison (detect hidden processes)
+    """
+
+    def scan(self) -> dict:
+        """Run all kernel-level scans. Returns combined results."""
+        result = {
+            "hidden_processes": [],
+            "suspicious_drivers": [],
+            "kernel_process_count_mismatch": False,
+        }
+
+        if platform.system() != "Windows":
+            return result
+
+        # Technique A: find hidden processes
+        result["hidden_processes"] = self._find_hidden_processes()
+
+        # Technique B: suspicious driver scan
+        result["suspicious_drivers"] = self._scan_drivers()
+
+        # Technique C: NtQuery process count comparison
+        result["kernel_process_count_mismatch"] = self._check_process_count_mismatch()
+
+        return result
+
+    def _find_hidden_processes(self) -> list[dict]:
+        """Compare WMI process list with psutil to find hidden processes.
+
+        WMI queries at a deeper OS level than standard user-mode APIs.
+        Any process in WMI but NOT in psutil may be hiding from user-mode.
+        """
+        hidden = []
+        try:
+            # Get WMI process list
+            wmi_out = subprocess.check_output(
+                [
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-CimInstance Win32_Process | "
+                    "Select-Object -Property Name,ProcessId,ExecutablePath | "
+                    "ConvertTo-Csv -NoTypeInformation",
+                ],
+                text=True,
+                timeout=15,
+                stderr=subprocess.DEVNULL,
+            )
+            wmi_pids: dict[int, str] = {}
+            for line in wmi_out.splitlines()[1:]:  # skip header
+                parts = line.strip().strip('"').split('","')
+                if len(parts) >= 2:
+                    try:
+                        pid = int(parts[1])
+                        wmi_pids[pid] = parts[0]
+                    except (ValueError, IndexError):
+                        continue
+
+            # Get psutil process list
+            psutil_pids: set[int] = set()
+            if HAS_PSUTIL:
+                for proc in psutil.process_iter(["pid"]):
+                    try:
+                        psutil_pids.add(proc.info["pid"])
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+
+            # Find processes in WMI but NOT in psutil
+            if psutil_pids:  # only compare if psutil is available
+                for pid, name in wmi_pids.items():
+                    if pid not in psutil_pids and pid > 4:  # skip System/Idle
+                        hidden.append({
+                            "pid": pid,
+                            "name": name,
+                            "reason": "Process visible in WMI but hidden from user-mode enumeration",
+                        })
+        except Exception as e:
+            logger.debug(f"Hidden process scan error: {e}")
+
+        return hidden
+
+    def _scan_drivers(self) -> list[dict]:
+        """Scan loaded kernel drivers for suspicious patterns."""
+        suspicious = []
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-CimInstance Win32_SystemDriver | "
+                    "Where-Object {$_.State -eq 'Running'} | "
+                    "Select-Object -Property Name,DisplayName,PathName | "
+                    "ConvertTo-Csv -NoTypeInformation",
+                ],
+                text=True,
+                timeout=15,
+                stderr=subprocess.DEVNULL,
+            )
+            for line in out.splitlines()[1:]:
+                parts = line.strip().strip('"').split('","')
+                if len(parts) >= 2:
+                    driver_name = parts[0].lower()
+                    display_name = parts[1].lower() if len(parts) > 1 else ""
+                    path_name = parts[2].lower() if len(parts) > 2 else ""
+                    combined = f"{driver_name} {display_name} {path_name}"
+
+                    for pattern in SUSPICIOUS_DRIVER_NAMES:
+                        if pattern in combined:
+                            suspicious.append({
+                                "driver_name": parts[0],
+                                "display_name": parts[1] if len(parts) > 1 else "",
+                                "path": parts[2] if len(parts) > 2 else "",
+                                "matched_pattern": pattern,
+                            })
+                            break
+        except Exception as e:
+            logger.debug(f"Driver scan error: {e}")
+
+        return suspicious
+
+    def _check_process_count_mismatch(self) -> bool:
+        """Compare kernel-level process count with user-mode count.
+
+        Uses NtQuerySystemInformation via ctypes to get the raw kernel
+        process count and compares with psutil. A large discrepancy
+        (>5 processes) suggests hidden processes.
+        """
+        if not HAS_PSUTIL:
+            return False
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            ntdll = ctypes.windll.ntdll
+            SYSTEM_PROCESS_INFORMATION = 5
+
+            # First call to get required buffer size
+            buf_size = wintypes.ULONG(0)
+            status = ntdll.NtQuerySystemInformation(
+                SYSTEM_PROCESS_INFORMATION, None, 0, ctypes.byref(buf_size)
+            )
+
+            # Allocate buffer and query
+            buf = (ctypes.c_byte * buf_size.value)()
+            status = ntdll.NtQuerySystemInformation(
+                SYSTEM_PROCESS_INFORMATION, buf, buf_size.value, ctypes.byref(buf_size)
+            )
+
+            if status != 0:
+                return False
+
+            # Count processes in kernel data (each entry has NextEntryOffset)
+            kernel_count = 0
+            offset = 0
+            while True:
+                kernel_count += 1
+                next_offset = int.from_bytes(buf[offset:offset + 4], "little")
+                if next_offset == 0:
+                    break
+                offset += next_offset
+
+            # Count psutil processes
+            psutil_count = len(list(psutil.process_iter()))
+
+            # Allow small tolerance (kernel sees System & Idle which psutil may skip)
+            mismatch = kernel_count - psutil_count
+            if mismatch > 5:
+                logger.warning(
+                    "Process count mismatch: kernel=%d, psutil=%d (diff=%d)",
+                    kernel_count, psutil_count, mismatch,
+                )
+                return True
+
+        except Exception as e:
+            logger.debug(f"NtQuerySystemInformation error: {e}")
+
+        return False
+
+
+class VPNProxyDetector:
+    """Detect VPN connections and proxy configurations.
+
+    Detection methods:
+    A) Network adapter scan for VPN interfaces (TAP/TUN/WireGuard)
+    B) Running process scan for known VPN applications
+    C) Windows proxy settings check (registry)
+    D) DNS configuration anomaly detection
+    """
+
+    def scan(self) -> dict:
+        """Run all VPN/proxy detection scans."""
+        result = {
+            "vpn_adapters": [],
+            "vpn_processes": [],
+            "proxy_enabled": False,
+            "proxy_server": None,
+            "suspicious_dns": False,
+            "vpn_detected": False,
+            "proxy_detected": False,
+        }
+
+        if platform.system() == "Windows":
+            result["vpn_adapters"] = self._detect_vpn_adapters()
+            result["proxy_enabled"], result["proxy_server"] = self._check_proxy_settings()
+            result["suspicious_dns"] = self._check_dns_config()
+        elif platform.system() == "Linux":
+            result["vpn_adapters"] = self._detect_vpn_adapters_linux()
+
+        result["vpn_processes"] = self._detect_vpn_processes()
+
+        # Set summary flags
+        result["vpn_detected"] = bool(result["vpn_adapters"]) or bool(result["vpn_processes"])
+        result["proxy_detected"] = result["proxy_enabled"]
+
+        return result
+
+    def _detect_vpn_adapters(self) -> list[str]:
+        """Detect VPN network adapters on Windows."""
+        found = []
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | "
+                    "Select-Object -Property Name,InterfaceDescription | "
+                    "ConvertTo-Csv -NoTypeInformation",
+                ],
+                text=True,
+                timeout=10,
+                stderr=subprocess.DEVNULL,
+            )
+            for line in out.splitlines()[1:]:
+                parts = line.strip().strip('"').split('","')
+                combined = " ".join(parts).lower()
+                for pattern in VPN_ADAPTER_PATTERNS:
+                    if pattern in combined:
+                        found.append(parts[0] if parts else combined)
+                        break
+        except Exception as e:
+            logger.debug(f"VPN adapter scan error: {e}")
+        return found
+
+    def _detect_vpn_adapters_linux(self) -> list[str]:
+        """Detect VPN network interfaces on Linux."""
+        found = []
+        try:
+            out = subprocess.check_output(
+                ["ip", "link", "show"], text=True, timeout=5,
+                stderr=subprocess.DEVNULL,
+            )
+            for line in out.splitlines():
+                lower = line.lower()
+                for pattern in ["tun", "tap", "wg", "vpn", "wireguard", "nordlynx"]:
+                    if pattern in lower:
+                        # Extract interface name
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            found.append(parts[1].strip())
+                        break
+        except Exception as e:
+            logger.debug(f"Linux VPN adapter scan error: {e}")
+        return found
+
+    def _detect_vpn_processes(self) -> list[str]:
+        """Scan running processes for known VPN applications."""
+        found = []
+        try:
+            if HAS_PSUTIL:
+                for proc in psutil.process_iter(["name"]):
+                    try:
+                        pname = (proc.info["name"] or "").lower()
+                        for vpn_name in VPN_PROCESS_NAMES:
+                            if vpn_name in pname:
+                                found.append(proc.info["name"])
+                                break
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            else:
+                # Fallback: tasklist
+                if platform.system() == "Windows":
+                    out = subprocess.check_output(
+                        ["tasklist", "/FO", "CSV", "/NH"],
+                        text=True, timeout=10,
+                    )
+                    for line in out.strip().split("\n"):
+                        parts = line.strip().strip('"').split('","')
+                        if parts:
+                            pname = parts[0].lower()
+                            for vpn_name in VPN_PROCESS_NAMES:
+                                if vpn_name in pname:
+                                    found.append(parts[0])
+                                    break
+        except Exception as e:
+            logger.debug(f"VPN process scan error: {e}")
+        return found
+
+    def _check_proxy_settings(self) -> tuple[bool, str | None]:
+        """Check Windows proxy settings from registry."""
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-ItemProperty -Path "
+                    "'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' "
+                    "| Select-Object -Property ProxyEnable,ProxyServer | "
+                    "ConvertTo-Csv -NoTypeInformation",
+                ],
+                text=True,
+                timeout=8,
+                stderr=subprocess.DEVNULL,
+            )
+            for line in out.splitlines()[1:]:
+                parts = line.strip().strip('"').split('","')
+                if len(parts) >= 2:
+                    proxy_enabled = parts[0].strip() == "1"
+                    proxy_server = parts[1].strip() if len(parts) > 1 else None
+                    if proxy_server and proxy_server.lower() in ("", "none", "0"):
+                        proxy_server = None
+                    return proxy_enabled, proxy_server
+        except Exception as e:
+            logger.debug(f"Proxy settings check error: {e}")
+        return False, None
+
+    def _check_dns_config(self) -> bool:
+        """Check for VPN-related DNS configuration.
+
+        VPNs often set custom DNS servers (10.x.x.x, 172.x.x.x private ranges).
+        Standard DNS (ISP, Google 8.8.8.8, Cloudflare 1.1.1.1) is OK.
+        """
+        SAFE_DNS = {"8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1",
+                     "9.9.9.9", "208.67.222.222", "208.67.220.220"}
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-DnsClientServerAddress -AddressFamily IPv4 | "
+                    "Select-Object -ExpandProperty ServerAddresses",
+                ],
+                text=True,
+                timeout=8,
+                stderr=subprocess.DEVNULL,
+            )
+            dns_servers = [s.strip() for s in out.splitlines() if s.strip()]
+            for dns in dns_servers:
+                # VPN DNS servers are often in private IP ranges
+                if dns.startswith("10.") or dns.startswith("172.") or dns.startswith("192.168."):
+                    # Private DNS = likely VPN
+                    if dns not in SAFE_DNS:
+                        logger.debug(f"Suspicious DNS server: {dns}")
+                        return True
+        except Exception as e:
+            logger.debug(f"DNS config check error: {e}")
+        return False
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  PROCTOR AGENT — Main Orchestrator
 # ═══════════════════════════════════════════════════════════════════
 
@@ -983,6 +1473,8 @@ class ProctorAgent:
         self.env_check = SystemEnvironmentCheck()
         self.face_monitor = FaceMonitor()
         self.audio_monitor = AudioRouteMonitor()
+        self.kernel_scanner = KernelProcessScanner()
+        self.vpn_detector = VPNProxyDetector()
 
         # Tracking state
         self.violations: list[dict] = []
@@ -990,6 +1482,7 @@ class ProctorAgent:
         self.last_active_window = ""
         self.camera_violation_sent = False
         self.audio_violation_sent = False
+        self.earbud_violation_sent = False
         self.environment_info: dict = {}
 
     def start(self):
@@ -1185,6 +1678,26 @@ class ProctorAgent:
                     )
                     results["violations"].append(violation)
 
+        # ── Layer 4b: Earbud + audio cross-reference ────────────
+        # If earbuds are visible in camera but NOT connected to laptop
+        # Bluetooth/audio → candidate is using external audio (phone)
+        if face_state.get("earbud_suspected", False):
+            audio_state_quick = self.audio_monitor.scan()
+            has_bt = audio_state_quick.get("has_bluetooth_audio", False)
+            has_headset = audio_state_quick.get("has_headset", False)
+            if not has_bt and not has_headset:
+                if not self.earbud_violation_sent:
+                    violation = self._record_violation(
+                        "external_audio_suspected",
+                        "Earbuds/headset visible on candidate in camera, but no "
+                        "Bluetooth/headset audio device connected to laptop. "
+                        "Candidate may be receiving audio from an external device.",
+                    )
+                    results["violations"].append(violation)
+                    self.earbud_violation_sent = True
+            else:
+                self.earbud_violation_sent = False
+
         # ── Layer 5: Local audio route checks ─────────────────
         if self.heartbeat_count % 2 == 0:
             audio_state = self.audio_monitor.scan()
@@ -1208,6 +1721,69 @@ class ProctorAgent:
                             "No local headset/earbud detected on candidate laptop audio routes.",
                         )
                         results["violations"].append(violation)
+
+        # ── Layer 6: Kernel-level process scan (every 5th heartbeat) ──
+        if self.heartbeat_count % 5 == 0:
+            kernel_state = self.kernel_scanner.scan()
+            results["kernel_scan"] = kernel_state
+
+            for hidden in kernel_state.get("hidden_processes", []):
+                violation = self._record_violation(
+                    "hidden_process_detected",
+                    f"Hidden process detected: {hidden['name']} (PID: {hidden['pid']}). "
+                    f"{hidden['reason']}",
+                )
+                results["violations"].append(violation)
+
+            for driver in kernel_state.get("suspicious_drivers", []):
+                violation = self._record_violation(
+                    "suspicious_driver_detected",
+                    f"Suspicious kernel driver: {driver['driver_name']} "
+                    f"({driver['display_name']}). Matched: {driver['matched_pattern']}",
+                )
+                results["violations"].append(violation)
+
+            if kernel_state.get("kernel_process_count_mismatch", False):
+                violation = self._record_violation(
+                    "hidden_process_detected",
+                    "Kernel process count mismatch: more processes visible at "
+                    "kernel level than user mode. Possible process hiding.",
+                )
+                results["violations"].append(violation)
+
+        # ── Layer 7: VPN / Proxy detection (every 3rd heartbeat) ──
+        if self.heartbeat_count % 3 == 0:
+            vpn_state = self.vpn_detector.scan()
+            results["vpn_proxy"] = vpn_state
+
+            if vpn_state.get("vpn_detected", False):
+                adapters = vpn_state.get("vpn_adapters", [])
+                processes = vpn_state.get("vpn_processes", [])
+                details = []
+                if adapters:
+                    details.append(f"VPN adapters: {', '.join(adapters)}")
+                if processes:
+                    details.append(f"VPN processes: {', '.join(processes)}")
+                violation = self._record_violation(
+                    "vpn_detected",
+                    f"VPN connection detected. {'; '.join(details)}",
+                )
+                results["violations"].append(violation)
+
+            if vpn_state.get("proxy_detected", False):
+                proxy_server = vpn_state.get("proxy_server", "unknown")
+                violation = self._record_violation(
+                    "proxy_detected",
+                    f"System proxy enabled: {proxy_server}",
+                )
+                results["violations"].append(violation)
+
+            if vpn_state.get("suspicious_dns", False):
+                violation = self._record_violation(
+                    "vpn_detected",
+                    "Suspicious private DNS server detected (possible VPN tunnel).",
+                )
+                results["violations"].append(violation)
 
         return results
 

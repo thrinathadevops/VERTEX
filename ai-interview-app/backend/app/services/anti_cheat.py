@@ -66,7 +66,14 @@ INTEGRITY_DEDUCTIONS = {
     "multiple_faces_detected": 18,  # Extra person detected
     "no_local_audio_device": 12,    # No local audio endpoint detected
     "no_headset_connected": 8,      # No headset/earbud connected (reduced; capped)
+    "external_audio_suspected": 15, # Earbuds visible in camera but not on laptop
     "multiple_monitors_detected": 0,  # Info only, not a deduction
+    # Kernel-level detection events
+    "hidden_process_detected": 25,  # Process hidden from user-mode enumeration
+    "suspicious_driver_detected": 20, # Suspicious kernel driver loaded
+    # VPN/Proxy detection events
+    "vpn_detected": 15,             # VPN connection active
+    "proxy_detected": 15,           # System proxy enabled
     # AI text detection events
     "ai_text_detected": 20,         # Answer flagged as AI-generated
     "paste_detected": 10,           # Answer was pasted
@@ -105,7 +112,12 @@ EVENT_SEVERITY = {
     "multiple_faces_detected": "critical",
     "no_local_audio_device": "critical",
     "no_headset_connected": "critical",
+    "external_audio_suspected": "critical",
     "multiple_monitors_detected": "info",
+    "hidden_process_detected": "critical",
+    "suspicious_driver_detected": "critical",
+    "vpn_detected": "critical",
+    "proxy_detected": "critical",
     "ai_text_detected": "critical",
     "paste_detected": "warning",
     "proctor_started": "info",
@@ -136,6 +148,11 @@ PROCTOR_EVENT_TYPES = {
     "multiple_faces_detected",
     "no_local_audio_device",
     "no_headset_connected",
+    "external_audio_suspected",
+    "hidden_process_detected",
+    "suspicious_driver_detected",
+    "vpn_detected",
+    "proxy_detected",
     "proctor_started",
     "proctor_stopped",
     "proctor_disconnected",
@@ -285,6 +302,26 @@ def record_event(
             warning_message = (
                 "🚨 CRITICAL: Required local audio device/headset not detected."
             )
+        elif event_type == "external_audio_suspected":
+            warning_message = (
+                "🚨 CRITICAL: Earbuds/headset visible in camera but NOT connected "
+                "to this laptop. You may be receiving audio from an external device."
+            )
+        elif event_type == "hidden_process_detected":
+            warning_message = (
+                "🚨 CRITICAL: A hidden process was detected on your system. "
+                "This has been flagged as a serious integrity violation."
+            )
+        elif event_type == "suspicious_driver_detected":
+            warning_message = (
+                "🚨 CRITICAL: A suspicious system driver was detected running. "
+                "This has been logged and will be included in your report."
+            )
+        elif event_type in ("vpn_detected", "proxy_detected"):
+            warning_message = (
+                "🚨 CRITICAL: VPN or proxy connection detected. "
+                "All network traffic must be direct during the interview."
+            )
     elif warning:
         warning_message = (
             "⚠️ Suspicious activity detected. This will be noted in your interview report."
@@ -341,6 +378,11 @@ def record_proctor_heartbeat(
         "multiple_faces_detected",
         "no_local_audio_device",
         "no_headset_connected",
+        "hidden_process_detected",
+        "suspicious_driver_detected",
+        "vpn_detected",
+        "proxy_detected",
+        "external_audio_suspected",
     }
     for v in violations:
         v_type = v.get("type", "")
