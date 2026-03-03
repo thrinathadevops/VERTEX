@@ -133,6 +133,32 @@ export default function HomePage() {
       typeof window !== "undefined" &&
       ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
     );
+    // Preload voices (Chrome loads them async)
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+  }, []);
+
+  // ── Find best female English voice ─────────────────────
+  const pickFemaleVoice = useCallback(() => {
+    const voices = window.speechSynthesis.getVoices();
+    const enVoices = voices.filter(v => v.lang.startsWith("en"));
+    // Known female voice names across platforms — Samantha first
+    const femaleNames = ["samantha", "zira", "heera", "karen", "moira", "fiona",
+      "victoria", "susan", "hazel", "linda", "catherine", "tessa",
+      "google uk english female", "google us english", "female"];
+    // Priority 0: Samantha specifically
+    const samantha = enVoices.find(v => v.name.toLowerCase().includes("samantha"));
+    if (samantha) return samantha;
+    // Priority 1: other known female names
+    const byName = enVoices.find(v => femaleNames.some(n => v.name.toLowerCase().includes(n)));
+    if (byName) return byName;
+    // Priority 2: cloud/remote female voice
+    const remote = enVoices.find(v => !v.localService);
+    if (remote) return remote;
+    // Priority 3: any English voice
+    return enVoices[0] || voices[0] || null;
   }, []);
 
   // ── TTS: speak text aloud ──────────────────────────────
@@ -144,19 +170,15 @@ export default function HomePage() {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.95;
-    utterance.pitch = 1.0;
+    utterance.pitch = 1.1;
     utterance.volume = 1.0;
-    // Prefer a natural English voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en-") && !v.localService)
-      || voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
+    const voice = pickFemaleVoice();
+    if (voice) utterance.voice = voice;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => { setIsSpeaking(false); onEnd?.(); };
     utterance.onerror = () => { setIsSpeaking(false); onEnd?.(); };
     window.speechSynthesis.speak(utterance);
-  }, [speechSupported, voiceMode]);
+  }, [speechSupported, voiceMode, pickFemaleVoice]);
 
   const stopSpeaking = useCallback(() => {
     if (speechSupported) {
@@ -189,32 +211,44 @@ export default function HomePage() {
     recognition.onresult = (event: any) => {
       if (triggerDetected) return;
       let interim = "";
+      let latestFinal = "";
       for (let i = 0; i < event.results.length; i++) {
         const r = event.results[i];
-        if (r.isFinal) { finalText += r[0].transcript + " "; }
-        else { interim += r[0].transcript; }
+        if (r.isFinal) {
+          const chunk = r[0].transcript;
+          finalText += chunk + " ";
+          latestFinal = chunk;
+        } else {
+          interim += r[0].transcript;
+        }
       }
       const fullText = (finalText + interim).trim();
 
-      // Check for trigger phrases at the end of the transcript
-      const lowerText = fullText.toLowerCase();
-      const lastWords = lowerText.split(/\s+/).slice(-5).join(" ");
-      const matchedTrigger = STOP_PHRASES.find(phrase =>
-        lastWords.endsWith(phrase) || lowerText.endsWith(phrase)
-      );
+      // Check trigger words ONLY on finalized speech (not interim)
+      if (latestFinal) {
+        const lowerFinal = latestFinal.toLowerCase().trim();
+        const lowerFull = finalText.toLowerCase().trim();
+        // Check if the latest finalized chunk ends with a trigger phrase
+        const matchedTrigger = STOP_PHRASES.find(phrase =>
+          lowerFinal === phrase ||
+          lowerFinal.endsWith(" " + phrase) ||
+          lowerFinal.endsWith("." + phrase) ||
+          lowerFinal.endsWith(", " + phrase)
+        );
 
-      if (matchedTrigger && fullText.length > matchedTrigger.length + 5) {
-        // Strip the trigger phrase from the answer
-        triggerDetected = true;
-        const cleanAnswer = fullText.replace(
-          new RegExp(`\\s*${matchedTrigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), ""
-        ).trim();
-        answerBufferRef.current = cleanAnswer || fullText;
-        setAnswer(answerBufferRef.current);
-        // Immediately stop — onend will auto-submit
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        recognition.stop();
-        return;
+        if (matchedTrigger && lowerFull.length > matchedTrigger.length + 3) {
+          triggerDetected = true;
+          // Strip trigger phrase from the full answer
+          const escapedTrigger = matchedTrigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const cleanAnswer = finalText.replace(
+            new RegExp(`[\\s.,]*${escapedTrigger}[\\s.]*$`, "i"), ""
+          ).trim();
+          answerBufferRef.current = cleanAnswer || finalText.trim();
+          setAnswer(answerBufferRef.current);
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          recognition.stop();
+          return;
+        }
       }
 
       answerBufferRef.current = fullText;
@@ -1020,28 +1054,7 @@ export default function HomePage() {
                 transition: "filter 0.5s ease",
               }}
             />
-            {/* Lip-sync mouth overlay - animated during speaking */}
-            {(voicePhase === "speaking" || voicePhase === "feedback") && (
-              <div style={{
-                position: "absolute", bottom: 42, left: "50%", transform: "translateX(-50%)",
-                width: 32, height: 14, borderRadius: "50%",
-                background: "rgba(0,0,0,0.35)", zIndex: 3,
-                animation: "ariaLipSync 0.3s ease-in-out infinite alternate",
-              }} />
-            )}
-            {/* Eye blink overlay */}
-            <div style={{
-              position: "absolute", top: 62, left: 52, width: 22, height: 3,
-              background: "rgba(60,40,30,0.9)", borderRadius: 2, zIndex: 3,
-              animation: "ariaBlink 4s ease-in-out infinite",
-              opacity: 0,
-            }} />
-            <div style={{
-              position: "absolute", top: 62, right: 52, width: 22, height: 3,
-              background: "rgba(60,40,30,0.9)", borderRadius: 2, zIndex: 3,
-              animation: "ariaBlink 4s ease-in-out 0.05s infinite",
-              opacity: 0,
-            }} />
+
             {/* Phase indicator badge */}
             <div style={{
               position: "absolute", bottom: 4, right: 4, zIndex: 4,
@@ -1153,15 +1166,7 @@ export default function HomePage() {
             0% { height: 3px; }
             100% { height: 24px; }
           }
-          @keyframes ariaLipSync {
-            0% { height: 6px; width: 28px; bottom: 44px; }
-            50% { height: 14px; width: 34px; bottom: 40px; }
-            100% { height: 8px; width: 30px; bottom: 43px; }
-          }
-          @keyframes ariaBlink {
-            0%, 92%, 100% { opacity: 0; }
-            95%, 97% { opacity: 1; }
-          }
+
           @keyframes ariaBreath {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.015); }
