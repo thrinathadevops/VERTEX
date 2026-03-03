@@ -121,6 +121,7 @@ export default function HomePage() {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerBufferRef = useRef("");
   const forceSubmitRef = useRef(false);
+  const forceAdvanceRef = useRef(false);
 
   const canSubmit = useMemo(
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
@@ -273,6 +274,9 @@ export default function HomePage() {
       const shouldForceSubmit = forceSubmitRef.current;
       forceSubmitRef.current = false;
       if (captured.length >= 5 || (shouldForceSubmit && captured.length >= 1)) {
+        if (shouldForceSubmit) {
+          forceAdvanceRef.current = true;
+        }
         setAnswer(captured);
         setTimeout(() => {
           document.getElementById("voice-auto-submit")?.click();
@@ -304,6 +308,7 @@ export default function HomePage() {
     }
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     forceSubmitRef.current = false;
+    forceAdvanceRef.current = false;
     setIsListening(false);
   }, []);
 
@@ -451,8 +456,16 @@ export default function HomePage() {
     setError("");
     setLoading(true);
     try {
+      const forcedAdvance = forceAdvanceRef.current;
+      forceAdvanceRef.current = false;
       const submitAnswer = answer.trim() || answerBufferRef.current.trim();
-      if (submitAnswer.length < 5) {
+      if (submitAnswer.length < 5 && !forcedAdvance) {
+        setLoading(false);
+        setVoicePhase("listening");
+        setTimeout(() => startListening(), 500);
+        return;
+      }
+      if (submitAnswer.length < 1) {
         setLoading(false);
         setVoicePhase("listening");
         setTimeout(() => startListening(), 500);
