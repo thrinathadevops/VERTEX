@@ -120,6 +120,7 @@ export default function HomePage() {
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerBufferRef = useRef("");
+  const forceSubmitRef = useRef(false);
 
   const canSubmit = useMemo(
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
@@ -236,7 +237,7 @@ export default function HomePage() {
           lowerFinal.endsWith(", " + phrase)
         );
 
-        if (matchedTrigger && lowerFull.length > matchedTrigger.length + 3) {
+        if (matchedTrigger) {
           triggerDetected = true;
           // Strip trigger phrase from the full answer
           const escapedTrigger = matchedTrigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -245,6 +246,7 @@ export default function HomePage() {
           ).trim();
           answerBufferRef.current = cleanAnswer || finalText.trim();
           setAnswer(answerBufferRef.current);
+          forceSubmitRef.current = true;
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
           recognition.stop();
           return;
@@ -263,9 +265,14 @@ export default function HomePage() {
     recognition.onend = () => {
       setIsListening(false);
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (recognitionRef.current === recognition) {
+        recognitionRef.current = null;
+      }
       // Auto-submit if we have enough text
       const captured = answerBufferRef.current.trim();
-      if (captured.length >= 5) {
+      const shouldForceSubmit = forceSubmitRef.current;
+      forceSubmitRef.current = false;
+      if (captured.length >= 5 || (shouldForceSubmit && captured.length >= 1)) {
         setAnswer(captured);
         setTimeout(() => {
           document.getElementById("voice-auto-submit")?.click();
@@ -296,6 +303,7 @@ export default function HomePage() {
       recognitionRef.current = null;
     }
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    forceSubmitRef.current = false;
     setIsListening(false);
   }, []);
 
