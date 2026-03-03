@@ -116,9 +116,10 @@ export default function HomePage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [sttSupported, setSttSupported] = useState(false);
+  const [voicePhase, setVoicePhase] = useState<"speaking" | "listening" | "evaluating" | "feedback" | "idle">("idle");
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoAdvanceRef = useRef(false);
+  const answerBufferRef = useRef("");
 
   const canSubmit = useMemo(
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
@@ -164,10 +165,11 @@ export default function HomePage() {
     }
   }, [speechSupported]);
 
-  // ── STT: start microphone ──────────────────────────────
+  // ── STT: start microphone (auto-submits on silence) ────
   const startListening = useCallback(() => {
     if (!sttSupported || !voiceMode) return;
     stopSpeaking();
+    setVoicePhase("listening");
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRec();
     recognition.continuous = true;
@@ -181,21 +183,39 @@ export default function HomePage() {
         if (r.isFinal) { finalText += r[0].transcript + " "; }
         else { interim += r[0].transcript; }
       }
-      setAnswer(finalText + interim);
-      // Reset silence timer on every result
+      answerBufferRef.current = (finalText + interim).trim();
+      setAnswer(answerBufferRef.current);
+      // Reset silence timer — auto-submit after 4s silence
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        // Auto-stop after 3s silence
         recognition.stop();
-      }, 3000);
+      }, 4000);
     };
     recognition.onend = () => {
       setIsListening(false);
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      // Auto-submit if we have enough text
+      const captured = answerBufferRef.current.trim();
+      if (captured.length >= 5) {
+        setAnswer(captured);
+        // Trigger auto-submit via a tiny delay so state settles
+        setTimeout(() => {
+          document.getElementById("voice-auto-submit")?.click();
+        }, 200);
+      } else {
+        setVoicePhase("listening");
+        // Restart if no meaningful answer yet
+        setTimeout(() => {
+          if (!recognitionRef.current) startListening();
+        }, 1000);
+      }
     };
     recognition.onerror = (e: any) => {
       console.warn("STT error:", e.error);
       setIsListening(false);
+      if (e.error !== "aborted") {
+        setTimeout(() => startListening(), 1500);
+      }
     };
     recognitionRef.current = recognition;
     recognition.start();
@@ -211,9 +231,11 @@ export default function HomePage() {
     setIsListening(false);
   }, []);
 
-  // ── Auto-speak questions when they change ──────────────
+  // ── Auto-speak questions and start listening ───────────
   useEffect(() => {
     if (step === "interview" && currentQuestion && voiceMode && speechSupported && !loading) {
+      setVoicePhase("speaking");
+      answerBufferRef.current = "";
       speak(currentQuestion, () => {
         // After speaking the question, auto-start listening
         if (sttSupported && voiceMode) {
@@ -344,48 +366,55 @@ export default function HomePage() {
     setStep("interview");
   }
 
-  /* ── Submit answer (voice-aware: speak feedback then auto-advance) ── */
+  /* ── Submit answer (voice: speak feedback then auto-advance) ── */
   async function submitCurrentAnswer() {
     if (!session) return;
     stopListening();
     stopSpeaking();
+    setVoicePhase("evaluating");
     setError("");
     setLoading(true);
     try {
+      const submitAnswer = answer.trim() || answerBufferRef.current.trim();
+      if (submitAnswer.length < 5) {
+        setLoading(false);
+        setVoicePhase("listening");
+        setTimeout(() => startListening(), 500);
+        return;
+      }
       const res = await fetch(`/api/v1/interview/session/${session.id}/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify({ answer: submitAnswer }),
       });
       if (!res.ok) throw new Error("Failed to submit answer.");
       const data: AnswerPayload = await res.json();
       setLastAnswer(data);
       setAnswer("");
+      answerBufferRef.current = "";
       setTurnNumber(data.turn_number + 1);
       setTotalQuestions(data.total_questions);
 
       if (data.status === "completed") {
-        // Interview done — speak summary then show report
         const rr = await fetch(`/api/v1/interview/session/${session.id}/report`);
         if (rr.ok) setReport(await rr.json());
         const endMsg = data.feedback
           ? `${data.feedback}. That completes your interview. Let me generate your report.`
           : "That completes your interview. Let me generate your report.";
+        setVoicePhase("feedback");
         if (voiceMode && speechSupported) {
           speak(endMsg, () => setStep("report"));
         } else {
           setStep("report");
         }
       } else {
-        // Speak brief feedback, then auto-advance to next question
         const feedbackText = data.feedback || "Good answer, let's move on.";
-        const briefFeedback = feedbackText.length > 200
-          ? feedbackText.slice(0, 200).replace(/\s+\S*$/, "") + "…"
+        const briefFeedback = feedbackText.length > 150
+          ? feedbackText.slice(0, 150).replace(/\s+\S*$/, "") + "…"
           : feedbackText;
-
+        setVoicePhase("feedback");
         if (voiceMode && speechSupported) {
           speak(briefFeedback, () => {
-            // After feedback is spoken, set the next question (which triggers auto-speak)
             setCurrentQuestion(data.next_question ?? "");
           });
         } else {
@@ -394,6 +423,7 @@ export default function HomePage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit answer.");
+      setVoicePhase("idle");
     } finally {
       setLoading(false);
     }
@@ -857,299 +887,177 @@ export default function HomePage() {
   }
 
   /* ════════════════════════════════════════════════════════ */
-  /*  INTERVIEW – Voice-First Question & Answer Flow        */
+  /*  INTERVIEW – Hands-Free Voice Agent                    */
   /* ════════════════════════════════════════════════════════ */
   if (step === "interview") {
     const progress = ((turnNumber - 1) / totalQuestions) * 100;
+    const phaseLabel =
+      voicePhase === "speaking" ? "Aria is asking a question…" :
+        voicePhase === "listening" ? "Listening to your answer…" :
+          voicePhase === "evaluating" ? "Evaluating your response…" :
+            voicePhase === "feedback" ? "Aria is giving feedback…" : "";
+    const phaseColor =
+      voicePhase === "speaking" ? "#38bdf8" :
+        voicePhase === "listening" ? "#4ade80" :
+          voicePhase === "evaluating" ? "#f59e0b" :
+            voicePhase === "feedback" ? "#a78bfa" : "#64748b";
 
     return (
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "32px 20px" }}>
-        {/* Top bar */}
-        <div className="animate-fadeIn" style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
-            }}>
-              <Bot size={18} color="#ffffff" aria-hidden="true" />
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>VAREX AI Interview</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{session?.interview_mode === "real" ? "Enterprise Assessment" : "Practice Session"}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Voice toggle */}
-            {speechSupported && (
-              <button
-                onClick={() => { setVoiceMode(v => !v); stopSpeaking(); stopListening(); }}
-                title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
-                style={{
-                  background: voiceMode ? "rgba(14,165,233,0.12)" : "rgba(51,65,85,0.3)",
-                  border: `1px solid ${voiceMode ? "rgba(14,165,233,0.3)" : "rgba(51,65,85,0.5)"}`,
-                  borderRadius: 8, padding: "5px 10px", cursor: "pointer",
-                  color: voiceMode ? "#38bdf8" : "#64748b", display: "flex", alignItems: "center", gap: 4,
-                  fontSize: 11, fontWeight: 600, transition: "all 0.3s ease",
-                }}
-              >
-                {voiceMode ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                {voiceMode ? "Voice" : "Text"}
-              </button>
-            )}
-            <div style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-              background: "rgba(14,165,233,0.1)", color: "#38bdf8", border: "1px solid rgba(14,165,233,0.2)",
-            }}>
-              Question {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
-            </div>
-          </div>
-        </div>
+      <div style={{
+        minHeight: "100vh", display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", padding: "20px",
+        background: "radial-gradient(ellipse at 50% 30%, rgba(14,165,233,0.06) 0%, transparent 60%)",
+      }}>
+        {/* Hidden auto-submit trigger */}
+        <button id="voice-auto-submit" onClick={submitCurrentAnswer} style={{ display: "none" }} />
 
-        {/* Progress bar */}
+        {/* Top status bar */}
         <div style={{
-          height: 4, borderRadius: 2, background: "rgba(51,65,85,0.5)", marginBottom: 32, overflow: "hidden",
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+          padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: "rgba(2,6,23,0.85)", backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(51,65,85,0.3)",
         }}>
-          <div style={{
-            height: "100%", borderRadius: 2, width: `${progress}%`,
-            background: "linear-gradient(90deg, #0ea5e9, #8b5cf6)",
-            transition: "width 0.6s ease",
-          }} />
-        </div>
-
-        {/* Speaking indicator */}
-        {isSpeaking && (
-          <div className="animate-fadeIn" style={{
-            display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
-            padding: "10px 16px", borderRadius: 12,
-            background: "linear-gradient(135deg, rgba(14,165,233,0.08), rgba(139,92,246,0.06))",
-            border: "1px solid rgba(14,165,233,0.2)",
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 10,
+              width: 28, height: 28, borderRadius: 8,
               background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              animation: "pulse-glow 1.5s ease-in-out infinite",
             }}>
-              <Volume2 size={16} color="#fff" />
+              <Bot size={14} color="#fff" />
             </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8" }}>Aria is speaking…</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Listen to the question, then answer</div>
-            </div>
-            <button
-              onClick={stopSpeaking}
-              style={{
-                marginLeft: "auto", background: "rgba(239,68,68,0.12)",
-                border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8,
-                padding: "4px 10px", fontSize: 11, fontWeight: 600,
-                color: "#f87171", cursor: "pointer",
-              }}
-            >⏹ Stop</button>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>VAREX AI Interview</span>
+            <span style={{ fontSize: 11, color: "#64748b" }}>
+              • {session?.interview_mode === "real" ? "Enterprise" : "Practice"}
+            </span>
           </div>
-        )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>
+              {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
+            </span>
+            {/* Progress bar mini */}
+            <div style={{ width: 80, height: 3, borderRadius: 2, background: "rgba(51,65,85,0.5)" }}>
+              <div style={{
+                height: "100%", borderRadius: 2, width: `${progress}%`,
+                background: "linear-gradient(90deg, #0ea5e9, #8b5cf6)",
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+          </div>
+        </div>
 
-        {/* Question Card */}
+        {/* Center: AI Avatar + Waveform */}
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          {/* Animated avatar */}
+          <div style={{
+            width: 120, height: 120, borderRadius: 36, margin: "0 auto 24px",
+            background: `linear-gradient(135deg, ${phaseColor}30, ${phaseColor}10)`,
+            border: `2px solid ${phaseColor}50`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: `0 0 60px ${phaseColor}20, 0 0 120px ${phaseColor}08`,
+            animation: (voicePhase === "speaking" || voicePhase === "feedback")
+              ? "pulse-glow 1.5s ease-in-out infinite"
+              : voicePhase === "listening"
+                ? "pulse-glow 2s ease-in-out infinite"
+                : "none",
+            transition: "all 0.5s ease",
+          }}>
+            {voicePhase === "listening" ? (
+              <Mic size={48} color={phaseColor} />
+            ) : voicePhase === "evaluating" ? (
+              <div style={{ animation: "spin 1.5s linear infinite" }}>
+                <Bot size={48} color={phaseColor} />
+              </div>
+            ) : (
+              <Bot size={48} color={phaseColor} />
+            )}
+          </div>
+
+          {/* Sound wave animation (during speaking/listening) */}
+          {(voicePhase === "speaking" || voicePhase === "listening" || voicePhase === "feedback") && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+              height: 32, marginBottom: 20,
+            }}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} style={{
+                  width: 3, borderRadius: 2,
+                  background: phaseColor,
+                  opacity: 0.7,
+                  animation: `soundWave 0.8s ease-in-out ${i * 0.08}s infinite alternate`,
+                }} />
+              ))}
+            </div>
+          )}
+
+          {/* Phase label */}
+          <div style={{
+            fontSize: 14, fontWeight: 600, color: phaseColor,
+            letterSpacing: 0.5, marginBottom: 8,
+            transition: "all 0.3s ease",
+          }}>
+            {phaseLabel}
+          </div>
+
+          {voicePhase === "listening" && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse-glow 1s ease-in-out infinite" }} />
+              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 700, letterSpacing: 1 }}>RECORDING</span>
+            </div>
+          )}
+        </div>
+
+        {/* Question display */}
         {currentQuestion && (
-          <div className="animate-fadeInUp" style={{ ...cardStyle, marginBottom: 24 }}>
-            <div style={{ display: "flex", gap: 14, marginBottom: 20 }}>
-              <div style={{
-                flexShrink: 0, width: 40, height: 40, borderRadius: 12,
-                background: "linear-gradient(135deg, rgba(14,165,233,0.2), rgba(139,92,246,0.2))",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, border: "1px solid rgba(14,165,233,0.15)",
-              }}>
-                <CircleHelp size={18} color="#7dd3fc" aria-hidden="true" />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
-                  Question {turnNumber}
-                </div>
-                <p style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.6, color: "#e2e8f0" }}>
-                  {currentQuestion}
-                </p>
-              </div>
-            </div>
-
-            {/* Voice controls */}
-            {voiceMode && sttSupported && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <button
-                  onClick={isListening ? stopListening : startListening}
-                  disabled={isSpeaking || loading}
-                  style={{
-                    width: 48, height: 48, borderRadius: "50%", border: "none",
-                    background: isListening
-                      ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                      : "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: isSpeaking || loading ? "not-allowed" : "pointer",
-                    opacity: isSpeaking || loading ? 0.4 : 1,
-                    boxShadow: isListening ? "0 0 20px rgba(239,68,68,0.4)" : "0 0 20px rgba(14,165,233,0.3)",
-                    transition: "all 0.3s ease",
-                    animation: isListening ? "pulse-glow 1.2s ease-in-out infinite" : "none",
-                  }}
-                >
-                  {isListening ? <MicOff size={20} color="#fff" /> : <Mic size={20} color="#fff" />}
-                </button>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isListening ? "#f87171" : "#94a3b8" }}>
-                    {isListening ? "🔴 Listening… speak your answer" : isSpeaking ? "Wait for Aria to finish…" : "Click mic or start speaking"}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>
-                    {isListening ? "Will auto-stop after 3s of silence" : "Your answer will appear below"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Answer area — live transcript or text input */}
-            <div style={{ position: "relative" }}>
-              <textarea
-                rows={6}
-                value={answer}
-                onChange={e => setAnswer(e.target.value)}
-                placeholder={voiceMode ? "Your spoken answer will appear here… (or type manually)" : "Type your detailed answer here… (minimum 5 characters)"}
-                style={{
-                  width: "100%", borderRadius: 12,
-                  border: `1px solid ${isListening ? "rgba(239,68,68,0.5)" : "rgba(51,65,85,0.6)"}`,
-                  background: isListening ? "rgba(239,68,68,0.03)" : "rgba(2,6,23,0.6)",
-                  color: "#f1f5f9", padding: "14px 16px",
-                  fontSize: 14, lineHeight: 1.7, resize: "vertical", outline: "none",
-                  transition: "all 0.3s ease",
-                  fontFamily: "var(--font-source-sans), sans-serif",
-                }}
-                onFocus={e => { if (!isListening) e.target.style.borderColor = "rgba(14,165,233,0.5)"; }}
-                onBlur={e => { if (!isListening) e.target.style.borderColor = "rgba(51,65,85,0.6)"; }}
-              />
-              {isListening && (
-                <div style={{
-                  position: "absolute", top: 10, right: 12,
-                  display: "flex", alignItems: "center", gap: 4,
-                }}>
-                  <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse-glow 1s ease-in-out infinite" }} />
-                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 600 }}>LIVE</span>
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-              <span style={{ fontSize: 12, color: answer.length >= 5 ? "#64748b" : "#ef4444" }}>
-                {answer.split(/\s+/).filter(Boolean).length} words
-              </span>
-              <button
-                disabled={!canSubmit}
-                onClick={() => { stopListening(); submitCurrentAnswer(); }}
-                style={{
-                  ...primaryBtnStyle,
-                  padding: "12px 32px",
-                  opacity: canSubmit ? 1 : 0.4,
-                  cursor: canSubmit ? "pointer" : "not-allowed",
-                }}
-              >
-                {loading ? <><Spinner /> Evaluating...</> : "Submit Answer →"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Last Answer Feedback (brief during voice, detailed in text) */}
-        {lastAnswer && !isSpeaking && !loading && (
-          <div className="animate-slideInLeft" style={{
-            ...cardStyle,
-            borderColor: `${scoreColor(lastAnswer.score)}30`,
-            background: `linear-gradient(135deg, ${scoreColor(lastAnswer.score)}08, transparent)`,
+          <div className="animate-fadeInUp" style={{
+            maxWidth: 700, width: "100%",
+            background: "rgba(15,23,42,0.6)", backdropFilter: "blur(12px)",
+            border: "1px solid rgba(51,65,85,0.4)", borderRadius: 20,
+            padding: "28px 32px", textAlign: "center",
+            boxShadow: `0 0 40px ${phaseColor}08`,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: 16,
-                background: `linear-gradient(135deg, ${scoreColor(lastAnswer.score)}25, ${scoreColor(lastAnswer.score)}08)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                border: `1px solid ${scoreColor(lastAnswer.score)}40`,
-                animation: "scoreReveal 0.5s ease-out",
-              }}>
-                <span style={{ fontSize: 22, fontWeight: 900, color: scoreColor(lastAnswer.score) }}>
-                  {lastAnswer.score}
-                </span>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>
-                  Previous Answer Score
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#e2e8f0" }}>
-                  {lastAnswer.score}/10
-                </div>
-              </div>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: "#64748b",
+              textTransform: "uppercase", letterSpacing: 2, marginBottom: 12,
+            }}>
+              Question {turnNumber}
             </div>
-            <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, paddingLeft: 72 }}>
-              {lastAnswer.feedback}
+            <p style={{
+              fontSize: 20, fontWeight: 600, lineHeight: 1.6, color: "#e2e8f0",
+              margin: 0,
+            }}>
+              {currentQuestion}
             </p>
-
-            {/* Dimension scores — shown for paid modes */}
-            {lastAnswer.dimension_scores && (
-              <div style={{ marginTop: 16, paddingLeft: 72 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-                  Evaluation Breakdown
-                </div>
-                {Object.entries(lastAnswer.dimension_scores).map(([key, val]) => (
-                  <div key={key} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                      <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{key.replace(/_/g, " ")}</span>
-                      <span style={{ color: scoreColor(val.score), fontWeight: 700 }}>{val.score}/10</span>
-                    </div>
-                    <div style={{ height: 4, borderRadius: 2, background: "rgba(51,65,85,0.4)", overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%", borderRadius: 2, width: `${(val.score / 10) * 100}%`,
-                        background: scoreColor(val.score), transition: "width 0.6s ease",
-                      }} />
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{val.comment}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Improvement tips */}
-            {lastAnswer.improvement_tips && lastAnswer.improvement_tips.length > 0 && (
-              <div style={{ marginTop: 14, paddingLeft: 72 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b", marginBottom: 6 }}>Tips to Improve</div>
-                {lastAnswer.improvement_tips.map((tip, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {tip}</div>
-                ))}
-              </div>
-            )}
-
-            {/* Strengths */}
-            {lastAnswer.strengths && lastAnswer.strengths.length > 0 && (
-              <div style={{ marginTop: 10, paddingLeft: 72 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 6 }}>Strengths</div>
-                {lastAnswer.strengths.map((s, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3, paddingLeft: 12 }}>• {s}</div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
-        {/* Loading / evaluating state */}
-        {loading && (
+        {/* Evaluating state */}
+        {voicePhase === "evaluating" && (
           <div className="animate-fadeIn" style={{
-            ...cardStyle, textAlign: "center", padding: 28,
-            background: "linear-gradient(135deg, rgba(14,165,233,0.06), rgba(139,92,246,0.04))",
-            borderColor: "rgba(14,165,233,0.2)",
+            marginTop: 24, display: "flex", alignItems: "center", gap: 10,
+            padding: "12px 20px", borderRadius: 12,
+            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-              <Spinner />
-              <span style={{ fontSize: 14, color: "#94a3b8", fontWeight: 600 }}>
-                Evaluating your answer…
-              </span>
-            </div>
+            <Spinner />
+            <span style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>
+              Analyzing your response…
+            </span>
           </div>
         )}
 
-        {error && <ErrorBanner message={error} onDismiss={() => setError("")} />}
+        {error && (
+          <div style={{ marginTop: 20, maxWidth: 500 }}>
+            <ErrorBanner message={error} onDismiss={() => setError("")} />
+          </div>
+        )}
+
+        {/* Sound wave keyframes injected inline */}
+        <style>{`
+          @keyframes soundWave {
+            0% { height: 4px; }
+            100% { height: 28px; }
+          }
+        `}</style>
       </div>
     );
   }
