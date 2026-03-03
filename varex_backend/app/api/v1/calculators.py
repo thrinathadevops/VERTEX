@@ -1,27 +1,53 @@
-from fastapi import APIRouter
+from __future__ import annotations
 
-from app.varex_calculators.api.v1 import (
-    httpd,
-    ihs,
-    iis,
-    k8s,
-    nginx,
-    ohs,
-    os_linux,
-    podman,
-    redis,
-    tomcat,
+from fastapi import APIRouter, HTTPException
+
+from app.services.calculator_engine import (
+    SUPPORTED_CALCULATORS,
+    calculate,
+    example_payload,
 )
 
 router = APIRouter()
 
-router.include_router(nginx.router, prefix="/nginx", tags=["Calculators - NGINX"])
-router.include_router(redis.router, prefix="/redis", tags=["Calculators - Redis"])
-router.include_router(tomcat.router, prefix="/tomcat", tags=["Calculators - Tomcat"])
-router.include_router(httpd.router, prefix="/httpd", tags=["Calculators - HTTPD"])
-router.include_router(ohs.router, prefix="/ohs", tags=["Calculators - OHS"])
-router.include_router(ihs.router, prefix="/ihs", tags=["Calculators - IHS"])
-router.include_router(iis.router, prefix="/iis", tags=["Calculators - IIS"])
-router.include_router(podman.router, prefix="/podman", tags=["Calculators - Podman"])
-router.include_router(k8s.router, prefix="/k8s", tags=["Calculators - Kubernetes"])
-router.include_router(os_linux.router, prefix="/os", tags=["Calculators - Linux OS"])
+SUPPORTED_PROFILES = {
+    "new",
+    "existing",
+    "new-web",
+    "new-database",
+    "new-core",
+    "new-fx",
+    "new-fusion",
+    "new-liberty",
+}
+
+
+def _ensure_supported(calculator: str) -> str:
+    key = calculator.strip().lower()
+    if key not in SUPPORTED_CALCULATORS:
+        raise HTTPException(status_code=404, detail=f"Unknown calculator: {calculator}")
+    return key
+
+
+@router.get("/status", tags=["Calculators"])
+def calculators_status():
+    return {
+        "status": "ok",
+        "mode": "active",
+        "available_calculators": sorted(SUPPORTED_CALCULATORS),
+    }
+
+
+@router.post("/{calculator}/example/{profile}", tags=["Calculators"])
+def calculator_example(calculator: str, profile: str):
+    key = _ensure_supported(calculator)
+    p = profile.strip().lower()
+    if p not in SUPPORTED_PROFILES:
+        raise HTTPException(status_code=404, detail=f"Unknown example profile: {profile}")
+    return example_payload(key, p)
+
+
+@router.post("/{calculator}/calculate", tags=["Calculators"])
+def calculator_calculate(calculator: str, payload: dict):
+    key = _ensure_supported(calculator)
+    return calculate(key, payload or {})
