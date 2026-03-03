@@ -115,6 +115,55 @@ export default function CalculatorPage() {
     }
   };
 
+  const resultText = useMemo(() => {
+    if (!result) return "Run calculation to see result";
+    const lines: string[] = [];
+    lines.push(`Calculator: ${result.calculator ?? calculator}`);
+    lines.push(`Mode: ${result.mode ?? values.mode ?? "new"}`);
+    if (result.summary) lines.push(`Summary: ${result.summary}`);
+    if (typeof result.estimated_concurrency !== "undefined") {
+      lines.push(`Estimated Concurrency: ${result.estimated_concurrency}`);
+    }
+    if (typeof result.workers !== "undefined") {
+      lines.push(`Workers: ${result.workers}`);
+    }
+    if (typeof result.max_connections !== "undefined") {
+      lines.push(`Max Connections: ${result.max_connections}`);
+    }
+    if (result.config_snippet) {
+      lines.push("");
+      lines.push("Recommended Config:");
+      lines.push(String(result.config_snippet));
+    }
+    if (Array.isArray(result.major_params) && result.major_params.length > 0) {
+      lines.push("");
+      lines.push("Major Recommendations:");
+      for (const p of result.major_params) {
+        lines.push(`- ${p.name}: ${p.recommended} (${p.reason})`);
+      }
+    }
+    if (Array.isArray(result.medium_params) && result.medium_params.length > 0) {
+      lines.push("");
+      lines.push("Medium Recommendations:");
+      for (const p of result.medium_params) {
+        lines.push(`- ${p.name}: ${p.recommended} (${p.reason})`);
+      }
+    }
+    if (Array.isArray(result.minor_params) && result.minor_params.length > 0) {
+      lines.push("");
+      lines.push("Minor Recommendations:");
+      for (const p of result.minor_params) {
+        lines.push(`- ${p.name}: ${p.recommended} (${p.reason})`);
+      }
+    }
+    if (Array.isArray(result.audit_findings) && result.audit_findings.length > 0) {
+      lines.push("");
+      lines.push("Audit Findings:");
+      for (const f of result.audit_findings) lines.push(`- ${f}`);
+    }
+    return lines.join("\n");
+  }, [result, calculator, values.mode]);
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">
       <section className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5">
@@ -226,7 +275,7 @@ export default function CalculatorPage() {
             <div className="mt-5">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Result</p>
               <pre className="max-h-[460px] overflow-auto rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs text-slate-100">
-                {result ? JSON.stringify(result, null, 2) : "Run calculation to see result"}
+                {resultText}
               </pre>
             </div>
           </div>
