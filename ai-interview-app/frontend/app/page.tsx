@@ -747,12 +747,14 @@ export default function HomePage() {
           borderColor: "rgba(14,165,233,0.25)",
         }}>
           <div className="animate-float" style={{
-            width: 72, height: 72, borderRadius: 22, margin: "0 auto 16px",
-            background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 36, boxShadow: "0 0 40px rgba(14,165,233,0.3)",
+            width: 88, height: 88, borderRadius: "50%", margin: "0 auto 16px",
+            boxShadow: "0 0 40px rgba(14,165,233,0.3), 0 0 80px rgba(139,92,246,0.15)",
+            overflow: "hidden",
           }}>
-            <Bot size={36} color="#ffffff" aria-hidden="true" />
+            <img src="/aria-avatar.png" alt="Aria" style={{
+              width: 88, height: 88, borderRadius: "50%",
+              objectFit: "cover", objectPosition: "center top",
+            }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Meet Aria, Your AI Interviewer</h2>
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 20 }}>Senior Technical Interviewer • VAREX AI Platform</p>
@@ -946,45 +948,105 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Center: AI Avatar + Waveform */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          {/* Animated avatar */}
+        {/* Center: Human Avatar with lip-sync */}
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          {/* Avatar container with glow ring */}
           <div style={{
-            width: 120, height: 120, borderRadius: 36, margin: "0 auto 24px",
-            background: `linear-gradient(135deg, ${phaseColor}30, ${phaseColor}10)`,
-            border: `2px solid ${phaseColor}50`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: `0 0 60px ${phaseColor}20, 0 0 120px ${phaseColor}08`,
-            animation: (voicePhase === "speaking" || voicePhase === "feedback")
-              ? "pulse-glow 1.5s ease-in-out infinite"
-              : voicePhase === "listening"
-                ? "pulse-glow 2s ease-in-out infinite"
-                : "none",
-            transition: "all 0.5s ease",
+            position: "relative", width: 180, height: 180, margin: "0 auto 20px",
+            animation: "ariaBreath 4s ease-in-out infinite",
           }}>
-            {voicePhase === "listening" ? (
-              <Mic size={48} color={phaseColor} />
-            ) : voicePhase === "evaluating" ? (
-              <div style={{ animation: "spin 1.5s linear infinite" }}>
-                <Bot size={48} color={phaseColor} />
-              </div>
-            ) : (
-              <Bot size={48} color={phaseColor} />
+            {/* Outer glow ring */}
+            <div style={{
+              position: "absolute", inset: -6, borderRadius: "50%",
+              background: `conic-gradient(from 0deg, ${phaseColor}40, transparent, ${phaseColor}40, transparent, ${phaseColor}40)`,
+              animation: (voicePhase === "speaking" || voicePhase === "feedback")
+                ? "ariaRingSpin 3s linear infinite"
+                : voicePhase === "listening"
+                  ? "ariaRingSpin 6s linear infinite"
+                  : "none",
+              opacity: voicePhase === "idle" || voicePhase === "evaluating" ? 0.3 : 0.8,
+              transition: "opacity 0.5s ease",
+            }} />
+            {/* Inner glow */}
+            <div style={{
+              position: "absolute", inset: -3, borderRadius: "50%",
+              boxShadow: `0 0 40px ${phaseColor}25, 0 0 80px ${phaseColor}10`,
+              border: `2px solid ${phaseColor}30`,
+              transition: "all 0.5s ease",
+            }} />
+            {/* Photo */}
+            <img
+              src="/aria-avatar.png"
+              alt="Aria - AI Interviewer"
+              style={{
+                width: 180, height: 180, borderRadius: "50%",
+                objectFit: "cover", objectPosition: "center top",
+                position: "relative", zIndex: 2,
+                filter: voicePhase === "evaluating" ? "brightness(0.8)" : "brightness(1)",
+                transition: "filter 0.5s ease",
+              }}
+            />
+            {/* Lip-sync mouth overlay - animated during speaking */}
+            {(voicePhase === "speaking" || voicePhase === "feedback") && (
+              <div style={{
+                position: "absolute", bottom: 42, left: "50%", transform: "translateX(-50%)",
+                width: 32, height: 14, borderRadius: "50%",
+                background: "rgba(0,0,0,0.35)", zIndex: 3,
+                animation: "ariaLipSync 0.3s ease-in-out infinite alternate",
+              }} />
             )}
+            {/* Eye blink overlay */}
+            <div style={{
+              position: "absolute", top: 62, left: 52, width: 22, height: 3,
+              background: "rgba(60,40,30,0.9)", borderRadius: 2, zIndex: 3,
+              animation: "ariaBlink 4s ease-in-out infinite",
+              opacity: 0,
+            }} />
+            <div style={{
+              position: "absolute", top: 62, right: 52, width: 22, height: 3,
+              background: "rgba(60,40,30,0.9)", borderRadius: 2, zIndex: 3,
+              animation: "ariaBlink 4s ease-in-out 0.05s infinite",
+              opacity: 0,
+            }} />
+            {/* Phase indicator badge */}
+            <div style={{
+              position: "absolute", bottom: 4, right: 4, zIndex: 4,
+              width: 28, height: 28, borderRadius: "50%",
+              background: phaseColor, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              border: "2px solid rgba(2,6,23,0.8)",
+              boxShadow: `0 0 12px ${phaseColor}50`,
+            }}>
+              {voicePhase === "speaking" || voicePhase === "feedback" ? (
+                <Volume2 size={13} color="#fff" />
+              ) : voicePhase === "listening" ? (
+                <Mic size={13} color="#fff" />
+              ) : (
+                <Bot size={13} color="#fff" />
+              )}
+            </div>
           </div>
 
-          {/* Sound wave animation (during speaking/listening) */}
+          {/* Name */}
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", marginBottom: 2 }}>
+            Aria
+          </div>
+          <div style={{ fontSize: 11, color: "#64748b", marginBottom: 16, letterSpacing: 0.5 }}>
+            VAREX AI Interviewer
+          </div>
+
+          {/* Sound wave equalizer */}
           {(voicePhase === "speaking" || voicePhase === "listening" || voicePhase === "feedback") && (
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
-              height: 32, marginBottom: 20,
+              height: 28, marginBottom: 16,
             }}>
-              {Array.from({ length: 12 }).map((_, i) => (
+              {Array.from({ length: 16 }).map((_, i) => (
                 <div key={i} style={{
                   width: 3, borderRadius: 2,
                   background: phaseColor,
                   opacity: 0.7,
-                  animation: `soundWave 0.8s ease-in-out ${i * 0.08}s infinite alternate`,
+                  animation: `soundWave ${0.6 + (i % 4) * 0.15}s ease-in-out ${i * 0.06}s infinite alternate`,
                 }} />
               ))}
             </div>
@@ -1051,11 +1113,28 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Sound wave keyframes injected inline */}
+        {/* Avatar animation keyframes */}
         <style>{`
           @keyframes soundWave {
-            0% { height: 4px; }
-            100% { height: 28px; }
+            0% { height: 3px; }
+            100% { height: 24px; }
+          }
+          @keyframes ariaLipSync {
+            0% { height: 6px; width: 28px; bottom: 44px; }
+            50% { height: 14px; width: 34px; bottom: 40px; }
+            100% { height: 8px; width: 30px; bottom: 43px; }
+          }
+          @keyframes ariaBlink {
+            0%, 92%, 100% { opacity: 0; }
+            95%, 97% { opacity: 1; }
+          }
+          @keyframes ariaBreath {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.015); }
+          }
+          @keyframes ariaRingSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
         `}</style>
       </div>
