@@ -50,6 +50,7 @@ from app.api.v1 import (
     faq,
     analytics,
     webhooks,
+    calculators,
 )
 from app.ai_interview.api.v1 import interview as ai_interview
 
@@ -68,6 +69,7 @@ app.include_router(faq.router,            prefix=f"{API_V1}/faq",           tags
 app.include_router(analytics.router,      prefix=f"{API_V1}/analytics",     tags=["Analytics"])
 app.include_router(ai_interview.router,   prefix=f"{API_V1}/interview",     tags=["Interview"])
 app.include_router(webhooks.router,       prefix=f"{API_V1}/webhooks",      tags=["Webhooks"])
+app.include_router(calculators.router,    prefix=f"{API_V1}/calculators",   tags=["Calculators"])
 
 
 @app.exception_handler(Exception)

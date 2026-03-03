@@ -226,5 +226,15 @@ export async function getInterviewReport(sessionId: string) {
   return res.data;
 }
 
+export async function runCalculator(calculator: string, payload: Record<string, unknown>) {
+  const res = await api.post(`/calculators/${calculator}/calculate`, payload);
+  return res.data;
+}
+
+export async function getCalculatorExample(calculator: string, profile: string) {
+  const res = await api.post(`/calculators/${calculator}/example/${profile}`);
+  return res.data;
+}
+
 export default api;
 

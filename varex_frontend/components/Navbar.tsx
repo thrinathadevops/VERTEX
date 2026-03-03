@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogIn, LogOut, Rocket, Menu, X, Home, Briefcase, Award, Briefcase as Portfolio, Users, LayoutDashboard, Bot } from "lucide-react";
+import { LogIn, LogOut, Rocket, Menu, X, Home, Briefcase, Award, Briefcase as Portfolio, Users, LayoutDashboard, Bot, Calculator } from "lucide-react";
 import { getUserFromCookies, clearTokens } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/services", label: "SERVICES", icon: Briefcase },
   { href: "/hire", label: "HIRE", icon: Award },
   { href: "/ai-interview", label: "AI INTERVIEW", icon: Bot },
+  { href: "/calculator", label: "CALCULATOR", icon: Calculator },
   { href: "/portfolio", label: "PORTFOLIO", icon: Portfolio },
   { href: "/team", label: "TEAM", icon: Users },
 ];
