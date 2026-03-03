@@ -23,6 +23,12 @@ const CALCULATORS: CalculatorOption[] = [
   { key: "podman", label: "Podman", domain: "Containers", summary: "Container limits, files, and host-level runtime tuning.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
   { key: "k8s", label: "Kubernetes", domain: "Orchestration", summary: "Pod resources, HPA/PDB, spread, and network policies.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
   { key: "os", label: "Linux OS", domain: "Kernel", summary: "Kernel, VM, network, and file descriptor tuning.", examples: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }] },
+  { key: "postgresql", label: "PostgreSQL", domain: "Database", summary: "shared_buffers, work_mem, WAL, and planner optimization.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "mysql", label: "MySQL", domain: "Database", summary: "InnoDB buffer pool, I/O capacity, and query tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "mongodb", label: "MongoDB", domain: "Database", summary: "WiredTiger cache, oplog, journal, and replica set tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "haproxy", label: "HAProxy", domain: "Load Balancer", summary: "maxconn, threading, timeouts, and health check tuning.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "docker", label: "Docker", domain: "Containers", summary: "daemon.json, storage driver, log rotation, and security.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
+  { key: "rabbitmq", label: "RabbitMQ", domain: "Messaging", summary: "Memory watermarks, disk limits, Erlang VM, and clustering.", examples: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }] },
 ];
 
 export default function CalculatorPage() {

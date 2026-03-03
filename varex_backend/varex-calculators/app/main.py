@@ -14,7 +14,10 @@ from app.core.logging import configure_logging
 from app.core.exceptions import validation_exception_handler, unhandled_exception_handler
 
 # ── import all routers ──────────────────────────────────────────────────────
-from app.api.v1 import nginx, redis, tomcat, httpd, ohs, ihs, iis, podman, kubernetes, os_linux
+from app.api.v1 import (
+    nginx, redis, tomcat, httpd, ohs, ihs, iis, podman, kubernetes, os_linux,
+    postgresql, mysql, mongodb, haproxy, docker, rabbitmq,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,8 @@ app = FastAPI(
     description=(
         "Production-grade tuning calculator for NGINX, Redis, Tomcat, Apache HTTPD, "
         "Oracle HTTP Server (OHS), IBM HTTP Server (IHS), IIS, Podman, Kubernetes, "
-        "and Linux OS kernel parameters.\n\n"
+        "Linux OS, PostgreSQL, MySQL, MongoDB, HAProxy, Docker, "
+        "and RabbitMQ.\n\n"
         "**Two modes per endpoint:**\n"
         "- `mode=new` — Generate a fresh, formula-driven config from hardware specs\n"
         "- `mode=existing` — Audit your current settings and get a safe upgrade plan\n\n"
@@ -78,6 +82,12 @@ app.include_router(iis.router,        prefix=f"{API}/iis",        tags=["IIS"])
 app.include_router(podman.router,     prefix=f"{API}/podman",     tags=["Podman"])
 app.include_router(kubernetes.router, prefix=f"{API}/kubernetes", tags=["Kubernetes"])
 app.include_router(os_linux.router,   prefix=f"{API}/os",         tags=["Linux OS"])
+app.include_router(postgresql.router, prefix=f"{API}/postgresql", tags=["PostgreSQL"])
+app.include_router(mysql.router,      prefix=f"{API}/mysql",      tags=["MySQL"])
+app.include_router(mongodb.router,    prefix=f"{API}/mongodb",    tags=["MongoDB"])
+app.include_router(haproxy.router,    prefix=f"{API}/haproxy",    tags=["HAProxy"])
+app.include_router(docker.router,     prefix=f"{API}/docker",     tags=["Docker"])
+app.include_router(rabbitmq.router,   prefix=f"{API}/rabbitmq",   tags=["RabbitMQ"])
 
 
 # ── health & info endpoints ──────────────────────────────────────────────────
@@ -104,6 +114,12 @@ def root():
             "iis":        f"{API}/iis/calculate",
             "podman":     f"{API}/podman/calculate",
             "kubernetes": f"{API}/kubernetes/calculate",
-            "os_linux":   f"{API}/os/calculate",
+            "os_linux":    f"{API}/os/calculate",
+            "postgresql": f"{API}/postgresql/calculate",
+            "mysql":      f"{API}/mysql/calculate",
+            "mongodb":    f"{API}/mongodb/calculate",
+            "haproxy":    f"{API}/haproxy/calculate",
+            "docker":     f"{API}/docker/calculate",
+            "rabbitmq":   f"{API}/rabbitmq/calculate",
         },
     }
