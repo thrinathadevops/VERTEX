@@ -165,7 +165,15 @@ export default function HomePage() {
     }
   }, [speechSupported]);
 
-  // ── STT: start microphone (auto-submits on silence) ────
+  // ── Trigger phrases that signal "I'm done answering" ────
+  const STOP_PHRASES = [
+    "done", "i'm done", "i am done", "that's all", "that is all",
+    "that's it", "that is it", "completed", "finished", "i'm finished",
+    "next question", "move on", "go ahead", "next please", "that's my answer",
+    "over", "end", "thank you", "thanks",
+  ];
+
+  // ── STT: start microphone (auto-submits on silence or trigger word) ──
   const startListening = useCallback(() => {
     if (!sttSupported || !voiceMode) return;
     stopSpeaking();
@@ -176,20 +184,47 @@ export default function HomePage() {
     recognition.interimResults = true;
     recognition.lang = "en-US";
     let finalText = "";
+    let triggerDetected = false;
+
     recognition.onresult = (event: any) => {
+      if (triggerDetected) return;
       let interim = "";
       for (let i = 0; i < event.results.length; i++) {
         const r = event.results[i];
         if (r.isFinal) { finalText += r[0].transcript + " "; }
         else { interim += r[0].transcript; }
       }
-      answerBufferRef.current = (finalText + interim).trim();
+      const fullText = (finalText + interim).trim();
+
+      // Check for trigger phrases at the end of the transcript
+      const lowerText = fullText.toLowerCase();
+      const lastWords = lowerText.split(/\s+/).slice(-5).join(" ");
+      const matchedTrigger = STOP_PHRASES.find(phrase =>
+        lastWords.endsWith(phrase) || lowerText.endsWith(phrase)
+      );
+
+      if (matchedTrigger && fullText.length > matchedTrigger.length + 5) {
+        // Strip the trigger phrase from the answer
+        triggerDetected = true;
+        const cleanAnswer = fullText.replace(
+          new RegExp(`\\s*${matchedTrigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), ""
+        ).trim();
+        answerBufferRef.current = cleanAnswer || fullText;
+        setAnswer(answerBufferRef.current);
+        // Immediately stop — onend will auto-submit
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        recognition.stop();
+        return;
+      }
+
+      answerBufferRef.current = fullText;
       setAnswer(answerBufferRef.current);
-      // Reset silence timer — auto-submit after 4s silence
+
+      // Reset silence timer — auto-submit after 3.5s silence
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
         recognition.stop();
-      }, 4000);
+      }, 3500);
     };
     recognition.onend = () => {
       setIsListening(false);
@@ -198,7 +233,6 @@ export default function HomePage() {
       const captured = answerBufferRef.current.trim();
       if (captured.length >= 5) {
         setAnswer(captured);
-        // Trigger auto-submit via a tiny delay so state settles
         setTimeout(() => {
           document.getElementById("voice-auto-submit")?.click();
         }, 200);
