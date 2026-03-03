@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Header
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ from ..schemas import (
     SessionResponse,
 )
 from ..services.anti_cheat import (
+    BROWSER_EVENT_TYPES,
     check_proctor_health,
     get_session_anti_cheat_summary,
     record_event,
@@ -57,6 +58,16 @@ from ..services.pricing import calculate_pricing
 router = APIRouter(prefix="/api/v1/interview", tags=["AI Interview"])
 
 QUESTION_COUNTS = ai_engine.QUESTION_COUNTS
+
+
+def _require_proctor_secret(
+    x_proctor_secret: str | None = Header(default=None, alias="X-Proctor-Secret"),
+):
+    """Require shared secret for proctor-agent endpoints when enabled."""
+    if not settings.PROCTOR_SHARED_SECRET:
+        return
+    if x_proctor_secret != settings.PROCTOR_SHARED_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid proctor credentials.")
 
 
 def _get_resume_summary(session: InterviewSession) -> str | None:
@@ -425,6 +436,31 @@ async def submit_answer(
 
     total_q = QUESTION_COUNTS.get(session.interview_mode, 5)
 
+    # ── Enterprise: enforce continuous proctor heartbeat ─────
+    if session.interview_mode == "enterprise" and settings.PROCTOR_REQUIRE_FOR_ENTERPRISE:
+        health = check_proctor_health(db, session_id)
+        grace_elapsed = 0.0
+        if session.started_at:
+            grace_elapsed = (datetime.now(timezone.utc) - session.started_at).total_seconds()
+        grace_over = grace_elapsed >= settings.PROCTOR_START_GRACE_SECONDS
+
+        if health.get("heartbeat_count", 0) == 0 and grace_over:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Proctor agent heartbeat not detected. Enterprise interviews require "
+                    "the proctor agent to be running."
+                ),
+            )
+        if health.get("heartbeat_count", 0) > 0 and not health.get("proctor_alive", False):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Proctor agent disconnected. Resume proctor monitoring before "
+                    "submitting the next answer."
+                ),
+            )
+
     # ── Check total interview timeout ─────────────────────────
     timer_check = check_total_interview_timeout(
         session.started_at, session.total_time_limit_seconds
@@ -537,6 +573,14 @@ def record_anti_cheat_event(
     db: Session = Depends(get_db),
 ):
     """Record an anti-cheat event (tab switch, window blur, etc.)."""
+    if payload.event_type not in BROWSER_EVENT_TYPES:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Only browser-level anti-cheat events are accepted on this endpoint. "
+                "OS-level events must come from proctor-heartbeat."
+            ),
+        )
     result = record_event(
         db=db,
         session_id=session_id,
@@ -565,6 +609,7 @@ def get_anti_cheat_summary(session_id: str, db: Session = Depends(get_db)):
 def proctor_heartbeat(
     session_id: str,
     payload: dict,
+    _auth: None = Depends(_require_proctor_secret),
     db: Session = Depends(get_db),
 ):
     """

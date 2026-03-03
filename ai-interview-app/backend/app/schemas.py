@@ -191,6 +191,9 @@ class AntiCheatEventCreate(BaseModel):
             "^(tab_switch|window_blur|copy_paste|right_click"
             "|ai_app_detected|ai_network_connection|non_browser_window"
             "|ai_browser_tab|virtual_machine_detected|remote_desktop_detected"
+            "|forbidden_app_detected"
+            "|camera_unavailable|no_face_detected|multiple_faces_detected"
+            "|no_local_audio_device|no_headset_connected"
             "|multiple_monitors_detected|proctor_started|proctor_stopped"
             "|proctor_disconnected|ai_text_detected|paste_detected)$"
         )

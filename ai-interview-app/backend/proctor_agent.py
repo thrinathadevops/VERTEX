@@ -36,6 +36,7 @@ For Mock interviews, it's optional but flagged in reports.
 import argparse
 import json
 import logging
+import os
 import platform
 import re
 import socket
@@ -59,6 +60,13 @@ try:
 except ImportError:
     HAS_REQUESTS = False
     print("⚠ requests not installed. Install: pip install requests")
+
+try:
+    import cv2
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+    print("⚠ opencv-python not installed. Face monitoring limited. Install: pip install opencv-python")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -129,6 +137,26 @@ AI_DOMAINS = [
     "huggingface.co",
     "api-inference.huggingface.co",
     "phind.com",
+]
+
+# Allowed non-browser foreground apps during interview.
+# User requirement: only Notepad / Notepad++ should be permitted besides browser.
+ALLOWED_FOREGROUND_PATTERNS = [
+    "notepad",
+    "notepad++",
+    "notepad plus plus",
+]
+
+AUDIO_HEADSET_PATTERNS = [
+    "headset",
+    "headphone",
+    "earbud",
+    "airpods",
+    "bluetooth",
+    "hands-free",
+    "wireless",
+    "3.5mm",
+    "jack",
 ]
 
 
@@ -278,6 +306,10 @@ class ActiveWindowMonitor:
         lower_title = window_title.lower()
         return any(b in lower_title for b in browsers)
 
+    def is_allowed_non_browser_window(self, window_title: str) -> bool:
+        lower_title = window_title.lower()
+        return any(p in lower_title for p in ALLOWED_FOREGROUND_PATTERNS)
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  LAYER 3: NETWORK MONITOR
@@ -424,6 +456,147 @@ class SystemEnvironmentCheck:
             pass
         return False
 
+
+class FaceMonitor:
+    """Camera-based face presence monitor (best-effort, optional)."""
+
+    def __init__(self):
+        self.enabled = HAS_CV2
+        self.cap = None
+        self.classifier = None
+        self.last_error: str | None = None
+        self._camera_warned = False
+
+        if self.enabled:
+            try:
+                self.classifier = cv2.CascadeClassifier(
+                    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+                )
+            except Exception as e:
+                self.enabled = False
+                self.last_error = str(e)
+
+    def _ensure_camera(self) -> bool:
+        if not self.enabled:
+            return False
+        if self.cap is not None and self.cap.isOpened():
+            return True
+        try:
+            # CAP_DSHOW avoids long camera init delays on Windows.
+            flag = cv2.CAP_DSHOW if platform.system() == "Windows" else 0
+            self.cap = cv2.VideoCapture(0, flag)
+            if self.cap is not None and self.cap.isOpened():
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                return True
+        except Exception as e:
+            self.last_error = str(e)
+        return False
+
+    def scan(self) -> dict:
+        if not self.enabled:
+            return {"available": False, "faces": None, "error": self.last_error or "opencv_unavailable"}
+        if not self._ensure_camera():
+            return {"available": False, "faces": None, "error": self.last_error or "camera_unavailable"}
+        try:
+            ok, frame = self.cap.read()
+            if not ok or frame is None:
+                return {"available": False, "faces": None, "error": "camera_read_failed"}
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.classifier.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(40, 40))
+            return {"available": True, "faces": int(len(faces)), "error": None}
+        except Exception as e:
+            self.last_error = str(e)
+            return {"available": False, "faces": None, "error": str(e)}
+
+    def stop(self):
+        try:
+            if self.cap is not None:
+                self.cap.release()
+        except Exception:
+            pass
+
+
+class AudioRouteMonitor:
+    """Detect local audio endpoints connected to the candidate machine."""
+
+    def scan(self) -> dict:
+        names = self._connected_audio_device_names()
+        names_lower = [n.lower() for n in names]
+        has_any_audio = len(names) > 0
+        has_headset = any(any(p in n for p in AUDIO_HEADSET_PATTERNS) for n in names_lower)
+        has_bluetooth = any("bluetooth" in n or "airpods" in n for n in names_lower)
+        return {
+            "devices": names,
+            "has_any_audio": has_any_audio,
+            "has_headset": has_headset,
+            "has_bluetooth_audio": has_bluetooth,
+        }
+
+    def _connected_audio_device_names(self) -> list[str]:
+        if platform.system() == "Windows":
+            return self._windows_audio_endpoints()
+        if platform.system() == "Linux":
+            return self._linux_audio_endpoints()
+        if platform.system() == "Darwin":
+            return self._macos_audio_endpoints()
+        return []
+
+    def _windows_audio_endpoints(self) -> list[str]:
+        commands = [
+            # Audio endpoint devices (output/input routes)
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-PnpDevice -Class AudioEndpoint | Where-Object {$_.Status -eq 'OK'} | Select-Object -ExpandProperty FriendlyName",
+            ],
+            # Fallback to sound devices
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_SoundDevice | Select-Object -ExpandProperty Name",
+            ],
+        ]
+        for cmd in commands:
+            try:
+                out = subprocess.check_output(cmd, text=True, timeout=6, stderr=subprocess.DEVNULL)
+                names = [line.strip() for line in out.splitlines() if line.strip()]
+                if names:
+                    return names
+            except Exception:
+                continue
+        return []
+
+    def _linux_audio_endpoints(self) -> list[str]:
+        for cmd in (["pactl", "list", "short", "sinks"], ["aplay", "-l"]):
+            try:
+                out = subprocess.check_output(cmd, text=True, timeout=6, stderr=subprocess.DEVNULL)
+                names = [line.strip() for line in out.splitlines() if line.strip()]
+                if names:
+                    return names
+            except Exception:
+                continue
+        return []
+
+    def _macos_audio_endpoints(self) -> list[str]:
+        try:
+            out = subprocess.check_output(
+                ["system_profiler", "SPAudioDataType"],
+                text=True,
+                timeout=8,
+                stderr=subprocess.DEVNULL,
+            )
+            names = []
+            for line in out.splitlines():
+                stripped = line.strip()
+                if stripped.endswith(":") and len(stripped) > 1:
+                    names.append(stripped[:-1])
+            return names
+        except Exception:
+            return []
+
     def _detect_multiple_monitors(self) -> bool:
         """Detect multiple monitors (could be used to cheat on second screen)."""
         try:
@@ -457,10 +630,21 @@ class ProctorAgent:
     and sends results to the VAREX backend via heartbeats.
     """
 
-    def __init__(self, session_id: str, api_url: str, heartbeat_interval: int = 10):
+    def __init__(
+        self,
+        session_id: str,
+        api_url: str,
+        heartbeat_interval: int = 10,
+        proctor_secret: str | None = None,
+        require_visible_face: bool = True,
+        require_local_audio: bool = True,
+    ):
         self.session_id = session_id
         self.api_url = api_url.rstrip("/")
         self.heartbeat_interval = heartbeat_interval
+        self.proctor_secret = proctor_secret or os.getenv("PROCTOR_SHARED_SECRET", "").strip()
+        self.require_visible_face = require_visible_face
+        self.require_local_audio = require_local_audio
         self.running = False
 
         # Initialize monitors
@@ -468,11 +652,16 @@ class ProctorAgent:
         self.window_monitor = ActiveWindowMonitor()
         self.network_monitor = NetworkMonitor()
         self.env_check = SystemEnvironmentCheck()
+        self.face_monitor = FaceMonitor()
+        self.audio_monitor = AudioRouteMonitor()
 
         # Tracking state
         self.violations: list[dict] = []
         self.heartbeat_count = 0
         self.last_active_window = ""
+        self.camera_violation_sent = False
+        self.audio_violation_sent = False
+        self.environment_info: dict = {}
 
     def start(self):
         """Start the proctoring agent."""
@@ -482,18 +671,8 @@ class ProctorAgent:
 
         # ── Initial environment check ─────────────────────────
         env_info = self.env_check.check()
+        self.environment_info = env_info
         logger.info(f"   Environment: {json.dumps(env_info, indent=2)}")
-
-        # Send environment info to backend
-        self._send_event("proctor_started", {
-            "agent_version": "1.0.0",
-            "environment": env_info,
-            "monitors_active": {
-                "process": True,
-                "active_window": True,
-                "network": HAS_PSUTIL,
-            },
-        })
 
         # ── Flag VM / remote desktop immediately ──────────────
         if env_info.get("is_virtual_machine"):
@@ -505,9 +684,7 @@ class ProctorAgent:
                 "Remote desktop session detected.")
 
         if env_info.get("has_multiple_monitors"):
-            self._send_event("multiple_monitors_detected", {
-                "note": "Candidate has multiple monitors. Not a violation but noted.",
-            })
+            logger.info("Multiple monitors detected (informational).")
 
         # ── Start monitoring loops ────────────────────────────
         try:
@@ -516,10 +693,12 @@ class ProctorAgent:
             logger.info("Proctor agent stopped by user.")
         finally:
             self.running = False
-            self._send_event("proctor_stopped", {
-                "total_violations": len(self.violations),
-                "heartbeats_sent": self.heartbeat_count,
-            })
+            self.face_monitor.stop()
+            logger.info(
+                "Proctor stopped. total_violations=%s heartbeats_sent=%s",
+                len(self.violations),
+                self.heartbeat_count,
+            )
 
     def _monitoring_loop(self):
         """Main monitoring loop — runs every heartbeat_interval seconds."""
@@ -556,11 +735,17 @@ class ProctorAgent:
             if self.last_active_window:  # Skip first detection
                 is_browser = self.window_monitor.is_browser_focused(active_window)
                 if not is_browser:
-                    violation = self._record_violation(
-                        "non_browser_window",
-                        f"Candidate switched to non-browser app: '{active_window}'",
-                    )
-                    results["violations"].append(violation)
+                    if self.window_monitor.is_allowed_non_browser_window(active_window):
+                        logger.info("Allowed foreground app detected: '%s'", active_window)
+                    else:
+                        violation = self._record_violation(
+                            "forbidden_app_detected",
+                            (
+                                f"Forbidden foreground app detected: '{active_window}'. "
+                                "Only browser + Notepad/Notepad++ are allowed."
+                            ),
+                        )
+                        results["violations"].append(violation)
                 else:
                     # Check if it's an AI-related browser tab
                     ai_tab = self._check_ai_browser_tab(active_window)
@@ -587,6 +772,53 @@ class ProctorAgent:
                     results["violations"].append(violation)
                 results["ai_connections"] = ai_connections
 
+        # ── Layer 4: Face presence monitor (camera) ───────────
+        face_state = self.face_monitor.scan()
+        results["face_monitor"] = face_state
+        if self.require_visible_face:
+            if not face_state.get("available", False):
+                if not self.camera_violation_sent:
+                    violation = self._record_violation(
+                        "camera_unavailable",
+                        f"Camera unavailable for proctoring: {face_state.get('error', 'unknown')}",
+                    )
+                    results["violations"].append(violation)
+                    self.camera_violation_sent = True
+            else:
+                face_count = int(face_state.get("faces", 0) or 0)
+                if face_count == 0:
+                    violation = self._record_violation(
+                        "no_face_detected",
+                        "No face detected in camera frame.",
+                    )
+                    results["violations"].append(violation)
+                elif face_count > 1:
+                    violation = self._record_violation(
+                        "multiple_faces_detected",
+                        f"Multiple faces detected ({face_count}).",
+                    )
+                    results["violations"].append(violation)
+
+        # ── Layer 5: Local audio route checks ─────────────────
+        if self.heartbeat_count % 2 == 0:
+            audio_state = self.audio_monitor.scan()
+            results["audio_monitor"] = audio_state
+            if self.require_local_audio:
+                if not audio_state.get("has_any_audio", False):
+                    if not self.audio_violation_sent:
+                        violation = self._record_violation(
+                            "no_local_audio_device",
+                            "No local audio endpoint detected on candidate laptop.",
+                        )
+                        results["violations"].append(violation)
+                        self.audio_violation_sent = True
+                elif not audio_state.get("has_headset", False):
+                    violation = self._record_violation(
+                        "no_headset_connected",
+                        "No local headset/earbud detected on candidate laptop audio routes.",
+                    )
+                    results["violations"].append(violation)
+
         return results
 
     def _check_ai_browser_tab(self, window_title: str) -> bool:
@@ -609,9 +841,7 @@ class ProctorAgent:
         }
         self.violations.append(violation)
         logger.warning(f"🚨 VIOLATION: {violation_type} — {details}")
-
-        # Send violation event immediately
-        self._send_event(violation_type, {"details": details})
+        # Violations are sent via heartbeat payload to avoid duplicate reporting.
         return violation
 
     def _send_heartbeat(self, scan_results: dict):
@@ -622,14 +852,19 @@ class ProctorAgent:
             "heartbeat_number": self.heartbeat_count,
             "agent_version": "1.0.0",
             "total_violations": len(self.violations),
+            "environment": self.environment_info,
             "scan_results": scan_results,
         }
 
         try:
             if HAS_REQUESTS:
+                headers = {}
+                if self.proctor_secret:
+                    headers["X-Proctor-Secret"] = self.proctor_secret
                 resp = requests.post(
                     f"{self.api_url}/api/v1/interview/session/{self.session_id}/proctor-heartbeat",
                     json=payload,
+                    headers=headers,
                     timeout=5,
                 )
                 if resp.status_code == 200:
@@ -689,6 +924,23 @@ Requirements:
         "--interval", type=int, default=10,
         help="Heartbeat interval in seconds (default: 10)",
     )
+    parser.add_argument(
+        "--proctor-secret",
+        default="",
+        help="Shared secret expected by backend (or set PROCTOR_SHARED_SECRET env var).",
+    )
+    parser.add_argument(
+        "--require-visible-face",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Require continuous camera face presence checks (default: enabled).",
+    )
+    parser.add_argument(
+        "--require-local-audio",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Require local headset/audio route detection on the candidate laptop (default: enabled).",
+    )
 
     args = parser.parse_args()
 
@@ -707,6 +959,9 @@ Requirements:
         session_id=args.session_id,
         api_url=args.api_url,
         heartbeat_interval=args.interval,
+        proctor_secret=args.proctor_secret,
+        require_visible_face=args.require_visible_face,
+        require_local_audio=args.require_local_audio,
     )
     agent.start()
 

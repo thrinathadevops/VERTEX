@@ -35,6 +35,11 @@ class Settings(BaseSettings):
 
     # ─── Anti-cheat thresholds ─────────────────────────────────
     MAX_TAB_SWITCHES_BEFORE_FLAG: int = 3
+    PROCTOR_SHARED_SECRET: str = ""
+    PROCTOR_REQUIRE_FOR_ENTERPRISE: bool = True
+    PROCTOR_HEARTBEAT_MAX_GAP_SECONDS: int = 30
+    PROCTOR_START_GRACE_SECONDS: int = 90
+    PROCTOR_EVENT_DEDUP_WINDOW_SECONDS: int = 60
 
     # ─── Question counts per mode ──────────────────────────────
     QUESTIONS_MOCK_FREE: int = 5

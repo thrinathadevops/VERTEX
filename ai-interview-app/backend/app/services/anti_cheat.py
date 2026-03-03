@@ -53,6 +53,12 @@ INTEGRITY_DEDUCTIONS = {
     "ai_browser_tab": 15,           # AI service in browser tab
     "virtual_machine_detected": 15, # Running in VM
     "remote_desktop_detected": 15,  # Remote desktop session
+    "forbidden_app_detected": 12,   # Non-allowed foreground app detected
+    "camera_unavailable": 20,       # Camera required but unavailable/off
+    "no_face_detected": 8,          # Face not visible during interview
+    "multiple_faces_detected": 18,  # Extra person detected
+    "no_local_audio_device": 12,    # No local audio endpoint detected
+    "no_headset_connected": 10,     # No headset/earbud connected to laptop
     "multiple_monitors_detected": 0,  # Info only, not a deduction
     # AI text detection events
     "ai_text_detected": 20,         # Answer flagged as AI-generated
@@ -75,6 +81,12 @@ EVENT_SEVERITY = {
     "ai_browser_tab": "critical",
     "virtual_machine_detected": "critical",
     "remote_desktop_detected": "critical",
+    "forbidden_app_detected": "critical",
+    "camera_unavailable": "critical",
+    "no_face_detected": "warning",
+    "multiple_faces_detected": "critical",
+    "no_local_audio_device": "critical",
+    "no_headset_connected": "critical",
     "multiple_monitors_detected": "info",
     "ai_text_detected": "critical",
     "paste_detected": "warning",
@@ -82,6 +94,32 @@ EVENT_SEVERITY = {
     "proctor_stopped": "warning",
     "proctor_disconnected": "critical",
     "proctor_heartbeat": "info",
+}
+
+BROWSER_EVENT_TYPES = {
+    "tab_switch",
+    "window_blur",
+    "copy_paste",
+    "right_click",
+}
+
+PROCTOR_EVENT_TYPES = {
+    "ai_app_detected",
+    "ai_network_connection",
+    "non_browser_window",
+    "ai_browser_tab",
+    "virtual_machine_detected",
+    "remote_desktop_detected",
+    "multiple_monitors_detected",
+    "forbidden_app_detected",
+    "camera_unavailable",
+    "no_face_detected",
+    "multiple_faces_detected",
+    "no_local_audio_device",
+    "no_headset_connected",
+    "proctor_started",
+    "proctor_stopped",
+    "proctor_disconnected",
 }
 
 
@@ -100,6 +138,35 @@ def record_event(
         return {"error": "Session not found"}
 
     severity = EVENT_SEVERITY.get(event_type, "warning")
+    now = datetime.now(timezone.utc)
+
+    # ── De-duplicate repeated same event in short window ─────
+    dedup_window = max(0, settings.PROCTOR_EVENT_DEDUP_WINDOW_SECONDS)
+    if dedup_window > 0:
+        recent = db.scalar(
+            select(AntiCheatEvent)
+            .where(
+                AntiCheatEvent.session_id == session_id,
+                AntiCheatEvent.event_type == event_type,
+                AntiCheatEvent.details == details,
+            )
+            .order_by(AntiCheatEvent.timestamp.desc())
+            .limit(1)
+        )
+        if recent and recent.timestamp:
+            gap = (now - recent.timestamp).total_seconds()
+            if gap < dedup_window:
+                return {
+                    "recorded": False,
+                    "deduped": True,
+                    "event_type": event_type,
+                    "severity": severity,
+                    "tab_switch_count": session.tab_switch_count,
+                    "ai_violations_count": session.ai_violations_count,
+                    "integrity_score": session.integrity_score,
+                    "warning": session.suspicious_activity,
+                    "warning_message": None,
+                }
 
     # Record the event
     event = AntiCheatEvent(
@@ -107,7 +174,7 @@ def record_event(
         event_type=event_type,
         severity=severity,
         details=details,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=now,
     )
     db.add(event)
 
@@ -152,6 +219,24 @@ def record_event(
             warning_message = (
                 "⚠️ Your answer has been flagged for potential AI-generated content. "
                 "Answers should reflect YOUR actual experience."
+            )
+        elif event_type == "forbidden_app_detected":
+            warning_message = (
+                "🚨 CRITICAL: A non-allowed application window was detected. "
+                "Only the interview browser and approved tools are permitted."
+            )
+        elif event_type == "camera_unavailable":
+            warning_message = (
+                "🚨 CRITICAL: Camera is unavailable or blocked. "
+                "Continuous face monitoring is required."
+            )
+        elif event_type == "multiple_faces_detected":
+            warning_message = (
+                "🚨 CRITICAL: Multiple faces were detected in camera view."
+            )
+        elif event_type in ("no_local_audio_device", "no_headset_connected"):
+            warning_message = (
+                "🚨 CRITICAL: Required local audio device/headset not detected."
             )
     elif warning:
         warning_message = (
@@ -198,18 +283,40 @@ def record_proctor_heartbeat(
         )
 
     # ── Process violations from this heartbeat ────────────────
-    violations = heartbeat_data.get("scan_results", {}).get("violations", [])
+    scan_results = heartbeat_data.get("scan_results", {})
+    violations = scan_results.get("violations", [])
+    forbidden_app_seen = False
+    immediate_stop_seen = False
+    immediate_stop_types = {
+        "forbidden_app_detected",
+        "camera_unavailable",
+        "multiple_faces_detected",
+        "no_local_audio_device",
+        "no_headset_connected",
+    }
     for v in violations:
+        v_type = v.get("type", "")
+        if v_type not in PROCTOR_EVENT_TYPES:
+            continue
+        if v_type == "forbidden_app_detected":
+            forbidden_app_seen = True
+        if v_type in immediate_stop_types:
+            immediate_stop_seen = True
         # Record each violation as a separate event
         record_event(
             db=db,
             session_id=session_id,
-            event_type=v.get("type", "ai_app_detected"),
+            event_type=v_type,
             details=v.get("details", ""),
         )
 
     # ── Check if interview should be stopped ──────────────────
-    stop_interview = session.integrity_score <= 20 or session.ai_violations_count >= 5
+    stop_interview = (
+        session.integrity_score <= 20
+        or session.ai_violations_count >= 5
+        or forbidden_app_seen
+        or immediate_stop_seen
+    )
 
     total_violations = heartbeat_data.get("total_violations", 0)
 
@@ -221,8 +328,16 @@ def record_proctor_heartbeat(
         "integrity_score": session.integrity_score,
         "stop_interview": stop_interview,
         "stop_reason": (
-            "Too many integrity violations detected. Interview terminated."
-            if stop_interview else None
+            (
+                "Forbidden application detected. Enterprise policy allows only interview browser "
+                "plus Notepad/Notepad++."
+                if forbidden_app_seen
+                else "Critical proctor policy violation detected."
+                if immediate_stop_seen
+                else "Too many integrity violations detected. Interview terminated."
+            )
+            if stop_interview
+            else None
         ),
     }
 
@@ -246,9 +361,9 @@ def check_proctor_health(
         now = datetime.now(timezone.utc)
         gap = (now - session.proctor_last_heartbeat).total_seconds()
         gap_seconds = int(gap)
-        # Proctor sends heartbeats every 10 seconds
-        # If gap > 30 seconds → proctor is disconnected
-        proctor_alive = gap < 30
+        # Proctor sends heartbeats every ~10 seconds.
+        # If gap exceeds configured threshold, treat as disconnected.
+        proctor_alive = gap < settings.PROCTOR_HEARTBEAT_MAX_GAP_SECONDS
 
         if not proctor_alive and session.proctor_connected:
             # Proctor was connected but now disconnected
