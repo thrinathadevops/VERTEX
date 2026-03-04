@@ -6,6 +6,8 @@ import { getCalculatorExample, runCalculator } from "@/lib/api";
 
 type FieldType = "number" | "text" | "boolean" | "select";
 
+type OsFamily = "linux" | "windows" | "solaris" | "aix" | "hpux" | "all";
+
 type FieldConfig = {
   key: string;
   label: string;
@@ -17,6 +19,25 @@ type FieldConfig = {
   placeholder?: string;
   options?: string[];
   category?: "app" | "os" | "perf";
+  osFamily?: OsFamily;
+};
+
+const OS_TYPES = [
+  "RHEL", "CentOS", "Ubuntu", "Debian", "Amazon Linux", "SUSE/SLES",
+  "Oracle Linux", "Rocky Linux", "AlmaLinux", "Fedora",
+  "Windows Server 2022", "Windows Server 2019", "Windows Server 2016",
+  "Solaris 11", "Solaris 10",
+  "AIX 7.3", "AIX 7.2",
+  "HP-UX 11i v3",
+];
+
+const getOsFamily = (osType: string): OsFamily => {
+  const lower = osType.toLowerCase();
+  if (lower.includes("windows")) return "windows";
+  if (lower.includes("solaris")) return "solaris";
+  if (lower.includes("aix")) return "aix";
+  if (lower.includes("hp")) return "hpux";
+  return "linux";
 };
 
 type CalculatorConfig = {
@@ -28,43 +49,116 @@ type CalculatorConfig = {
 
 const COMMON_FIELDS: FieldConfig[] = [
   { key: "mode", label: "Mode", type: "select", options: ["new", "existing"], required: true, category: "app" },
+  { key: "os_type", label: "Operating System", type: "select", options: OS_TYPES, required: true, category: "app" },
   { key: "cpu_cores", label: "CPU Cores", type: "number", min: 1, step: 1, required: true, category: "app" },
   { key: "ram_gb", label: "RAM (GB)", type: "number", min: 1, step: 1, required: true, category: "app" },
   { key: "expected_rps", label: "Expected RPS", type: "number", min: 1, step: 1, required: true, category: "app" },
   { key: "avg_response_ms", label: "Avg Response (ms)", type: "number", min: 1, step: 1, required: true, category: "app" },
 ];
 
-/* ── Reusable OS-level sysctl / kernel param sets ────── */
+/* ══════════════════════════════════════════════════════════
+   Linux sysctl / kernel params
+   ══════════════════════════════════════════════════════════ */
 const OS_NET: FieldConfig[] = [
-  { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
-  { key: "os_tcp_max_syn_backlog", label: "net.ipv4.tcp_max_syn_backlog", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
-  { key: "os_tcp_tw_reuse", label: "net.ipv4.tcp_tw_reuse", type: "boolean", category: "os" },
-  { key: "os_tcp_fin_timeout", label: "net.ipv4.tcp_fin_timeout (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15" },
-  { key: "os_tcp_keepalive_time", label: "net.ipv4.tcp_keepalive_time (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "600" },
-  { key: "os_tcp_keepalive_intvl", label: "net.ipv4.tcp_keepalive_intvl (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15" },
-  { key: "os_tcp_keepalive_probes", label: "net.ipv4.tcp_keepalive_probes", type: "number", min: 1, step: 1, category: "os", placeholder: "5" },
-  { key: "os_netdev_max_backlog", label: "net.core.netdev_max_backlog", type: "number", min: 1000, step: 1, category: "os", placeholder: "65536" },
-  { key: "os_rmem_max", label: "net.core.rmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216" },
-  { key: "os_wmem_max", label: "net.core.wmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216" },
+  { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535", osFamily: "linux" },
+  { key: "os_tcp_max_syn_backlog", label: "net.ipv4.tcp_max_syn_backlog", type: "number", min: 128, step: 1, category: "os", placeholder: "65535", osFamily: "linux" },
+  { key: "os_tcp_tw_reuse", label: "net.ipv4.tcp_tw_reuse", type: "boolean", category: "os", osFamily: "linux" },
+  { key: "os_tcp_fin_timeout", label: "net.ipv4.tcp_fin_timeout (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15", osFamily: "linux" },
+  { key: "os_tcp_keepalive_time", label: "net.ipv4.tcp_keepalive_time (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "600", osFamily: "linux" },
+  { key: "os_tcp_keepalive_intvl", label: "net.ipv4.tcp_keepalive_intvl (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15", osFamily: "linux" },
+  { key: "os_tcp_keepalive_probes", label: "net.ipv4.tcp_keepalive_probes", type: "number", min: 1, step: 1, category: "os", placeholder: "5", osFamily: "linux" },
+  { key: "os_netdev_max_backlog", label: "net.core.netdev_max_backlog", type: "number", min: 1000, step: 1, category: "os", placeholder: "65536", osFamily: "linux" },
+  { key: "os_rmem_max", label: "net.core.rmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216", osFamily: "linux" },
+  { key: "os_wmem_max", label: "net.core.wmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216", osFamily: "linux" },
 ];
 const OS_FILE: FieldConfig[] = [
-  { key: "os_file_max", label: "fs.file-max", type: "number", min: 65536, step: 1, category: "os", placeholder: "2097152" },
-  { key: "os_nofile_soft", label: "ulimit nofile (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
-  { key: "os_nofile_hard", label: "ulimit nofile (hard)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
-  { key: "os_nproc_soft", label: "ulimit nproc (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
+  { key: "os_file_max", label: "fs.file-max", type: "number", min: 65536, step: 1, category: "os", placeholder: "2097152", osFamily: "linux" },
+  { key: "os_nofile_soft", label: "ulimit nofile (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535", osFamily: "linux" },
+  { key: "os_nofile_hard", label: "ulimit nofile (hard)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535", osFamily: "linux" },
+  { key: "os_nproc_soft", label: "ulimit nproc (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535", osFamily: "linux" },
 ];
 const OS_VM: FieldConfig[] = [
-  { key: "os_overcommit_memory", label: "vm.overcommit_memory", type: "select", options: ["0", "1", "2"], category: "os" },
-  { key: "os_swappiness", label: "vm.swappiness", type: "number", min: 0, max: 100, step: 1, category: "os", placeholder: "10" },
-  { key: "os_dirty_ratio", label: "vm.dirty_ratio (%)", type: "number", min: 5, max: 80, step: 1, category: "os", placeholder: "40" },
-  { key: "os_dirty_bg_ratio", label: "vm.dirty_background_ratio (%)", type: "number", min: 1, max: 50, step: 1, category: "os", placeholder: "10" },
+  { key: "os_overcommit_memory", label: "vm.overcommit_memory", type: "select", options: ["0", "1", "2"], category: "os", osFamily: "linux" },
+  { key: "os_swappiness", label: "vm.swappiness", type: "number", min: 0, max: 100, step: 1, category: "os", placeholder: "10", osFamily: "linux" },
+  { key: "os_dirty_ratio", label: "vm.dirty_ratio (%)", type: "number", min: 5, max: 80, step: 1, category: "os", placeholder: "40", osFamily: "linux" },
+  { key: "os_dirty_bg_ratio", label: "vm.dirty_background_ratio (%)", type: "number", min: 1, max: 50, step: 1, category: "os", placeholder: "10", osFamily: "linux" },
 ];
 const OS_PERF: FieldConfig[] = [
-  { key: "perf_thp", label: "Transparent Huge Pages", type: "select", options: ["always", "madvise", "never"], category: "perf" },
-  { key: "perf_numa", label: "NUMA Interleave", type: "boolean", category: "perf" },
-  { key: "perf_io_sched", label: "I/O Scheduler", type: "select", options: ["noop", "deadline", "cfq", "mq-deadline", "bfq", "none"], category: "perf" },
-  { key: "perf_cpu_gov", label: "CPU Governor", type: "select", options: ["performance", "ondemand", "powersave", "conservative"], category: "perf" },
+  { key: "perf_thp", label: "Transparent Huge Pages", type: "select", options: ["always", "madvise", "never"], category: "perf", osFamily: "linux" },
+  { key: "perf_numa", label: "NUMA Interleave", type: "boolean", category: "perf", osFamily: "linux" },
+  { key: "perf_io_sched", label: "I/O Scheduler", type: "select", options: ["noop", "deadline", "cfq", "mq-deadline", "bfq", "none"], category: "perf", osFamily: "linux" },
+  { key: "perf_cpu_gov", label: "CPU Governor", type: "select", options: ["performance", "ondemand", "powersave", "conservative"], category: "perf", osFamily: "linux" },
 ];
+
+/* ══════════════════════════════════════════════════════════
+   Windows registry / TCP params
+   ══════════════════════════════════════════════════════════ */
+const OS_WIN: FieldConfig[] = [
+  { key: "win_max_user_port", label: "MaxUserPort", type: "number", min: 5000, step: 1, category: "os", placeholder: "65534", osFamily: "windows" },
+  { key: "win_tcp_timed_wait_delay", label: "TcpTimedWaitDelay (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "30", osFamily: "windows" },
+  { key: "win_dynamic_backlog", label: "Enable Dynamic Backlog", type: "boolean", category: "os", osFamily: "windows" },
+  { key: "win_syn_attack_protect", label: "SynAttackProtect", type: "select", options: ["0", "1"], category: "os", osFamily: "windows" },
+  { key: "win_max_free_tcbs", label: "MaxFreeTcbs", type: "number", min: 1000, step: 1, category: "os", placeholder: "65536", osFamily: "windows" },
+  { key: "win_max_hash_table_size", label: "MaxHashTableSize", type: "number", min: 512, step: 1, category: "os", placeholder: "65536", osFamily: "windows" },
+  { key: "win_keep_alive_time", label: "KeepAliveTime (ms)", type: "number", min: 1000, step: 1000, category: "os", placeholder: "300000", osFamily: "windows" },
+  { key: "win_keep_alive_interval", label: "KeepAliveInterval (ms)", type: "number", min: 500, step: 500, category: "os", placeholder: "1000", osFamily: "windows" },
+  { key: "win_paged_pool_size", label: "Paged Pool Size (MB)", type: "number", min: 128, step: 64, category: "os", osFamily: "windows" },
+  { key: "win_nonpaged_pool_size", label: "Non-Paged Pool Size (MB)", type: "number", min: 64, step: 32, category: "os", osFamily: "windows" },
+];
+const OS_WIN_PERF: FieldConfig[] = [
+  { key: "win_perf_power_plan", label: "Power Plan", type: "select", options: ["High Performance", "Balanced", "Power Saver"], category: "perf", osFamily: "windows" },
+  { key: "win_perf_dedup", label: "Data Deduplication", type: "boolean", category: "perf", osFamily: "windows" },
+  { key: "win_perf_rss", label: "Receive Side Scaling (RSS)", type: "boolean", category: "perf", osFamily: "windows" },
+];
+
+/* ══════════════════════════════════════════════════════════
+   Solaris ndd / kernel params
+   ══════════════════════════════════════════════════════════ */
+const OS_SOL: FieldConfig[] = [
+  { key: "sol_tcp_conn_req_max_q", label: "tcp_conn_req_max_q", type: "number", min: 128, step: 1, category: "os", placeholder: "1024", osFamily: "solaris" },
+  { key: "sol_tcp_conn_req_max_q0", label: "tcp_conn_req_max_q0", type: "number", min: 128, step: 1, category: "os", placeholder: "4096", osFamily: "solaris" },
+  { key: "sol_tcp_time_wait_interval", label: "tcp_time_wait_interval (ms)", type: "number", min: 1000, step: 1000, category: "os", placeholder: "60000", osFamily: "solaris" },
+  { key: "sol_tcp_keepalive_interval", label: "tcp_keepalive_interval (ms)", type: "number", min: 10000, step: 1000, category: "os", placeholder: "7200000", osFamily: "solaris" },
+  { key: "sol_tcp_fin_wait_2_timeout", label: "tcp_fin_wait_2_timeout (ms)", type: "number", min: 10000, step: 1000, category: "os", placeholder: "67500", osFamily: "solaris" },
+  { key: "sol_rlim_fd_max", label: "rlim_fd_max", type: "number", min: 1024, step: 1, category: "os", placeholder: "65536", osFamily: "solaris" },
+  { key: "sol_rlim_fd_cur", label: "rlim_fd_cur", type: "number", min: 256, step: 1, category: "os", placeholder: "65536", osFamily: "solaris" },
+  { key: "sol_shmsys_shmmax", label: "shmsys:shminfo_shmmax", type: "number", min: 1048576, step: 1, category: "os", osFamily: "solaris" },
+  { key: "sol_tcp_xmit_hiwat", label: "tcp_xmit_hiwat (bytes)", type: "number", min: 4096, step: 1, category: "os", placeholder: "65536", osFamily: "solaris" },
+  { key: "sol_tcp_recv_hiwat", label: "tcp_recv_hiwat (bytes)", type: "number", min: 4096, step: 1, category: "os", placeholder: "65536", osFamily: "solaris" },
+];
+
+/* ══════════════════════════════════════════════════════════
+   AIX tunables (no / vmo / ioo / schedo)
+   ══════════════════════════════════════════════════════════ */
+const OS_AIX: FieldConfig[] = [
+  { key: "aix_somaxconn", label: "no: somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "1024", osFamily: "aix" },
+  { key: "aix_rfc1323", label: "no: rfc1323", type: "select", options: ["0", "1"], category: "os", osFamily: "aix" },
+  { key: "aix_tcp_keepidle", label: "no: tcp_keepidle (s)", type: "number", min: 60, step: 60, category: "os", placeholder: "600", osFamily: "aix" },
+  { key: "aix_tcp_keepintvl", label: "no: tcp_keepintvl (s)", type: "number", min: 5, step: 5, category: "os", placeholder: "15", osFamily: "aix" },
+  { key: "aix_tcp_finwait2", label: "no: tcp_finwait2 (s)", type: "number", min: 30, step: 10, category: "os", placeholder: "1200", osFamily: "aix" },
+  { key: "aix_maxuproc", label: "vmo: maxuproc", type: "number", min: 128, step: 1, category: "os", placeholder: "4096", osFamily: "aix" },
+  { key: "aix_minperm", label: "vmo: minperm%", type: "number", min: 3, max: 80, step: 1, category: "os", placeholder: "5", osFamily: "aix" },
+  { key: "aix_maxperm", label: "vmo: maxperm%", type: "number", min: 10, max: 90, step: 1, category: "os", placeholder: "90", osFamily: "aix" },
+  { key: "aix_maxpgahead", label: "ioo: maxpgahead", type: "number", min: 8, step: 8, category: "os", placeholder: "64", osFamily: "aix" },
+  { key: "aix_nofile_hard", label: "ulimit nofile (hard)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535", osFamily: "aix" },
+];
+
+/* ══════════════════════════════════════════════════════════
+   HP-UX kernel params (ndd / kctune)
+   ══════════════════════════════════════════════════════════ */
+const OS_HPUX: FieldConfig[] = [
+  { key: "hpux_tcp_conn_request_max", label: "tcp_conn_request_max", type: "number", min: 128, step: 1, category: "os", placeholder: "4096", osFamily: "hpux" },
+  { key: "hpux_tcp_keepalive_interval", label: "tcp_keepalive_interval (ms)", type: "number", min: 10000, step: 1000, category: "os", placeholder: "7200000", osFamily: "hpux" },
+  { key: "hpux_tcp_time_wait_interval", label: "tcp_time_wait_interval (ms)", type: "number", min: 1000, step: 1000, category: "os", placeholder: "60000", osFamily: "hpux" },
+  { key: "hpux_nfile", label: "kctune: nfile", type: "number", min: 1024, step: 1, category: "os", placeholder: "65536", osFamily: "hpux" },
+  { key: "hpux_maxfiles", label: "kctune: maxfiles", type: "number", min: 1024, step: 1, category: "os", placeholder: "65536", osFamily: "hpux" },
+  { key: "hpux_maxfiles_lim", label: "kctune: maxfiles_lim", type: "number", min: 1024, step: 1, category: "os", placeholder: "65536", osFamily: "hpux" },
+  { key: "hpux_shmmax", label: "kctune: shmmax (bytes)", type: "number", min: 1048576, step: 1, category: "os", osFamily: "hpux" },
+  { key: "hpux_maxdsiz", label: "kctune: maxdsiz (bytes)", type: "number", min: 67108864, step: 1, category: "os", osFamily: "hpux" },
+];
+
+/* All OS fields combined for calculators that want cross-platform support */
+const OS_ALL = [...OS_NET, ...OS_FILE, ...OS_VM, ...OS_WIN, ...OS_SOL, ...OS_AIX, ...OS_HPUX];
 
 const CALCULATORS: CalculatorConfig[] = [
   {
@@ -586,11 +680,24 @@ export default function CalculatorPage() {
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* Group fields by category */}
+              {/* Group fields by category, filter os/perf by selected OS family */}
               {(["app", "os", "perf"] as const).map((cat) => {
-                const catFields = selected.fields.filter((f) => (f.category ?? "app") === cat);
+                const selectedOs = (values.os_type ?? "RHEL").toString();
+                const family = getOsFamily(selectedOs);
+                const catFields = selected.fields.filter((f) => {
+                  if ((f.category ?? "app") !== cat) return false;
+                  if (cat === "app") return true;
+                  // Show field if it has no osFamily, matches the family, or is 'all'
+                  const ff = f.osFamily ?? "linux";
+                  return ff === family || ff === "all";
+                });
                 if (catFields.length === 0) return null;
-                const catLabels = { app: "⚙️ Application Parameters", os: "🐧 OS Kernel Tuning", perf: "⚡ Performance (Minor Priority)" };
+                const osLabel = family === "windows" ? "🪟 Windows Registry Tuning"
+                  : family === "solaris" ? "☀️ Solaris ndd / Kernel Tuning"
+                    : family === "aix" ? "🖥️ AIX no/vmo/ioo Tuning"
+                      : family === "hpux" ? "🔧 HP-UX kctune/ndd Tuning"
+                        : "🐧 Linux sysctl / Kernel Tuning";
+                const catLabels = { app: "⚙️ Application Parameters", os: osLabel, perf: "⚡ Performance (Minor Priority)" };
                 const catColors = { app: "text-cyan-400", os: "text-amber-400", perf: "text-emerald-400" };
                 return (
                   <div key={cat}>
