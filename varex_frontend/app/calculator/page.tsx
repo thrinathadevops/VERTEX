@@ -288,7 +288,6 @@ const CALCULATORS: CalculatorConfig[] = [
     key: "iis", label: "IIS",
     profiles: [{ key: "new-core", label: "New Core" }, { key: "new-fx", label: "New Framework" }, { key: "existing", label: "Existing" }],
     fields: [...COMMON_FIELDS,
-    { key: "os_type", label: "OS Type", type: "text", placeholder: "windows-server-2022", category: "app" },
     { key: "max_url_length_kb", label: "Max URL Length (KB)", type: "number", min: 1, step: 1, category: "app" },
     { key: "max_query_string_kb", label: "Max Query Length (KB)", type: "number", min: 1, step: 1, category: "app" },
     { key: "max_request_headers_kb", label: "Max Headers (KB)", type: "number", min: 4, step: 1, category: "app" },
@@ -299,9 +298,6 @@ const CALCULATORS: CalculatorConfig[] = [
     { key: "queue_length", label: "Queue Length", type: "number", min: 1000, step: 1, category: "app", placeholder: "65535" },
     { key: "enable_keep_alive", label: "Enable Keepalive", type: "boolean", category: "app" },
     { key: "allow_double_escaping", label: "Allow Double Escaping", type: "boolean", category: "app" },
-    { key: "os_max_user_port", label: "MaxUserPort (TCP)", type: "number", min: 5000, step: 1, category: "os", placeholder: "65534" },
-    { key: "os_tcp_timed_wait_delay", label: "TcpTimedWaitDelay (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "30" },
-    { key: "os_dynamic_backlog", label: "Enable Dynamic Backlog", type: "boolean", category: "os" },
     { key: "perf_output_caching", label: "Output Caching", type: "boolean", category: "perf" },
     { key: "perf_compression", label: "Dynamic Compression", type: "boolean", category: "perf" },
     ],
@@ -478,6 +474,7 @@ export default function CalculatorPage() {
   const [profile, setProfile] = useState(CALCULATORS[0].profiles[0].key);
   const [values, setValues] = useState<Record<string, string | number | boolean>>({
     mode: "new",
+    os_type: "RHEL",
     cpu_cores: 4,
     ram_gb: 16,
     expected_rps: 1000,
@@ -492,6 +489,16 @@ export default function CalculatorPage() {
     () => CALCULATORS.find((c) => c.key === calculator) ?? CALCULATORS[0],
     [calculator]
   );
+
+  // Auto-inject cross-platform OS fields: calculators define Linux fields,
+  // this adds Windows/Solaris/AIX/HP-UX equivalents so the OS dropdown works.
+  const effectiveFields = useMemo(() => {
+    const existing = new Set(selected.fields.map((f) => f.key));
+    // Collect all non-Linux OS field sets not already in the calculator
+    const extras = [...OS_WIN, ...OS_WIN_PERF, ...OS_SOL, ...OS_AIX, ...OS_HPUX]
+      .filter((f) => !existing.has(f.key));
+    return [...selected.fields, ...extras];
+  }, [selected]);
 
   const setValue = (key: string, val: string | number | boolean) => {
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -516,7 +523,7 @@ export default function CalculatorPage() {
     setError("");
     try {
       const payload: Record<string, unknown> = {};
-      for (const f of selected.fields) {
+      for (const f of effectiveFields) {
         const raw = values[f.key];
         if (raw === undefined || raw === "") continue;
         if (f.type === "number") payload[f.key] = Number(raw);
@@ -684,7 +691,7 @@ export default function CalculatorPage() {
               {(["app", "os", "perf"] as const).map((cat) => {
                 const selectedOs = (values.os_type ?? "RHEL").toString();
                 const family = getOsFamily(selectedOs);
-                const catFields = selected.fields.filter((f) => {
+                const catFields = effectiveFields.filter((f) => {
                   if ((f.category ?? "app") !== cat) return false;
                   if (cat === "app") return true;
                   // Show field if it has no osFamily, matches the family, or is 'all'
