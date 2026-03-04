@@ -16,6 +16,7 @@ type FieldConfig = {
   step?: number;
   placeholder?: string;
   options?: string[];
+  category?: "app" | "os" | "perf";
 };
 
 type CalculatorConfig = {
@@ -26,135 +27,356 @@ type CalculatorConfig = {
 };
 
 const COMMON_FIELDS: FieldConfig[] = [
-  { key: "mode", label: "Mode", type: "select", options: ["new", "existing"], required: true },
-  { key: "cpu_cores", label: "CPU Cores", type: "number", min: 1, step: 1, required: true },
-  { key: "ram_gb", label: "RAM (GB)", type: "number", min: 1, step: 1, required: true },
-  { key: "expected_rps", label: "Expected RPS", type: "number", min: 1, step: 1, required: true },
-  { key: "avg_response_ms", label: "Avg Response (ms)", type: "number", min: 1, step: 1, required: true },
+  { key: "mode", label: "Mode", type: "select", options: ["new", "existing"], required: true, category: "app" },
+  { key: "cpu_cores", label: "CPU Cores", type: "number", min: 1, step: 1, required: true, category: "app" },
+  { key: "ram_gb", label: "RAM (GB)", type: "number", min: 1, step: 1, required: true, category: "app" },
+  { key: "expected_rps", label: "Expected RPS", type: "number", min: 1, step: 1, required: true, category: "app" },
+  { key: "avg_response_ms", label: "Avg Response (ms)", type: "number", min: 1, step: 1, required: true, category: "app" },
+];
+
+/* ── Reusable OS-level sysctl / kernel param sets ────── */
+const OS_NET: FieldConfig[] = [
+  { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+  { key: "os_tcp_max_syn_backlog", label: "net.ipv4.tcp_max_syn_backlog", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+  { key: "os_tcp_tw_reuse", label: "net.ipv4.tcp_tw_reuse", type: "boolean", category: "os" },
+  { key: "os_tcp_fin_timeout", label: "net.ipv4.tcp_fin_timeout (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15" },
+  { key: "os_tcp_keepalive_time", label: "net.ipv4.tcp_keepalive_time (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "600" },
+  { key: "os_tcp_keepalive_intvl", label: "net.ipv4.tcp_keepalive_intvl (s)", type: "number", min: 5, step: 1, category: "os", placeholder: "15" },
+  { key: "os_tcp_keepalive_probes", label: "net.ipv4.tcp_keepalive_probes", type: "number", min: 1, step: 1, category: "os", placeholder: "5" },
+  { key: "os_netdev_max_backlog", label: "net.core.netdev_max_backlog", type: "number", min: 1000, step: 1, category: "os", placeholder: "65536" },
+  { key: "os_rmem_max", label: "net.core.rmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216" },
+  { key: "os_wmem_max", label: "net.core.wmem_max (bytes)", type: "number", min: 65536, step: 1, category: "os", placeholder: "16777216" },
+];
+const OS_FILE: FieldConfig[] = [
+  { key: "os_file_max", label: "fs.file-max", type: "number", min: 65536, step: 1, category: "os", placeholder: "2097152" },
+  { key: "os_nofile_soft", label: "ulimit nofile (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
+  { key: "os_nofile_hard", label: "ulimit nofile (hard)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
+  { key: "os_nproc_soft", label: "ulimit nproc (soft)", type: "number", min: 1024, step: 1, category: "os", placeholder: "65535" },
+];
+const OS_VM: FieldConfig[] = [
+  { key: "os_overcommit_memory", label: "vm.overcommit_memory", type: "select", options: ["0", "1", "2"], category: "os" },
+  { key: "os_swappiness", label: "vm.swappiness", type: "number", min: 0, max: 100, step: 1, category: "os", placeholder: "10" },
+  { key: "os_dirty_ratio", label: "vm.dirty_ratio (%)", type: "number", min: 5, max: 80, step: 1, category: "os", placeholder: "40" },
+  { key: "os_dirty_bg_ratio", label: "vm.dirty_background_ratio (%)", type: "number", min: 1, max: 50, step: 1, category: "os", placeholder: "10" },
+];
+const OS_PERF: FieldConfig[] = [
+  { key: "perf_thp", label: "Transparent Huge Pages", type: "select", options: ["always", "madvise", "never"], category: "perf" },
+  { key: "perf_numa", label: "NUMA Interleave", type: "boolean", category: "perf" },
+  { key: "perf_io_sched", label: "I/O Scheduler", type: "select", options: ["noop", "deadline", "cfq", "mq-deadline", "bfq", "none"], category: "perf" },
+  { key: "perf_cpu_gov", label: "CPU Governor", type: "select", options: ["performance", "ondemand", "powersave", "conservative"], category: "perf" },
 ];
 
 const CALCULATORS: CalculatorConfig[] = [
   {
-    key: "nginx",
-    label: "NGINX",
+    key: "nginx", label: "NGINX",
     profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "worker_connections", label: "Worker Connections", type: "number", min: 512, step: 1 },
-      { key: "client_max_body_size_mb", label: "Client Max Body (MB)", type: "number", min: 1, step: 1 },
-      { key: "keepalive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1 },
-      { key: "send_timeout_s", label: "Send Timeout (s)", type: "number", min: 5, step: 1 },
-      { key: "open_file_cache_max", label: "Open File Cache Max", type: "number", min: 1000, step: 1 },
-      { key: "ssl_protocols", label: "SSL Protocols", type: "text", placeholder: "TLSv1.2 TLSv1.3" },
+    fields: [...COMMON_FIELDS,
+    { key: "worker_connections", label: "Worker Connections", type: "number", min: 512, step: 1, category: "app" },
+    { key: "worker_rlimit_nofile", label: "Worker rlimit nofile", type: "number", min: 1024, step: 1, category: "app", placeholder: "65535" },
+    { key: "client_max_body_size_mb", label: "Client Max Body (MB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "keepalive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "send_timeout_s", label: "Send Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "proxy_connect_timeout_s", label: "Proxy Connect Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "proxy_read_timeout_s", label: "Proxy Read Timeout (s)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "open_file_cache_max", label: "Open File Cache Max", type: "number", min: 1000, step: 1, category: "app" },
+    { key: "multi_accept", label: "Multi Accept", type: "boolean", category: "app" },
+    { key: "gzip_enabled", label: "Enable Gzip", type: "boolean", category: "app" },
+    { key: "sendfile", label: "Sendfile", type: "boolean", category: "app" },
+    { key: "tcp_nopush", label: "TCP Nopush", type: "boolean", category: "app" },
+    { key: "tcp_nodelay", label: "TCP Nodelay", type: "boolean", category: "app" },
+    { key: "ssl_protocols", label: "SSL Protocols", type: "text", placeholder: "TLSv1.2 TLSv1.3", category: "app" },
+    ...OS_NET, ...OS_FILE,
+    { key: "perf_epoll", label: "Use epoll", type: "boolean", category: "perf" },
+    ...OS_PERF.slice(2),
     ],
   },
   {
-    key: "redis",
-    label: "Redis",
+    key: "redis", label: "Redis",
     profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "estimated_keys", label: "Estimated Keys", type: "number", min: 1, step: 1 },
-      { key: "maxmemory_gb", label: "Max Memory (GB)", type: "number", min: 1, step: 1 },
-      { key: "maxmemory_policy", label: "Eviction Policy", type: "select", options: ["allkeys-lru", "volatile-lru", "noeviction"] },
-      { key: "appendonly", label: "Append Only", type: "boolean" },
-      { key: "protected_mode", label: "Protected Mode", type: "boolean" },
-      { key: "timeout_s", label: "Idle Timeout (s)", type: "number", min: 0, step: 1 },
-    ],
-  },
-  { key: "tomcat", label: "Tomcat", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: COMMON_FIELDS },
-  {
-    key: "httpd",
-    label: "Apache HTTPD",
-    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1 },
-      { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1 },
-      { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1 },
-      { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1 },
+    fields: [...COMMON_FIELDS,
+    { key: "estimated_keys", label: "Estimated Keys", type: "number", min: 1, step: 1, category: "app" },
+    { key: "maxmemory_gb", label: "Max Memory (GB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "maxmemory_policy", label: "Eviction Policy", type: "select", options: ["allkeys-lru", "volatile-lru", "allkeys-lfu", "volatile-lfu", "allkeys-random", "volatile-ttl", "noeviction"], category: "app" },
+    { key: "appendonly", label: "Append Only (AOF)", type: "boolean", category: "app" },
+    { key: "appendfsync", label: "AOF Fsync", type: "select", options: ["everysec", "always", "no"], category: "app" },
+    { key: "save_rdb", label: "Enable RDB Snapshots", type: "boolean", category: "app" },
+    { key: "protected_mode", label: "Protected Mode", type: "boolean", category: "app" },
+    { key: "timeout_s", label: "Idle Timeout (s)", type: "number", min: 0, step: 1, category: "app" },
+    { key: "tcp_backlog", label: "tcp-backlog", type: "number", min: 128, step: 1, category: "app", placeholder: "511" },
+    { key: "hz", label: "Server Hz", type: "number", min: 1, max: 500, step: 1, category: "app", placeholder: "10" },
+    { key: "io_threads", label: "I/O Threads", type: "number", min: 1, step: 1, category: "app" },
+    { key: "lazyfree_lazy_eviction", label: "Lazy Eviction", type: "boolean", category: "app" },
+    { key: "os_overcommit_memory", label: "vm.overcommit_memory", type: "select", options: ["0", "1", "2"], category: "os" },
+    { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+    ...OS_FILE,
+    { key: "os_swappiness", label: "vm.swappiness", type: "number", min: 0, max: 100, step: 1, category: "os", placeholder: "1" },
+    { key: "perf_thp", label: "Transparent Huge Pages", type: "select", options: ["always", "madvise", "never"], category: "perf" },
+    { key: "perf_io_sched", label: "I/O Scheduler", type: "select", options: ["noop", "deadline", "mq-deadline", "none"], category: "perf" },
     ],
   },
   {
-    key: "ohs",
-    label: "Oracle HTTP Server",
+    key: "tomcat", label: "Tomcat",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "max_threads", label: "Max Threads", type: "number", min: 10, step: 1, category: "app", placeholder: "200" },
+    { key: "min_spare_threads", label: "Min Spare Threads", type: "number", min: 5, step: 1, category: "app", placeholder: "25" },
+    { key: "max_connections", label: "Max Connections", type: "number", min: 100, step: 1, category: "app", placeholder: "10000" },
+    { key: "accept_count", label: "Accept Count (Backlog)", type: "number", min: 50, step: 1, category: "app", placeholder: "100" },
+    { key: "connection_timeout_ms", label: "Connection Timeout (ms)", type: "number", min: 1000, step: 100, category: "app", placeholder: "20000" },
+    { key: "keep_alive_timeout_ms", label: "Keep-Alive Timeout (ms)", type: "number", min: 1000, step: 100, category: "app" },
+    { key: "max_keep_alive_requests", label: "Max Keep-Alive Requests", type: "number", min: 1, step: 1, category: "app" },
+    { key: "jvm_heap_min_mb", label: "JVM Heap Min -Xms (MB)", type: "number", min: 128, step: 64, category: "app" },
+    { key: "jvm_heap_max_mb", label: "JVM Heap Max -Xmx (MB)", type: "number", min: 256, step: 64, category: "app" },
+    { key: "jvm_metaspace_mb", label: "JVM Metaspace (MB)", type: "number", min: 64, step: 32, category: "app" },
+    { key: "gc_type", label: "GC Algorithm", type: "select", options: ["G1GC", "ZGC", "ParallelGC", "CMS"], category: "app" },
+    { key: "compression_enabled", label: "Enable Compression", type: "boolean", category: "app" },
+    { key: "use_nio2", label: "Use NIO2 Connector", type: "boolean", category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE, ...OS_VM.slice(0, 2), ...OS_PERF.slice(0, 2),
+    ],
+  },
+  {
+    key: "httpd", label: "Apache HTTPD",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "mpm_type", label: "MPM Module", type: "select", options: ["event", "worker", "prefork"], category: "app" },
+    { key: "start_servers", label: "Start Servers", type: "number", min: 1, step: 1, category: "app" },
+    { key: "min_spare_threads", label: "Min Spare Threads", type: "number", min: 5, step: 1, category: "app" },
+    { key: "max_spare_threads", label: "Max Spare Threads", type: "number", min: 10, step: 1, category: "app" },
+    { key: "max_request_workers", label: "Max Request Workers", type: "number", min: 50, step: 1, category: "app" },
+    { key: "max_connections_per_child", label: "Max Connections/Child", type: "number", min: 0, step: 1, category: "app" },
+    { key: "server_limit", label: "Server Limit", type: "number", min: 16, step: 1, category: "app" },
+    { key: "threads_per_child", label: "Threads Per Child", type: "number", min: 10, step: 1, category: "app" },
+    { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1, category: "app" },
+    { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1, category: "app" },
+    ...OS_NET.slice(0, 6), ...OS_FILE,
+    { key: "perf_sendfile", label: "EnableSendfile", type: "boolean", category: "perf" },
+    ...OS_PERF.slice(2, 4),
+    ],
+  },
+  {
+    key: "ohs", label: "Oracle HTTP Server",
     profiles: [{ key: "new", label: "New" }, { key: "new-fusion", label: "New Fusion" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1 },
-      { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1 },
-      { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1 },
-      { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1 },
-      { key: "max_client", label: "Max Client", type: "number", min: 150, step: 1 },
-      { key: "max_requests_per_child", label: "Max Requests Per Child", type: "number", min: 1000, step: 1 },
-      { key: "send_buffer_size_kb", label: "Send Buffer Size (KB)", type: "number", min: 16, step: 0.01 },
-      { key: "receive_buffer_size_kb", label: "Receive Buffer Size (KB)", type: "number", min: 16, step: 0.01 },
+    fields: [...COMMON_FIELDS,
+    { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1, category: "app" },
+    { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1, category: "app" },
+    { key: "max_client", label: "Max Client", type: "number", min: 150, step: 1, category: "app" },
+    { key: "max_requests_per_child", label: "Max Requests Per Child", type: "number", min: 1000, step: 1, category: "app" },
+    { key: "send_buffer_size_kb", label: "Send Buffer Size (KB)", type: "number", min: 16, step: 0.01, category: "app" },
+    { key: "receive_buffer_size_kb", label: "Receive Buffer Size (KB)", type: "number", min: 16, step: 0.01, category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE, ...OS_PERF.slice(2, 4),
     ],
   },
   {
-    key: "ihs",
-    label: "IBM HTTP Server",
+    key: "ihs", label: "IBM HTTP Server",
     profiles: [{ key: "new", label: "New" }, { key: "new-liberty", label: "New Liberty" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1 },
-      { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1 },
-      { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1 },
-      { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1 },
-      { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1 },
-      { key: "max_request_workers", label: "Max Request Workers", type: "number", min: 150, step: 1 },
-      { key: "max_connections_per_child", label: "Max Connections/Child", type: "number", min: 1000, step: 1 },
-      { key: "listen_backlog", label: "Listen Backlog", type: "number", min: 128, step: 1 },
+    fields: [...COMMON_FIELDS,
+    { key: "limit_request_line_kb", label: "Limit Request Line (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_field_size_kb", label: "Limit Header Field (KB)", type: "number", min: 8, step: 1, category: "app" },
+    { key: "limit_request_body_kb", label: "Limit Request Body (KB)", type: "number", min: 1024, step: 1, category: "app" },
+    { key: "timeout_s", label: "Timeout (s)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "keep_alive_timeout_s", label: "Keepalive Timeout (s)", type: "number", min: 5, step: 1, category: "app" },
+    { key: "max_keep_alive_requests", label: "Max Keepalive Requests", type: "number", min: 100, step: 1, category: "app" },
+    { key: "max_request_workers", label: "Max Request Workers", type: "number", min: 150, step: 1, category: "app" },
+    { key: "max_connections_per_child", label: "Max Connections/Child", type: "number", min: 1000, step: 1, category: "app" },
+    { key: "listen_backlog", label: "Listen Backlog", type: "number", min: 128, step: 1, category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE, ...OS_PERF.slice(2, 4),
     ],
   },
   {
-    key: "iis",
-    label: "IIS",
+    key: "iis", label: "IIS",
     profiles: [{ key: "new-core", label: "New Core" }, { key: "new-fx", label: "New Framework" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "os_type", label: "OS Type", type: "text", placeholder: "windows-server-2022" },
-      { key: "max_url_length_kb", label: "Max URL Length (KB)", type: "number", min: 1, step: 1 },
-      { key: "max_query_string_kb", label: "Max Query Length (KB)", type: "number", min: 1, step: 1 },
-      { key: "max_request_headers_kb", label: "Max Headers (KB)", type: "number", min: 4, step: 1 },
-      { key: "max_allowed_content_length_mb", label: "Max Content Length (MB)", type: "number", min: 1, step: 1 },
-      { key: "connection_timeout_s", label: "Connection Timeout (s)", type: "number", min: 10, step: 1 },
-      { key: "idle_timeout_min", label: "Idle Timeout (min)", type: "number", min: 1, step: 1 },
-      { key: "max_concurrent_requests", label: "Max Concurrent Requests", type: "number", min: 500, step: 1 },
-      { key: "allow_double_escaping", label: "Allow Double Escaping", type: "boolean" },
-      { key: "enable_keep_alive", label: "Enable Keepalive", type: "boolean" },
+    fields: [...COMMON_FIELDS,
+    { key: "os_type", label: "OS Type", type: "text", placeholder: "windows-server-2022", category: "app" },
+    { key: "max_url_length_kb", label: "Max URL Length (KB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "max_query_string_kb", label: "Max Query Length (KB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "max_request_headers_kb", label: "Max Headers (KB)", type: "number", min: 4, step: 1, category: "app" },
+    { key: "max_allowed_content_length_mb", label: "Max Content Length (MB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "connection_timeout_s", label: "Connection Timeout (s)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "idle_timeout_min", label: "Idle Timeout (min)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "max_concurrent_requests", label: "Max Concurrent Requests", type: "number", min: 500, step: 1, category: "app" },
+    { key: "queue_length", label: "Queue Length", type: "number", min: 1000, step: 1, category: "app", placeholder: "65535" },
+    { key: "enable_keep_alive", label: "Enable Keepalive", type: "boolean", category: "app" },
+    { key: "allow_double_escaping", label: "Allow Double Escaping", type: "boolean", category: "app" },
+    { key: "os_max_user_port", label: "MaxUserPort (TCP)", type: "number", min: 5000, step: 1, category: "os", placeholder: "65534" },
+    { key: "os_tcp_timed_wait_delay", label: "TcpTimedWaitDelay (s)", type: "number", min: 30, step: 1, category: "os", placeholder: "30" },
+    { key: "os_dynamic_backlog", label: "Enable Dynamic Backlog", type: "boolean", category: "os" },
+    { key: "perf_output_caching", label: "Output Caching", type: "boolean", category: "perf" },
+    { key: "perf_compression", label: "Dynamic Compression", type: "boolean", category: "perf" },
     ],
   },
   {
-    key: "podman",
-    label: "Podman",
+    key: "podman", label: "Podman",
     profiles: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }],
-    fields: [
-      ...COMMON_FIELDS,
-      { key: "replicas", label: "Replicas", type: "number", min: 1, step: 1 },
-      { key: "cgroup_manager", label: "Cgroup Manager", type: "select", options: ["systemd", "cgroupfs"] },
-      { key: "events_backend", label: "Events Backend", type: "select", options: ["journald", "file"] },
-      { key: "pids_limit", label: "PIDs Limit", type: "number", min: 256, step: 1 },
-      { key: "storage_max_size_gb", label: "Storage Max (GB)", type: "number", min: 1, step: 1 },
-      { key: "storage_driver", label: "Storage Driver", type: "select", options: ["overlay2", "overlay", "btrfs"] },
-      { key: "log_size_max_mb", label: "Max Log Size (MB)", type: "number", min: 10, step: 1 },
-      { key: "default_nofile_soft", label: "nofile Soft", type: "number", min: 1024, step: 1 },
-      { key: "default_nofile_hard", label: "nofile Hard", type: "number", min: 1024, step: 1 },
+    fields: [...COMMON_FIELDS,
+    { key: "replicas", label: "Replicas", type: "number", min: 1, step: 1, category: "app" },
+    { key: "cgroup_manager", label: "Cgroup Manager", type: "select", options: ["systemd", "cgroupfs"], category: "app" },
+    { key: "events_backend", label: "Events Backend", type: "select", options: ["journald", "file"], category: "app" },
+    { key: "pids_limit", label: "PIDs Limit", type: "number", min: 256, step: 1, category: "app" },
+    { key: "storage_max_size_gb", label: "Storage Max (GB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "storage_driver", label: "Storage Driver", type: "select", options: ["overlay2", "overlay", "btrfs"], category: "app" },
+    { key: "log_size_max_mb", label: "Max Log Size (MB)", type: "number", min: 10, step: 1, category: "app" },
+    { key: "default_nofile_soft", label: "Container nofile Soft", type: "number", min: 1024, step: 1, category: "app" },
+    { key: "default_nofile_hard", label: "Container nofile Hard", type: "number", min: 1024, step: 1, category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE,
+    { key: "os_inotify_max", label: "fs.inotify.max_user_watches", type: "number", min: 8192, step: 1, category: "os", placeholder: "524288" },
+    ...OS_PERF.slice(2, 4),
     ],
   },
-  { key: "k8s", label: "Kubernetes", profiles: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "replicas", label: "Replicas", type: "number", min: 1, step: 1 }] },
-  { key: "os", label: "Linux OS", profiles: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "workload_type", label: "Workload Type", type: "select", options: ["web", "database"] }] },
-  { key: "postgresql", label: "PostgreSQL", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "connections", label: "Connections", type: "number", min: 50, step: 1 }] },
-  { key: "mysql", label: "MySQL", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "connections", label: "Connections", type: "number", min: 50, step: 1 }] },
-  { key: "mongodb", label: "MongoDB", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "connections", label: "Connections", type: "number", min: 50, step: 1 }] },
-  { key: "haproxy", label: "HAProxy", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "connections", label: "Connections", type: "number", min: 50, step: 1 }] },
-  { key: "docker", label: "Docker", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: COMMON_FIELDS },
-  { key: "rabbitmq", label: "RabbitMQ", profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }], fields: [...COMMON_FIELDS, { key: "queues", label: "Queue Count", type: "number", min: 1, step: 1 }] },
+  {
+    key: "k8s", label: "Kubernetes",
+    profiles: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "replicas", label: "Replicas", type: "number", min: 1, step: 1, category: "app" },
+    { key: "cpu_request_m", label: "CPU Request (millicores)", type: "number", min: 50, step: 50, category: "app" },
+    { key: "cpu_limit_m", label: "CPU Limit (millicores)", type: "number", min: 100, step: 50, category: "app" },
+    { key: "memory_request_mb", label: "Memory Request (MB)", type: "number", min: 64, step: 64, category: "app" },
+    { key: "memory_limit_mb", label: "Memory Limit (MB)", type: "number", min: 128, step: 64, category: "app" },
+    { key: "hpa_min_replicas", label: "HPA Min Replicas", type: "number", min: 1, step: 1, category: "app" },
+    { key: "hpa_max_replicas", label: "HPA Max Replicas", type: "number", min: 1, step: 1, category: "app" },
+    { key: "hpa_target_cpu_pct", label: "HPA Target CPU (%)", type: "number", min: 10, max: 95, step: 5, category: "app" },
+    { key: "termination_grace_s", label: "Termination Grace (s)", type: "number", min: 10, step: 1, category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE,
+    { key: "os_max_map_count", label: "vm.max_map_count", type: "number", min: 65530, step: 1, category: "os", placeholder: "262144" },
+    { key: "os_inotify_max", label: "fs.inotify.max_user_watches", type: "number", min: 8192, step: 1, category: "os", placeholder: "524288" },
+    ...OS_PERF.slice(0, 2),
+    ],
+  },
+  {
+    key: "os", label: "Linux OS",
+    profiles: [{ key: "new-web", label: "New Web" }, { key: "new-database", label: "New Database" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "workload_type", label: "Workload Type", type: "select", options: ["web", "database", "mixed", "compute", "storage"], category: "app" },
+    ...OS_NET, ...OS_FILE, ...OS_VM,
+    { key: "os_max_map_count", label: "vm.max_map_count", type: "number", min: 65530, step: 1, category: "os", placeholder: "262144" },
+    { key: "os_ip_local_port_range", label: "net.ipv4.ip_local_port_range", type: "text", category: "os", placeholder: "1024 65535" },
+    { key: "os_tcp_syncookies", label: "net.ipv4.tcp_syncookies", type: "boolean", category: "os" },
+    { key: "os_inotify_max", label: "fs.inotify.max_user_watches", type: "number", min: 8192, step: 1, category: "os", placeholder: "524288" },
+    { key: "os_shmmax", label: "kernel.shmmax (bytes)", type: "number", min: 1073741824, step: 1, category: "os" },
+    { key: "os_shmall", label: "kernel.shmall (pages)", type: "number", min: 262144, step: 1, category: "os" },
+    ...OS_PERF,
+    ],
+  },
+  {
+    key: "postgresql", label: "PostgreSQL",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "max_connections", label: "Max Connections", type: "number", min: 50, step: 1, category: "app" },
+    { key: "shared_buffers_mb", label: "Shared Buffers (MB)", type: "number", min: 128, step: 64, category: "app" },
+    { key: "effective_cache_size_mb", label: "Effective Cache Size (MB)", type: "number", min: 256, step: 64, category: "app" },
+    { key: "work_mem_mb", label: "Work Mem (MB)", type: "number", min: 4, step: 1, category: "app" },
+    { key: "maintenance_work_mem_mb", label: "Maintenance Work Mem (MB)", type: "number", min: 64, step: 32, category: "app" },
+    { key: "wal_buffers_mb", label: "WAL Buffers (MB)", type: "number", min: 4, step: 1, category: "app" },
+    { key: "checkpoint_target", label: "Checkpoint Completion Target", type: "number", min: 0.1, max: 1.0, step: 0.1, category: "app" },
+    { key: "random_page_cost", label: "Random Page Cost", type: "number", min: 1.0, max: 4.0, step: 0.1, category: "app" },
+    { key: "effective_io_concurrency", label: "Effective I/O Concurrency", type: "number", min: 1, max: 200, step: 1, category: "app" },
+    { key: "max_wal_size_gb", label: "Max WAL Size (GB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "max_parallel_workers", label: "Max Parallel Workers", type: "number", min: 0, step: 1, category: "app" },
+    { key: "huge_pages", label: "Huge Pages", type: "select", options: ["try", "on", "off"], category: "app" },
+    { key: "os_shmmax", label: "kernel.shmmax (bytes)", type: "number", min: 1073741824, step: 1, category: "os" },
+    { key: "os_shmall", label: "kernel.shmall (pages)", type: "number", min: 262144, step: 1, category: "os" },
+    ...OS_VM, ...OS_FILE.slice(0, 3),
+    { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+    ...OS_PERF.slice(0, 1), ...OS_PERF.slice(2, 3),
+    ],
+  },
+  {
+    key: "mysql", label: "MySQL",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "max_connections", label: "Max Connections", type: "number", min: 50, step: 1, category: "app" },
+    { key: "innodb_buffer_pool_mb", label: "InnoDB Buffer Pool (MB)", type: "number", min: 128, step: 64, category: "app" },
+    { key: "innodb_pool_instances", label: "Buffer Pool Instances", type: "number", min: 1, max: 64, step: 1, category: "app" },
+    { key: "innodb_log_file_mb", label: "InnoDB Log File (MB)", type: "number", min: 48, step: 16, category: "app" },
+    { key: "innodb_log_buffer_mb", label: "InnoDB Log Buffer (MB)", type: "number", min: 8, step: 4, category: "app" },
+    { key: "innodb_flush_method", label: "Flush Method", type: "select", options: ["O_DIRECT", "O_DSYNC", "fsync"], category: "app" },
+    { key: "innodb_io_capacity", label: "InnoDB I/O Capacity", type: "number", min: 100, step: 100, category: "app", placeholder: "2000" },
+    { key: "thread_cache_size", label: "Thread Cache Size", type: "number", min: 8, step: 1, category: "app" },
+    { key: "table_open_cache", label: "Table Open Cache", type: "number", min: 400, step: 100, category: "app" },
+    { key: "tmp_table_size_mb", label: "Tmp Table Size (MB)", type: "number", min: 16, step: 8, category: "app" },
+    ...OS_VM, ...OS_FILE,
+    { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+    ...OS_PERF.slice(0, 1), ...OS_PERF.slice(2, 3),
+    ],
+  },
+  {
+    key: "mongodb", label: "MongoDB",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "max_connections", label: "Max Connections", type: "number", min: 50, step: 1, category: "app" },
+    { key: "wiredtiger_cache_gb", label: "WiredTiger Cache (GB)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "journal_enabled", label: "Journal Enabled", type: "boolean", category: "app" },
+    { key: "oplog_size_mb", label: "Oplog Size (MB)", type: "number", min: 990, step: 100, category: "app" },
+    { key: "storage_engine", label: "Storage Engine", type: "select", options: ["wiredTiger", "inMemory"], category: "app" },
+    { key: "read_concern", label: "Read Concern", type: "select", options: ["local", "majority", "linearizable"], category: "app" },
+    { key: "write_concern", label: "Write Concern", type: "select", options: ["1", "majority"], category: "app" },
+    { key: "replica_set_size", label: "Replica Set Size", type: "number", min: 1, max: 7, step: 2, category: "app" },
+    { key: "os_max_map_count", label: "vm.max_map_count", type: "number", min: 65530, step: 1, category: "os", placeholder: "262144" },
+    ...OS_VM, ...OS_FILE,
+    { key: "os_somaxconn", label: "net.core.somaxconn", type: "number", min: 128, step: 1, category: "os", placeholder: "65535" },
+    ...OS_PERF.slice(0, 1), ...OS_PERF.slice(1, 3),
+    ],
+  },
+  {
+    key: "haproxy", label: "HAProxy",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "maxconn_global", label: "Global maxconn", type: "number", min: 1000, step: 100, category: "app", placeholder: "100000" },
+    { key: "maxconn_frontend", label: "Frontend maxconn", type: "number", min: 500, step: 100, category: "app" },
+    { key: "maxconn_server", label: "Server maxconn", type: "number", min: 100, step: 10, category: "app" },
+    { key: "nbthread", label: "Threads (nbthread)", type: "number", min: 1, step: 1, category: "app" },
+    { key: "timeout_connect_ms", label: "Timeout Connect (ms)", type: "number", min: 1000, step: 500, category: "app" },
+    { key: "timeout_client_ms", label: "Timeout Client (ms)", type: "number", min: 5000, step: 1000, category: "app" },
+    { key: "timeout_server_ms", label: "Timeout Server (ms)", type: "number", min: 5000, step: 1000, category: "app" },
+    { key: "balance", label: "Balance Algorithm", type: "select", options: ["roundrobin", "leastconn", "source", "uri", "hdr"], category: "app" },
+    { key: "http_reuse", label: "HTTP Reuse", type: "select", options: ["safe", "aggressive", "always", "never"], category: "app" },
+    ...OS_NET, ...OS_FILE,
+    ...OS_PERF.slice(3, 4),
+    ],
+  },
+  {
+    key: "docker", label: "Docker",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "storage_driver", label: "Storage Driver", type: "select", options: ["overlay2", "devicemapper", "btrfs", "zfs"], category: "app" },
+    { key: "log_driver", label: "Log Driver", type: "select", options: ["json-file", "journald", "syslog", "fluentd"], category: "app" },
+    { key: "log_max_size_mb", label: "Log Max Size (MB)", type: "number", min: 10, step: 10, category: "app" },
+    { key: "log_max_files", label: "Log Max Files", type: "number", min: 1, step: 1, category: "app" },
+    { key: "default_ulimit_nofile", label: "Default ulimit nofile", type: "number", min: 1024, step: 1, category: "app", placeholder: "65535" },
+    { key: "default_ulimit_nproc", label: "Default ulimit nproc", type: "number", min: 1024, step: 1, category: "app", placeholder: "65535" },
+    { key: "live_restore", label: "Live Restore", type: "boolean", category: "app" },
+    { key: "userland_proxy", label: "Userland Proxy", type: "boolean", category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE,
+    { key: "os_ip_forward", label: "net.ipv4.ip_forward", type: "boolean", category: "os" },
+    { key: "os_bridge_nf_call", label: "bridge-nf-call-iptables", type: "boolean", category: "os" },
+    { key: "os_inotify_max", label: "fs.inotify.max_user_watches", type: "number", min: 8192, step: 1, category: "os", placeholder: "524288" },
+    ...OS_PERF.slice(2, 4),
+    ],
+  },
+  {
+    key: "rabbitmq", label: "RabbitMQ",
+    profiles: [{ key: "new", label: "New" }, { key: "existing", label: "Existing" }],
+    fields: [...COMMON_FIELDS,
+    { key: "queues", label: "Queue Count", type: "number", min: 1, step: 1, category: "app" },
+    { key: "vm_memory_watermark", label: "VM Memory Watermark (%)", type: "number", min: 10, max: 90, step: 5, category: "app", placeholder: "40" },
+    { key: "disk_free_limit_mb", label: "Disk Free Limit (MB)", type: "number", min: 50, step: 50, category: "app", placeholder: "2048" },
+    { key: "channel_max", label: "Channel Max", type: "number", min: 128, step: 1, category: "app", placeholder: "2047" },
+    { key: "heartbeat_s", label: "Heartbeat (s)", type: "number", min: 0, step: 10, category: "app", placeholder: "60" },
+    { key: "prefetch_count", label: "Prefetch Count", type: "number", min: 1, step: 1, category: "app", placeholder: "250" },
+    { key: "cluster_nodes", label: "Cluster Nodes", type: "number", min: 1, max: 7, step: 1, category: "app" },
+    { key: "ha_mode", label: "HA Mode", type: "select", options: ["none", "all", "exactly", "nodes"], category: "app" },
+    ...OS_NET.slice(0, 4), ...OS_FILE,
+    { key: "perf_erlang_sched", label: "Erlang Schedulers", type: "number", min: 1, step: 1, category: "perf" },
+    ...OS_PERF.slice(2, 3),
+    ],
+  },
 ];
 
 export default function CalculatorPage() {
@@ -363,39 +585,53 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {selected.fields.map((f) => (
-                <label key={f.key} className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{f.label}</span>
-                  {f.type === "select" ? (
-                    <select
-                      value={(values[f.key] ?? "").toString()}
-                      onChange={(e) => setValue(f.key, e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                    >
-                      {(f.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : f.type === "boolean" ? (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(values[f.key])}
-                      onChange={(e) => setValue(f.key, e.target.checked)}
-                      className="h-5 w-5"
-                    />
-                  ) : (
-                    <input
-                      type={f.type === "number" ? "number" : "text"}
-                      value={(values[f.key] ?? "").toString()}
-                      placeholder={f.placeholder}
-                      min={f.min}
-                      max={f.max}
-                      step={f.step}
-                      onChange={(e) => setValue(f.key, f.type === "number" ? e.target.value : e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                    />
-                  )}
-                </label>
-              ))}
+            <div className="mt-4 space-y-4">
+              {/* Group fields by category */}
+              {(["app", "os", "perf"] as const).map((cat) => {
+                const catFields = selected.fields.filter((f) => (f.category ?? "app") === cat);
+                if (catFields.length === 0) return null;
+                const catLabels = { app: "⚙️ Application Parameters", os: "🐧 OS Kernel Tuning", perf: "⚡ Performance (Minor Priority)" };
+                const catColors = { app: "text-cyan-400", os: "text-amber-400", perf: "text-emerald-400" };
+                return (
+                  <div key={cat}>
+                    <p className={`mb-2 text-xs font-bold uppercase tracking-widest ${catColors[cat]}`}>{catLabels[cat]}</p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {catFields.map((f) => (
+                        <label key={f.key} className="flex flex-col gap-1.5">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{f.label}</span>
+                          {f.type === "select" ? (
+                            <select
+                              value={(values[f.key] ?? "").toString()}
+                              onChange={(e) => setValue(f.key, e.target.value)}
+                              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                            >
+                              {(f.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          ) : f.type === "boolean" ? (
+                            <input
+                              type="checkbox"
+                              checked={Boolean(values[f.key])}
+                              onChange={(e) => setValue(f.key, e.target.checked)}
+                              className="h-5 w-5"
+                            />
+                          ) : (
+                            <input
+                              type={f.type === "number" ? "number" : "text"}
+                              value={(values[f.key] ?? "").toString()}
+                              placeholder={f.placeholder}
+                              min={f.min}
+                              max={f.max}
+                              step={f.step}
+                              onChange={(e) => setValue(f.key, f.type === "number" ? e.target.value : e.target.value)}
+                              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-4 flex items-center gap-3">
