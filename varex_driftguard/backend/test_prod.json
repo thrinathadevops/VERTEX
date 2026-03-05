@@ -1,0 +1,15 @@
+{
+  "database": {
+    "host": "prod.db.internal",
+    "port": 5432,
+    "max_connections": 100
+  },
+  "cache": {
+    "enabled": true,
+    "redis_url": "redis://prod-cache:6379"
+  },
+  "feature_flags": {
+    "beta_ui": false,
+    "new_auth": true
+  }
+}

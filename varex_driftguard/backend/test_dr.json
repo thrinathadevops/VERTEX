@@ -1,0 +1,15 @@
+{
+    "database": {
+        "host": "dr.db.internal",
+        "port": 5432,
+        "max_connections": 50
+    },
+    "cache": {
+        "enabled": false,
+        "redis_url": "redis://dr-cache:6379"
+    },
+    "feature_flags": {
+        "beta_ui": true,
+        "new_auth": true
+    }
+}
