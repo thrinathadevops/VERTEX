@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { UploadCloud, File as FileIcon, ArrowRightLeft, Download, CheckCircle, AlertTriangle } from "lucide-react";
+import { UploadCloud, File as FileIcon, ArrowRightLeft, Download, CheckCircle, AlertTriangle, Server, Key, Terminal } from "lucide-react";
+import { Tab } from '@headlessui/react';
+import clsx from "clsx";
 
 interface DriftItem {
     parameter: string;
@@ -12,13 +14,25 @@ interface DriftItem {
 }
 
 export default function DriftDashboard() {
+    const [activeTab, setActiveTab] = useState(0);
+
+    // Manual Upload State
     const [prodFile, setProdFile] = useState<File | null>(null);
     const [drFile, setDrFile] = useState<File | null>(null);
+
+    // Connector State
+    const [serverTarget, setServerTarget] = useState("192.168.1.100");
+    const [serverUser, setServerUser] = useState("root");
+    const [serverPassword, setServerPassword] = useState("");
+    const [configPath, setConfigPath] = useState("/etc/nginx/nginx.conf");
+    const [connectorType, setConnectorType] = useState("ssh");
+
+    // Global UI State
     const [loading, setLoading] = useState(false);
     const [driftResults, setDriftResults] = useState<DriftItem[] | null>(null);
     const [exporting, setExporting] = useState(false);
 
-    const handleUpload = async () => {
+    const handleManualUpload = async () => {
         if (!prodFile || !drFile) {
             alert("Please upload both Prod and DR configurations.");
             return;
@@ -35,15 +49,52 @@ export default function DriftDashboard() {
                 body: formData,
             });
 
-            if (!res.ok) {
-                throw new Error("Failed to run drift comparison");
-            }
+            if (!res.ok) throw new Error("Failed to run drift comparison");
 
             const data = await res.json();
             setDriftResults(data.drift_results || []);
         } catch (err) {
-            console.error("Comparison error:", err);
-            alert("Error occurred during comparison. Is the backend running?");
+            console.error(err);
+            alert("Error occurred during comparison.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleConnectorFetch = async () => {
+        if (!serverTarget || !serverUser || !configPath) {
+            alert("Please fill all required connector fields.");
+            return;
+        }
+        setLoading(true);
+        try {
+            // In a real flow, you'll fetch prod server config, then fetch dr server config
+            // and THEN run analyze_drift on those two payloads.
+            // For this MVP UI, we'll demonstrate just fetching ONE payload first to prove it works.
+            const payload = {
+                connector_type: connectorType,
+                target: serverTarget,
+                config_path: configPath,
+                credentials: {
+                    username: serverUser,
+                    password: serverPassword
+                }
+            };
+
+            const res = await fetch("http://localhost:8000/api/v1/connectors/fetch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) throw new Error("Failed connecting to server");
+            const data = await res.json();
+
+            alert(`Successfully fetched config from ${serverTarget}!\n\nPreview:\n${data.content.substring(0, 100)}...`);
+            // Further logic: Set prodFile = createBlob(data.content), repeat for DR.
+        } catch (err) {
+            console.error(err);
+            alert("Error fetching from server. Ensure the backend and dummy server are running.");
         } finally {
             setLoading(false);
         }
@@ -62,9 +113,7 @@ export default function DriftDashboard() {
                 body: formData,
             });
 
-            if (!res.ok) {
-                throw new Error("Failed to export drift report");
-            }
+            if (!res.ok) throw new Error("Failed to export");
 
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
@@ -76,120 +125,137 @@ export default function DriftDashboard() {
             window.URL.revokeObjectURL(url);
             a.remove();
         } catch (err) {
-            console.error("Export error:", err);
-            alert("Error occurred exporting report.");
+            console.error(err);
         } finally {
             setExporting(false);
         }
     };
 
-    // Stats
     const totalParams = driftResults?.length || 0;
     const matchCount = driftResults?.filter((r) => r.status === "MATCH").length || 0;
     const driftCount = driftResults?.filter((r) => r.status === "DRIFT").length || 0;
 
     return (
         <div className="w-full space-y-8 animate-in fade-in zoom-in-95 duration-500">
-            {/* Upload Section */}
+
+            {/* Input Mode Tabs */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-                <div className="text-center mb-10">
-                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Upload Configurations</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Select your Production and Disaster Recovery configuration files for analysis.</p>
-                </div>
+                <Tab.Group selectedIndex={activeTab} onChange={setActiveTab}>
+                    <Tab.List className="flex space-x-2 rounded-xl bg-gray-100 dark:bg-gray-900/50 p-1 mb-8">
+                        <Tab className={({ selected }) =>
+                            clsx(
+                                "w-full rounded-lg py-3 text-sm font-medium leading-5 transition-all text-center flex items-center justify-center focus:outline-none",
+                                selected
+                                    ? "bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-400 shadow"
+                                    : "text-gray-500 hover:bg-white/[0.12] hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            )
+                        }>
+                            <UploadCloud className="w-4 h-4 mr-2" /> Manual Upload
+                        </Tab>
+                        <Tab className={({ selected }) =>
+                            clsx(
+                                "w-full rounded-lg py-3 text-sm font-medium leading-5 transition-all text-center flex items-center justify-center focus:outline-none",
+                                selected
+                                    ? "bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-400 shadow"
+                                    : "text-gray-500 hover:bg-white/[0.12] hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            )
+                        }>
+                            <Server className="w-4 h-4 mr-2" /> Automated Server Connectors (New)
+                        </Tab>
+                    </Tab.List>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative items-center mb-10">
-                    {/* Arrow connector for large screens */}
-                    <div className="hidden md:flex absolute inset-0 justify-center items-center pointer-events-none">
-                        <div className="bg-indigo-50 dark:bg-indigo-900/40 p-3 rounded-full border border-indigo-100 dark:border-indigo-800">
-                            <ArrowRightLeft className="w-6 h-6 text-indigo-500" />
-                        </div>
-                    </div>
+                    <Tab.Panels>
+                        {/* PANEL 1: MANUAL */}
+                        <Tab.Panel>
+                            <div className="text-center mb-10">
+                                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Upload Configurations</h2>
+                                <p className="text-gray-500 dark:text-gray-400 mt-2">Select your Production and Disaster Recovery configuration files for analysis.</p>
+                            </div>
 
-                    {/* Prod Upload */}
-                    <div className="relative group p-8 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all text-center">
-                        {prodFile ? (
-                            <div className="flex flex-col items-center justify-center space-y-3">
-                                <div className="bg-blue-100 dark:bg-blue-900/40 p-4 rounded-full">
-                                    <FileIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative items-center mb-10">
+                                <div className="relative group p-8 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all text-center">
+                                    {prodFile ? (
+                                        <div><p className="font-semibold">{prodFile.name}</p></div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center space-y-3 pb-4">
+                                            <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                            <p className="font-medium">Production Config</p>
+                                        </div>
+                                    )}
+                                    <input type="file" onChange={(e) => setProdFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-gray-700 dark:text-gray-200">{prodFile.name}</p>
-                                    <p className="text-xs text-gray-500">{(prodFile.size / 1024).toFixed(2)} KB</p>
+
+                                <div className="relative group p-8 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-center">
+                                    {drFile ? (
+                                        <div><p className="font-semibold">{drFile.name}</p></div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center space-y-3 pb-4">
+                                            <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                                            <p className="font-medium">DR Config</p>
+                                        </div>
+                                    )}
+                                    <input type="file" onChange={(e) => setDrFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                 </div>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center space-y-3 pb-4">
-                                <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-full group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors">
-                                    <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-700 dark:text-gray-200">Production Config</p>
-                                    <p className="text-sm text-gray-500 mt-1">Click to select file</p>
-                                </div>
-                            </div>
-                        )}
-                        <input
-                            type="file"
-                            onChange={(e) => setProdFile(e.target.files?.[0] || null)}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                    </div>
 
-                    {/* DR Upload */}
-                    <div className="relative group p-8 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all text-center">
-                        {drFile ? (
-                            <div className="flex flex-col items-center justify-center space-y-3">
-                                <div className="bg-emerald-100 dark:bg-emerald-900/40 p-4 rounded-full">
-                                    <FileIcon className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-gray-700 dark:text-gray-200">{drFile.name}</p>
-                                    <p className="text-xs text-gray-500">{(drFile.size / 1024).toFixed(2)} KB</p>
-                                </div>
+                            <div className="flex justify-center">
+                                <button onClick={handleManualUpload} disabled={!prodFile || !drFile || loading} className="flex items-center space-x-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-xl shadow-md transition-all">
+                                    {loading ? <span>Analyzing...</span> : <span>Analyze Variables</span>}
+                                </button>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center space-y-3 pb-4">
-                                <div className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-full group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/40 transition-colors">
-                                    <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-emerald-500 transition-colors" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-700 dark:text-gray-200">Disaster Recovery (DR) Config</p>
-                                    <p className="text-sm text-gray-500 mt-1">Click to select file</p>
-                                </div>
-                            </div>
-                        )}
-                        <input
-                            type="file"
-                            onChange={(e) => setDrFile(e.target.files?.[0] || null)}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                    </div>
-                </div>
+                        </Tab.Panel>
 
-                <div className="flex justify-center">
-                    <button
-                        onClick={handleUpload}
-                        disabled={!prodFile || !drFile || loading}
-                        className="flex items-center space-x-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-md disabled:shadow-none hover:shadow-lg transition-all"
-                    >
-                        {loading ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span>Running Analysis...</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>Analyze Configuration Drift</span>
-                                <ArrowRightLeft className="w-4 h-4 ml-1" />
-                            </>
-                        )}
-                    </button>
-                </div>
+                        {/* PANEL 2: CONNECTORS */}
+                        <Tab.Panel>
+                            <div className="mb-10 text-center">
+                                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Live Server Extraction</h2>
+                                <p className="text-gray-500 dark:text-gray-400 mt-2">Connect to your servers via SSH or WinRM to pull configurations directly.</p>
+                            </div>
+
+                            <div className="flex gap-4 mb-6">
+                                <button onClick={() => setConnectorType("ssh")} className={clsx("flex-1 py-3 border-b-2 font-medium transition-colors cursor-pointer", connectorType === "ssh" ? "border-indigo-500 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700")}><Terminal className="w-4 h-4 inline mr-2" /> SSH (Linux/Unix)</button>
+                                <button onClick={() => setConnectorType("winrm")} className={clsx("flex-1 py-3 border-b-2 font-medium transition-colors cursor-pointer", connectorType === "winrm" ? "border-indigo-500 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700")}><Server className="w-4 h-4 inline mr-2" /> WinRM (Windows)</button>
+                            </div>
+
+                            <div className="space-y-4 max-w-2xl mx-auto mb-8">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Host (IP or Domain)</label>
+                                    <input type="text" value={serverTarget} onChange={e => setServerTarget(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="e.g. 192.168.1.10" />
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                        <input type="text" value={serverUser} onChange={e => setServerUser(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="root or administrator" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                                        <input type="password" value={serverPassword} onChange={e => setServerPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="••••••••" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration Path</label>
+                                    <input type="text" value={configPath} onChange={e => setConfigPath(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="/etc/nginx/nginx.conf or C:\inetpub\temp\appCmd.config" />
+                                </div>
+                            </div>
+
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl text-sm text-indigo-800 dark:text-indigo-300 max-w-2xl mx-auto flex items-start mb-8 border border-indigo-100 dark:border-indigo-800/50">
+                                <Key className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
+                                <p>In production, credentials and SSH keys should be managed via Secrets Manager or HashiCorp vault. For this demo, passwords are passed securely over the local proxy.</p>
+                            </div>
+
+                            <div className="flex justify-center">
+                                <button onClick={handleConnectorFetch} disabled={loading} className="flex items-center space-x-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-xl shadow-md transition-all">
+                                    {loading ? <span>Connecting to Server...</span> : <span>Fetch Configuration remotely</span>}
+                                </button>
+                            </div>
+                        </Tab.Panel>
+                    </Tab.Panels>
+                </Tab.Group>
             </div>
 
             {/* Results Section */}
             {driftResults && (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-5 duration-500">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-8 animate-in slide-in-from-bottom-5 duration-500">
                     <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
                         <div>
                             <h2 className="text-xl font-bold text-gray-800 dark:text-white">Analysis Summary</h2>

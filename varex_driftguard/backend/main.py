@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from app.engine.drifter import analyze_drift
 from app.reports.excel_gen import generate_excel_report
 from app.parsers.generic import parse_config_file
+from app.api.routes.connectors import router as connectors_router
 
 app = FastAPI(title="VAREX DriftGuard", version="1.0.0")
 
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(connectors_router)
 
 @app.get("/")
 def health_check():
