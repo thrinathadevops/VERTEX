@@ -8,6 +8,57 @@
 
 ---
 
+## Changelog — What Changed & Why
+
+### Session: 2026-03-05 — Old `varex-calculators` Analysis & Cleanup
+
+**What was `varex-calculators/`?**
+
+A standalone microservice folder inside `varex_backend/` with 18 separate Python calculator files (~400KB total), each having 700+ lines with detailed formula-backed explanations, Pydantic schemas, audit mode, and HA suggestions.
+
+**Why was it removed?**
+
+- **11 of 18 files had Python syntax errors** — multiline strings used literal newlines inside regular (non-triple-quoted) strings. These files **never compiled and were never deployed**.
+- Only 7 files were syntactically valid Python.
+- The folder was a **work-in-progress** that was never integrated into the running API.
+
+**What the old code had that was better (planned for future enhancement):**
+
+| Feature | Current `calculator_engine.py` | Old `varex-calculators/` (broken) |
+|---|---|---|
+| **NGINX `worker_connections` formula** | `max(1024, min(65535, concurrency ÷ workers × 4))` — RPS-driven | `floor(RAM_per_worker_KB ÷ (16KB + avg_response_kb + 64KB_ssl))` — **RAM-capacity driven** (more accurate) |
+| **Redis `maxmemory` reservation** | `int(ram × 0.7)` — flat 70% | Breakdown: 20% OS, 10% fragmentation, 10% COW fork, 5% AOF buffer = **55% usable** (more conservative, safer) |
+| **Tomcat thread formula** | `max(25, min(800, concurrency + 50))` — simple clamp | **Goetz formula**: `N = U × C × (1 + W/C)` where U=target CPU util, C=cores, W=wait time (industry standard) |
+| **Param explanations** | 1-line: e.g., "Zero-copy for static content" | 4-6 lines: e.g., "sendfile(): zero-copy transfer from disk → socket via kernel, bypassing userspace. Without it: read() to userspace buffer → write() to socket = 2 memory copies. tcp_nopush: batch small TCP segments..." |
+| **OS tuning** | 14 sysctl commands (Linux), basic | 22+ params with BBR congestion control, THP disable, conntrack per-distro, BDP-based buffer sizing |
+| **Audit mode** | Not implemented | Per-parameter diff against current values with severity ratings |
+| **HA suggestions** | Not present | 6+ specific suggestions per calculator (e.g., "Use shared Redis for TLS session tickets") |
+| **Config snippets** | Basic key=value | Full production-ready config with section comments and explanations |
+
+**Current state: `calculator_engine.py` (728 lines, WORKING)**
+
+| Metric | Value |
+|---|---|
+| Calculators | 16 (all working) |
+| Total params | ~220+ |
+| Config snippets | ✅ All 16 |
+| OS tuning | ✅ Linux (14 cmds), Windows (5), Solaris (4), AIX (5), HP-UX (4) |
+| Degradation checks | ✅ Per-calculator |
+| API contract | `calculate(calculator, payload) → dict` — unchanged |
+
+**Future improvements planned** (from the old code analysis):
+
+1. **RAM-based NGINX worker_connections** — use memory cost per connection instead of RPS ratio
+2. **Goetz thread formula for Tomcat** — `N = U × C × (1 + W/C)` for scientifically optimal thread count
+3. **Redis COW-aware memory reservation** — account for fork(), fragmentation, AOF buffer
+4. **BBR congestion control** — add `net.ipv4.tcp_congestion_control=bbr` to OS tuning
+5. **THP disable for Redis/JVM** — `echo never > /sys/kernel/mm/transparent_hugepage/enabled`
+6. **Per-distro conntrack tuning** — RHEL 8/9 vs CentOS 7 vs Amazon Linux
+7. **Deep formula explanations** — 4-6 line WHY explanations per parameter
+8. **Audit mode** — compare current config values against recommendations
+
+---
+
 ## Summary: Parameter Counts per Calculator
 
 | # | Calculator | Smart Inputs | Computed Params | Degradation Checks | Config Snippet | OS Tuning |
