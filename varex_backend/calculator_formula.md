@@ -10,6 +10,19 @@
 
 ## Changelog — What Changed & Why
 
+### Session: 2026-03-05 — Practical Enhancements in Active `calculator_engine.py`
+
+- **Audit mode hardened for real payloads**:
+  - Reads current values from top-level fields **and** nested `existing/current` blocks.
+  - Supports loose-but-safe matching for units (`60s` vs `60000ms`, `1gb` vs `1024mb`), booleans (`on/yes/true`), and spacing.
+  - Returns operator-friendly audit findings with summary counts: matches vs mismatches.
+- **Per-distro conntrack in active path improved**:
+  - RHEL 8/9 uses higher conntrack targets + hashsize recommendations.
+  - CentOS 7 uses safer lower baseline tuned for older kernels.
+  - Amazon Linux includes conntrack + MTU probing practical command.
+- **Operationalization improvements**:
+  - Linux tuning output now includes explicit apply/persist step (`sysctl --system`) and conntrack verification hint.
+
 ### Session: 2026-03-05 — Old `varex-calculators` Analysis & Cleanup
 
 **What was `varex-calculators/`?**

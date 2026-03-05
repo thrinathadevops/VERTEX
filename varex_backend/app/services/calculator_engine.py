@@ -1,6 +1,7 @@
 """Smart Production Calculator Engine — computes maximum parameters from few inputs."""
 from __future__ import annotations
 import math
+import re
 from typing import Any
 
 SUPPORTED_CALCULATORS = {
@@ -35,6 +36,140 @@ def _is_distro(os_type: str, *names) -> bool:
 
 def _is_linux(os_type: str) -> bool:
     return _is_distro(os_type, "rhel","centos","ubuntu","debian","amazon","suse","oracle","rocky","alma","fedora")
+
+
+def _normalize_key(key: str) -> str:
+    """Normalize parameter names for cross-source matching."""
+    return re.sub(r"[^a-z0-9]+", "", str(key).strip().lower())
+
+
+def _parse_numeric_with_unit(value: Any) -> tuple[float | None, str]:
+    """
+    Parse values like 1024, "60s", "5m", "1gb", "65535".
+    Returns (canonical_number, unit) where unit is one of:
+    "", "ms", "s", "k", "m", "g"
+    """
+    if value is None:
+        return None, ""
+
+    s = str(value).strip().lower()
+    m = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*([a-z%]*)", s)
+    if not m:
+        return None, ""
+
+    num = float(m.group(1))
+    unit = m.group(2)
+    unit_alias = {
+        "": "",
+        "ms": "ms",
+        "millisecond": "ms",
+        "milliseconds": "ms",
+        "s": "s",
+        "sec": "s",
+        "secs": "s",
+        "second": "s",
+        "seconds": "s",
+        "k": "k",
+        "kb": "k",
+        "m": "m",
+        "mb": "m",
+        "g": "g",
+        "gb": "g",
+    }
+    return num, unit_alias.get(unit, unit)
+
+
+def _to_base_unit(num: float, unit: str) -> float:
+    if unit == "g":
+        return num * 1024 * 1024 * 1024
+    if unit == "m":
+        return num * 1024 * 1024
+    if unit == "k":
+        return num * 1024
+    if unit == "s":
+        return num * 1000
+    if unit == "ms":
+        return num
+    return num
+
+
+def _values_match(current: Any, recommended: Any) -> bool:
+    """
+    Practical comparison with unit, bool and string normalization.
+    """
+    if current is None:
+        return False
+
+    c_str = str(current).strip().lower()
+    r_str = str(recommended).strip().lower()
+
+    # Boolean-ish normalization
+    bool_map = {
+        "true": True, "yes": True, "on": True, "enabled": True, "1": True,
+        "false": False, "no": False, "off": False, "disabled": False, "0": False,
+    }
+    if c_str in bool_map and r_str in bool_map:
+        return bool_map[c_str] == bool_map[r_str]
+
+    c_num, c_unit = _parse_numeric_with_unit(current)
+    r_num, r_unit = _parse_numeric_with_unit(recommended)
+    if c_num is not None and r_num is not None:
+        c_base = _to_base_unit(c_num, c_unit)
+        r_base = _to_base_unit(r_num, r_unit)
+        return abs(c_base - r_base) <= max(1.0, abs(r_base) * 0.02)  # 2% tolerance
+
+    # Whitespace-insensitive compare for compound config strings
+    c_norm = re.sub(r"\s+", " ", c_str).strip()
+    r_norm = re.sub(r"\s+", " ", r_str).strip()
+    return c_norm == r_norm
+
+
+def _collect_existing_sources(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Collect candidate 'current' values from top-level and nested existing/current blocks.
+    """
+    sources: dict[str, Any] = {}
+
+    for k, v in payload.items():
+        if k not in ("existing", "current"):
+            sources[k] = v
+
+    for block_name in ("existing", "current"):
+        blk = payload.get(block_name)
+        if isinstance(blk, dict):
+            for k, v in blk.items():
+                # Merge nested os_sysctl keys directly as candidates
+                if isinstance(v, dict):
+                    for sk, sv in v.items():
+                        sources[sk] = sv
+                else:
+                    sources[k] = v
+    return sources
+
+
+def _best_existing_value(param_name: str, sources: dict[str, Any]) -> Any:
+    """
+    Find the most likely current value for a parameter by normalized key match.
+    """
+    normalized_param = _normalize_key(param_name)
+    norm_sources = {_normalize_key(k): v for k, v in sources.items()}
+
+    # Exact normalized match first
+    if normalized_param in norm_sources:
+        return norm_sources[normalized_param]
+
+    # Common cross-style aliases
+    aliases = {
+        "workerrlimitnofile": ("ulimitnofile", "nofile", "limitnofile"),
+        "maxthreads": ("tomcatmaxthreads",),
+        "keepalivetimeout": ("keepalive",),
+        "tcpcongestioncontrol": ("netipv4tcpcongestioncontrol",),
+        "nfconntrackmax": ("netnetfilternfconntrackmax",),
+    }
+    for alias in aliases.get(normalized_param, ()):
+        if alias in norm_sources:
+            return norm_sources[alias]
+    return None
 
 # ── OS tuning generator (BBR, THP, conntrack, BDP buffers) ─────
 def _os_tuning(p: dict, file_limit: int, somaxconn: int = 65535, *, calculator: str = "") -> dict:
@@ -80,18 +215,41 @@ def _os_tuning(p: dict, file_limit: int, somaxconn: int = 65535, *, calculator: 
             ]
         # Per-distro conntrack tuning (only for proxy/LB workloads)
         if calculator in ("nginx", "haproxy", "httpd", "ohs", "ihs"):
-            conntrack_max = max(65536, somaxconn * 4)
+            is_rhel89 = ("rhel" in os_type) and (("8" in os_type) or ("9" in os_type))
+            is_centos7 = ("centos" in os_type) and ("7" in os_type)
+            is_amazon = "amazon" in os_type
+
+            if is_rhel89:
+                conntrack_max = max(1048576, somaxconn * 8)
+            elif is_centos7:
+                conntrack_max = max(524288, somaxconn * 4)
+            elif is_amazon:
+                conntrack_max = max(524288, somaxconn * 4)
+            else:
+                conntrack_max = max(262144, somaxconn * 4)
+
             cmds += [
                 f"sysctl -w net.netfilter.nf_conntrack_max={conntrack_max}",
                 f"sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=600",
                 f"sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30",
+                f"# Verify conntrack usage: conntrack -S | grep entries",
             ]
-            # RHEL/CentOS-specific: conntrack module loading
-            if _is_distro(os_type, "rhel", "centos", "rocky", "alma", "oracle"):
-                cmds.append("modprobe nf_conntrack  # RHEL: may need 'yum install conntrack-tools'")
-            # Amazon Linux: conntrack in different kernel module path
-            if _is_distro(os_type, "amazon"):
-                cmds.append("modprobe nf_conntrack  # Amazon Linux: pre-loaded on AL2023")
+            # Per-distro practical extras
+            if is_rhel89:
+                cmds += [
+                    "modprobe nf_conntrack  # RHEL 8/9",
+                    "echo 262144 > /sys/module/nf_conntrack/parameters/hashsize",
+                ]
+            elif is_centos7:
+                cmds += [
+                    "modprobe nf_conntrack  # CentOS 7",
+                    "echo 131072 > /sys/module/nf_conntrack/parameters/hashsize",
+                ]
+            elif is_amazon:
+                cmds += [
+                    "modprobe nf_conntrack  # Amazon Linux (AL2/AL2023)",
+                    "sysctl -w net.ipv4.tcp_mtu_probing=1",
+                ]
     elif "windows" in os_type:
         cmds = [
             "netsh int tcp set global autotuninglevel=normal",
@@ -131,6 +289,12 @@ def _os_tuning(p: dict, file_limit: int, somaxconn: int = 65535, *, calculator: 
             f"kctune nfile={file_limit}",
             f"kctune maxfiles={file_limit}",
             f"kctune maxfiles_lim={file_limit}",
+        ]
+    # Practical post-apply check for Linux
+    if _is_linux(os_type) and cmds:
+        cmds += [
+            "# Persist in /etc/sysctl.d/99-varex.conf then apply:",
+            "sysctl --system",
         ]
     return {"os_type": os_type, "commands": cmds}
 
@@ -639,40 +803,42 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
     os_tuning = _os_tuning(payload, file_limit, somaxconn, calculator=calculator)
 
     # ── Assemble response ────────────────────────────────
-    audit = []
+    audit: list[str] = []
     if mode == "existing":
-        # Compare current payload values against recommended configs
+        # Compare current values (top-level + nested existing/current blocks) against recommendations.
+        existing_sources = _collect_existing_sources(payload)
+        checked = 0
+        mismatches = 0
+
         for param_obj in params:
             name = param_obj["name"]
             rec_val = param_obj.get("recommended") or param_obj.get("recommended_value")
-            
-            # Normalize parameter names for payload lookup
-            # e.g., "worker_connections" -> "worker_connections", "keepAliveTimeout" -> "keepalivetimeout"
-            clean_name = name.replace("-", "_").lower()
-            # Try to find corresponding key in payload
-            payload_keys = {k.lower(): k for k in payload.keys()}
-            
-            if clean_name in payload_keys:
-                og_key = payload_keys[clean_name]
-                current_val = payload[og_key]
-                
-                # Loose comparison: convert both to string and lowercase
-                if str(current_val).lower() != str(rec_val).lower():
-                    audit.append({
-                        "parameter": name,
-                        "current_value": current_val,
-                        "recommended_value": rec_val,
-                        "finding": "MISMATCH",
-                        "impact": param_obj["impact"],
-                        "remediation": f"Change {name} from {current_val} to {rec_val}"
-                    })
+            current_val = _best_existing_value(name, existing_sources)
 
-        if not audit:
-            audit.append({
-                "parameter": "All Parameters",
-                "finding": "MATCH",
-                "message": "All provided parameters match the mathematically recommended values for this workload."
-            })
+            if current_val is None:
+                continue
+
+            checked += 1
+            if not _values_match(current_val, rec_val):
+                mismatches += 1
+                impact = param_obj.get("impact", "MEDIUM")
+                audit.append(
+                    f"[{impact}] {name}: current={current_val} | recommended={rec_val} | action=update"
+                )
+
+        if checked == 0:
+            audit.append(
+                "[INFO] Existing mode selected, but no matching current parameter values were supplied for audit."
+            )
+        elif mismatches == 0:
+            audit.append(
+                f"[MATCH] All {checked} provided parameters match the recommended values."
+            )
+        else:
+            audit.insert(
+                0,
+                f"[SUMMARY] Audited {checked} parameters: {mismatches} mismatch(es), {checked - mismatches} match(es)."
+            )
 
     return {
         "calculator": calculator,
