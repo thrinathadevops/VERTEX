@@ -413,6 +413,18 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
             f"Cache open file descriptors, stat() results, and directory lookups. "
             f"Without this, each static file request calls: open() + fstat() + close() = 3 syscalls. "
             f"With {open_file_cache:,} cached entries these become memory lookups.","MEDIUM")
+        _add(params,"open_file_cache_min_uses","2",
+            "Cache only files used at least twice during inactive window. "
+            "Prevents one-off file lookups from polluting descriptor cache and pushing out hot entries. "
+            "Practical win for mixed workloads where static assets and API responses coexist.","MINOR")
+        _add(params,"worker_shutdown_timeout","10s",
+            "Graceful reload timeout for in-flight requests during nginx -s reload / rolling updates. "
+            "Without this, long requests are cut mid-flight causing 499/502 spikes during deploy windows. "
+            "10s is a practical balance: graceful drain without stalling rollout too long.","MEDIUM")
+        _add(params,"worker_aio_requests","64",
+            "Limit concurrent asynchronous I/O operations per worker. "
+            "Caps disk I/O fan-out to prevent request latency jitter when static and proxy traffic spike together. "
+            "Useful for production nodes serving both cached files and upstream proxy traffic.","MINOR")
         _add(params,"send_timeout",f"{send_to}s",
             f"Timeout for sending response data to client. A dead or very slow client "
             f"holds a worker connection open. Under high load: {send_to}s frees FDs faster.","MEDIUM")
@@ -461,6 +473,10 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
             _add(params,"upstream keepalive","32",
                 "Idle keepalive connections per worker to upstream backends. Without keepalive: every "
                 "proxied request opens a new TCP connection. At 10K RPS: 10K TCP handshakes/sec.","MEDIUM")
+            _add(params,"keepalive_requests (upstream)","1000",
+                "Maximum proxied requests per upstream keepalive socket before recycle. "
+                "Prevents overly long-lived upstream sockets from accumulating kernel-level anomalies "
+                "(stale routing, LB path drift) while still amortizing TCP handshake costs.","MINOR")
             _add(params,"proxy_http_version","1.1","Required for upstream keepalive. HTTP/1.0 closes after each request.","MINOR")
             _add(params,"proxy_set_header","Connection \"\"","Clear 'Connection: close' header for keepalive.","MINOR")
         _add(params,"access_log","buffer=512k flush=5s",
@@ -578,6 +594,18 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
         _add(params,"io-threads-do-reads","yes","Also parallelize read I/O — not just writes.","MEDIUM")
         _add(params,"timeout","300","Close idle clients after 5min. Prevents FD leak from abandoned connections.","MINOR")
         _add(params,"tcp-keepalive","300","Detect dead peers via TCP keepalive every 5min.","MINOR")
+        _add(params,"activedefrag","yes",
+            "Enable active defragmentation to reduce allocator fragmentation under churn-heavy workloads. "
+            "Practical impact: lower RSS growth and fewer surprise memory spikes during high write/delete cycles. "
+            "Especially useful when key TTL churn is high and memory pressure is close to maxmemory.","MEDIUM")
+        _add(params,"lazyfree-lazy-user-del","yes",
+            "DEL on large values can block main event loop if freed synchronously. "
+            "This setting shifts heavy object free operations to background threads, reducing p99 latency spikes. "
+            "Safe default for production cache and mixed persistence workloads.","MEDIUM")
+        _add(params,"latency-monitor-threshold","100",
+            "Enable built-in latency event tracker for operations above 100ms. "
+            "Provides practical visibility into fsync stalls, eviction pauses, and fork-related spikes. "
+            "A lightweight production guardrail for proactive tuning.","MINOR")
         if persist == "aof":
             _add(params,"appendonly","yes",
                 "AOF logs every write command. On crash: replay log to recover. "
@@ -702,6 +730,18 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
             "Auto-dump heap on OOM for post-mortem analysis. Critical for diagnosing memory leaks.","MEDIUM")
         _add(params,"-XX:MaxGCPauseMillis","200","G1GC pause target = 200ms. G1 adjusts region count to meet this target.","MINOR")
         _add(params,"-XX:ParallelGCThreads",str(gc_threads),f"GC worker threads = {gc_threads}. Match to CPU cores.","MINOR")
+        _add(params,"-XX:+AlwaysPreTouch","enabled",
+            "Touch heap pages at startup so memory is mapped before traffic arrives. "
+            "Practical effect: avoids first-traffic page-fault storms and reduces tail latency after deploy. "
+            "Slightly slower startup, but much more predictable runtime latency.","MEDIUM")
+        _add(params,"maxHttpHeaderSize","16384",
+            "Allow up to 16KB HTTP headers to safely handle modern JWT/OIDC token chains and SSO cookies. "
+            "Too small causes intermittent 400 errors in real enterprise traffic even when app logic is correct. "
+            "16KB is a practical production baseline for API gateways and auth-heavy apps.","MEDIUM")
+        _add(params,"URIEncoding","UTF-8",
+            "Ensure consistent request URI decoding across connectors and app frameworks. "
+            "Prevents production-only bugs where non-ASCII query/path data is misdecoded under load balancers. "
+            "Low-risk hardening parameter with high debugging value.","MINOR")
 
         if max_threads > 500:
             _deg(degradations,"maxThreads",f"High thread count ({max_threads}) increases context switching overhead and memory usage (~1MB stack/thread = {max_threads}MB total stack memory).")
@@ -719,12 +759,13 @@ def calculate(calculator: str, payload: dict[str, Any]) -> dict[str, Any]:
             f"# Goetz formula: N = {target_util} × {cpu} × (1 + {io_wait}/{1-io_wait:.1f}) = {goetz_threads}",
             f'JAVA_OPTS="-Xms{heap_max}m -Xmx{heap_max}m -XX:+Use{gc} -XX:MetaspaceSize={metaspace}m',
             f'  -XX:ParallelGCThreads={gc_threads} -XX:MaxGCPauseMillis=200',
-            f'  -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof"',
+            f'  -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof',
+            f'  -XX:+AlwaysPreTouch"',
             f"# server.xml Connector:",
             f'<Connector port="8080" protocol="Http11NioProtocol"',
             f'  maxThreads="{max_threads}" minSpareThreads="{min_spare}"',
             f'  maxConnections="{max_conn}" acceptCount="{accept_count}"',
-            f'  connectionTimeout="{conn_timeout}" />',
+            f'  connectionTimeout="{conn_timeout}" maxHttpHeaderSize="16384" URIEncoding="UTF-8" />',
         ]
 
     # ── HTTPD / OHS / IHS ────────────────────────────────
