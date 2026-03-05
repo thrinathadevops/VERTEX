@@ -1,0 +1,14 @@
+# DriftGuard Agent Configuration
+
+server_url: "http://localhost:8000"
+api_key: "agent-secret-key-1234"
+environment: "prod"  # e.g., prod or dr
+
+targets:
+  - name: "nginx_config"
+    type: "file"
+    path: "/etc/nginx/nginx.conf"  # Example local file
+    
+  - name: "system_packages"
+    type: "command"
+    path: "dpkg-query -f '${binary:Package}\n' -W" # Example safe command

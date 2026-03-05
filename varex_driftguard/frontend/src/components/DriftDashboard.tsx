@@ -209,43 +209,105 @@ export default function DriftDashboard() {
                         <Tab.Panel>
                             <div className="mb-10 text-center">
                                 <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Live Server Extraction</h2>
-                                <p className="text-gray-500 dark:text-gray-400 mt-2">Connect to your servers via SSH or WinRM to pull configurations directly.</p>
+                                <p className="text-gray-500 dark:text-gray-400 mt-2">Connect to your servers or cloud accounts directly.</p>
                             </div>
 
-                            <div className="flex gap-4 mb-6">
-                                <button onClick={() => setConnectorType("ssh")} className={clsx("flex-1 py-3 border-b-2 font-medium transition-colors cursor-pointer", connectorType === "ssh" ? "border-indigo-500 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700")}><Terminal className="w-4 h-4 inline mr-2" /> SSH (Linux/Unix)</button>
-                                <button onClick={() => setConnectorType("winrm")} className={clsx("flex-1 py-3 border-b-2 font-medium transition-colors cursor-pointer", connectorType === "winrm" ? "border-indigo-500 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700")}><Server className="w-4 h-4 inline mr-2" /> WinRM (Windows)</button>
+                            <div className="flex flex-wrap gap-2 mb-6 justify-center">
+                                <button onClick={() => setConnectorType("ssh")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "ssh" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><Terminal className="w-4 h-4 inline mr-1.5" /> SSH</button>
+                                <button onClick={() => setConnectorType("winrm")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "winrm" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><Server className="w-4 h-4 inline mr-1.5" /> WinRM</button>
+                                <button onClick={() => setConnectorType("aws")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "aws" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><UploadCloud className="w-4 h-4 inline mr-1.5" /> AWS</button>
+                                <button onClick={() => setConnectorType("azure")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "azure" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><UploadCloud className="w-4 h-4 inline mr-1.5" /> Azure</button>
+                                <button onClick={() => setConnectorType("gcp")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "gcp" ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><UploadCloud className="w-4 h-4 inline mr-1.5" /> GCP</button>
+                                <button onClick={() => setConnectorType("gitops")} className={clsx("px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer", connectorType === "gitops" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100")}><FileIcon className="w-4 h-4 inline mr-1.5" /> GitOps (GitHub/GitLab)</button>
                             </div>
 
                             <div className="space-y-4 max-w-2xl mx-auto mb-8">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Host (IP or Domain)</label>
-                                    <input type="text" value={serverTarget} onChange={e => setServerTarget(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="e.g. 192.168.1.10" />
-                                </div>
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-                                        <input type="text" value={serverUser} onChange={e => setServerUser(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="root or administrator" />
+                                {(connectorType === "ssh" || connectorType === "winrm") && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Host (IP or Domain)</label>
+                                            <input type="text" value={serverTarget} onChange={e => setServerTarget(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="e.g. 192.168.1.10" />
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                                <input type="text" value={serverUser} onChange={e => setServerUser(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="root or administrator" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                                                <input type="password" value={serverPassword} onChange={e => setServerPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="••••••••" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration Path</label>
+                                            <input type="text" value={configPath} onChange={e => setConfigPath(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="/etc/nginx/nginx.conf or C:\inetpub\temp\appCmd.config" />
+                                        </div>
+                                    </>
+                                )}
+
+                                {connectorType === "aws" && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target (Service | Region)</label>
+                                            <input type="text" value={serverTarget} onChange={e => setServerTarget(e.target.value)} className="w-full px-4 py-2 border rounded-lg" placeholder="ec2|us-east-1" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AWS Access Key ID</label>
+                                            <input type="text" value={serverUser} onChange={e => setServerUser(e.target.value)} className="w-full px-4 py-2 border rounded-lg" placeholder="AKIA..." />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AWS Secret Access Key</label>
+                                            <input type="password" value={serverPassword} onChange={e => setServerPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg" placeholder="••••••••" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource Path (Type | ID)</label>
+                                            <input type="text" value={configPath} onChange={e => setConfigPath(e.target.value)} className="w-full px-4 py-2 border rounded-lg" placeholder="instance|i-1234567" />
+                                        </div>
+                                    </>
+                                )}
+
+                                {connectorType === "azure" && (
+                                    <div className="bg-yellow-50 p-4 rounded-xl text-yellow-800 text-sm border border-yellow-200">
+                                        Azure integration currently expects Tenant ID/Client ID mapped to the local UI variables in the background, targeting an ARM resource directly.
+                                        <input type="text" placeholder="subscription_id|resource_group" className="w-full px-4 py-2 mt-2 border rounded-lg" value={serverTarget} onChange={e => setServerTarget(e.target.value)} />
+                                        <input type="text" placeholder="Microsoft.Compute/virtualMachines|vm_name" className="w-full px-4 py-2 mt-2 border rounded-lg" value={configPath} onChange={e => setConfigPath(e.target.value)} />
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                                        <input type="password" value={serverPassword} onChange={e => setServerPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="••••••••" />
+                                )}
+
+                                {connectorType === "gcp" && (
+                                    <div className="bg-green-50 p-4 rounded-xl text-green-800 text-sm border border-green-200">
+                                        GCP integration currently uses `target = project_id|zone` and `path = compute|instances|name`.
+                                        <input type="text" placeholder="project-id-123|us-central1-a" className="w-full px-4 py-2 mt-2 border rounded-lg" value={serverTarget} onChange={e => setServerTarget(e.target.value)} />
+                                        <input type="text" placeholder="compute|instances|my-instance" className="w-full px-4 py-2 mt-2 border rounded-lg" value={configPath} onChange={e => setConfigPath(e.target.value)} />
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration Path</label>
-                                    <input type="text" value={configPath} onChange={e => setConfigPath(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="/etc/nginx/nginx.conf or C:\inetpub\temp\appCmd.config" />
-                                </div>
+                                )}
+
+                                {connectorType === "gitops" && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Git Repository URL</label>
+                                            <input type="text" value={serverTarget} onChange={e => setServerTarget(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="https://github.com/org/repo.git" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Personal Access Token (if private)</label>
+                                            <input type="password" value={serverPassword} onChange={e => setServerPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="ghp_xxxxxxxxxxxx" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File Path in Repository</label>
+                                            <input type="text" value={configPath} onChange={e => setConfigPath(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-900 border-gray-300 dark:border-gray-700" placeholder="k8s/deployment.yaml" />
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl text-sm text-indigo-800 dark:text-indigo-300 max-w-2xl mx-auto flex items-start mb-8 border border-indigo-100 dark:border-indigo-800/50">
                                 <Key className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
-                                <p>In production, credentials and SSH keys should be managed via Secrets Manager or HashiCorp vault. For this demo, passwords are passed securely over the local proxy.</p>
+                                <p>In production, API keys and credentials should be managed via Secrets Manager or HashiCorp vault. For this demo, values are passed securely to the robust Python SDK backend over the local proxy.</p>
                             </div>
 
                             <div className="flex justify-center">
                                 <button onClick={handleConnectorFetch} disabled={loading} className="flex items-center space-x-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-xl shadow-md transition-all">
-                                    {loading ? <span>Connecting to Server...</span> : <span>Fetch Configuration remotely</span>}
+                                    {loading ? <span>Connecting to Source...</span> : <span>Fetch Configuration Remotely</span>}
                                 </button>
                             </div>
                         </Tab.Panel>

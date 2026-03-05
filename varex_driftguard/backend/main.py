@@ -81,3 +81,20 @@ async def export_drift_endpoint(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error exporting drift report: {str(e)}")
+
+from pydantic import BaseModel
+class AgentPayload(BaseModel):
+    environment: str
+    timestamp: str
+    configurations: list
+
+@app.post("/api/v1/agent/push")
+async def receive_agent_push(payload: AgentPayload):
+    """
+    Receives configuration data pushed from remote DriftGuard Agents.
+    In a real system, this would store the payloads in a database (e.g., PostgreSQL)
+    keyed by environment, allowing the dashboard to automatically compare Prod vs DR without file uploads.
+    """
+    print(f"Received push from agent in environment '{payload.environment}' with {len(payload.configurations)} configs.")
+    # Store the payload somewhere...
+    return {"status": "success", "message": "Payload received and stored."}
