@@ -69,7 +69,14 @@ async def export_drift_endpoint(
         drift_results = analyze_drift(prod_data, dr_data)
 
         # 4. Generate Excel
-        excel_stream = generate_excel_report(drift_results, component_type)
+        metadata = {
+            "Server Name": f"Server {component_type.upper()}",
+            "IP Address 1": "10.9.50.24",
+            "IP Address 2": "10.0.137.237",
+            "Baseline Name": "Default Oracle DB",
+            "Instance (Primary)": "AXMOBILE1"
+        }
+        excel_stream = generate_excel_report(drift_results, component_type, metadata)
 
         return StreamingResponse(
             excel_stream,
