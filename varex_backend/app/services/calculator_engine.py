@@ -6,7 +6,7 @@ from typing import Any
 
 SUPPORTED_CALCULATORS = {
     "nginx","redis","tomcat","httpd","ohs","ihs","iis","podman",
-    "k8s","os","postgresql","mysql","mongodb","haproxy","docker","rabbitmq",
+    "k8s","os","postgresql","mysql","mongodb","documentdb","aws_rds","haproxy","docker","rabbitmq",
 }
 
 # ── helpers ──────────────────────────────────────────────
@@ -314,6 +314,36 @@ def example_payload(calculator: str, profile: str) -> dict[str, Any]:
         "postgresql":{"max_connections":300,"disk_type":"ssd","workload":"oltp","wal_level":"replica","ssl_enabled":True},
         "mysql":{"max_connections":300,"disk_type":"ssd","workload":"oltp","replication":False,"ssl_enabled":True},
         "mongodb":{"max_connections":500,"disk_type":"ssd","replica_set":True,"sharding":False,"auth_enabled":True},
+        "documentdb":{
+            "read_rps":5000,
+            "write_rps":1000,
+            "avg_document_kb":10,
+            "working_set_gb":128,
+            "data_size_gb":500,
+            "index_size_gb":100,
+            "monthly_growth_gb":10,
+            "backup_retention_days":7,
+            "secondary_regions":0,
+            "dev_test":False,
+        },
+        "aws_rds":{
+            "engine":"postgresql",
+            "deployment_model":"rds",
+            "workload":"oltp",
+            "storage_type":"gp3",
+            "read_rps":5000,
+            "write_rps":1000,
+            "avg_query_kb":8,
+            "working_set_gb":64,
+            "data_size_gb":500,
+            "index_size_gb":100,
+            "temp_growth_gb":50,
+            "monthly_growth_gb":20,
+            "backup_retention_days":7,
+            "read_replicas":1,
+            "multi_az":True,
+            "dev_test":False,
+        },
         "haproxy":{"backends_count":10,"ssl_termination":True,"health_check_interval_s":5,"http_mode":True},
         "k8s":{"replicas":3,"workload_type":"web","hpa_enabled":True,"pdb_enabled":True,"ingress_enabled":True},
         "podman":{"replicas":2,"workload_type":"web","rootless":True},
@@ -1034,6 +1064,283 @@ def _calc_remaining(calc, p, cpu, ram, rps, resp_ms, conc, params, degs, warns):
         fl = max(65535, conns * 2)
         smx = 65535
         snip = [f"# MongoDB — {cpu} cores, {ram}GB RAM",f"storage.wiredTiger.engineConfig.cacheSizeGB: {wt_cache}",f"net.maxIncomingConnections: {conns}"]
+
+    elif calc == "documentdb":
+        read_rps = max(1, _i(p, "read_rps", max(1, rps)))
+        write_rps = max(1, _i(p, "write_rps", max(1, max(1, rps) // 5)))
+        doc_kb = max(1.0, _f(p, "avg_document_kb", 10.0))
+        working_set_gb = max(1.0, _f(p, "working_set_gb", max(8.0, ram * 2)))
+        data_size_gb = max(1.0, _f(p, "data_size_gb", max(100.0, ram * 8)))
+        index_size_gb = max(0.0, _f(p, "index_size_gb", data_size_gb * 0.2))
+        monthly_growth_gb = max(0.0, _f(p, "monthly_growth_gb", max(5.0, data_size_gb * 0.02)))
+        backup_retention_days = min(35, max(1, _i(p, "backup_retention_days", 7)))
+        secondary_regions = min(5, max(0, _i(p, "secondary_regions", 0)))
+        dev_test = _b(p, "dev_test")
+
+        read_mb_s = round((read_rps * doc_kb) / 1024, 2)
+        write_mb_s = round((write_rps * doc_kb) / 1024, 2)
+        total_ops = read_rps + write_rps
+        replicas = min(15, max(1, math.ceil(read_rps / 2500)))
+        total_instances = min(16, 1 + replicas)
+        projected_storage_gb = int(math.ceil(data_size_gb + index_size_gb + (monthly_growth_gb * 12)))
+        recommended_storage_gb = int(max(100, math.ceil((projected_storage_gb * 1.2) / 100.0) * 100))
+        backup_storage_gb = int(math.ceil((data_size_gb + index_size_gb) * (backup_retention_days / 35.0)))
+        connections = min(10000, max(1000, int(total_ops * max(1.0, resp_ms / 1000.0))))
+        max_connections_alarm = int(connections * 0.8)
+        cpu_alarm_pct = 80
+        memory_alarm_pct = 10
+        volume_alarm_gb = int(math.ceil(recommended_storage_gb * 0.8))
+        transaction_log_alarm_gb = int(math.ceil(recommended_storage_gb * 0.3))
+
+        if dev_test:
+            instance_type = "db.t4g.medium" if read_rps <= 1000 and write_rps <= 200 else "db.t4g.large"
+        elif working_set_gb <= 32 and total_ops <= 2000:
+            instance_type = "db.r6g.large"
+        elif working_set_gb <= 64 and total_ops <= 6000:
+            instance_type = "db.r6g.xlarge"
+        elif working_set_gb <= 128 and total_ops <= 12000:
+            instance_type = "db.r6g.2xlarge"
+        elif working_set_gb <= 256 and total_ops <= 24000:
+            instance_type = "db.r6g.4xlarge"
+        else:
+            instance_type = "db.r6g.8xlarge"
+
+        _add(params, "instance_type", instance_type,
+            f"Recommended from working set {working_set_gb:.0f}GB and throughput {total_ops:,} ops/sec. "
+            f"T classes are reserved for dev/test; production workloads move to Graviton memory-optimized nodes.",
+            "MAJOR")
+        _add(params, "cluster.instances.primary", 1,
+            "DocumentDB writes go to a single primary instance. Size it for write throughput and failover headroom.",
+            "MAJOR")
+        _add(params, "cluster.instances.replicas", replicas,
+            f"Read scaling heuristic: ceil(read_rps / 2500) = {replicas}. "
+            f"This spreads {read_rps:,} reads/sec across replicas while leaving failover room.",
+            "MAJOR")
+        _add(params, "cluster.instances.total", total_instances,
+            f"1 primary + {replicas} replica(s). DocumentDB supports up to 16 instances per cluster.",
+            "MEDIUM")
+        _add(params, "throughput.read_mb_per_sec", read_mb_s,
+            f"Calculated as read_rps ({read_rps:,}) x document_size ({doc_kb:.1f}KB) / 1024.",
+            "MAJOR")
+        _add(params, "throughput.write_mb_per_sec", write_mb_s,
+            f"Calculated as write_rps ({write_rps:,}) x document_size ({doc_kb:.1f}KB) / 1024.",
+            "MAJOR")
+        _add(params, "storage.projected_1y_gb", projected_storage_gb,
+            f"data_size ({data_size_gb:.0f}) + indexes ({index_size_gb:.0f}) + monthly_growth ({monthly_growth_gb:.0f} x 12).",
+            "MAJOR")
+        _add(params, "storage.recommended_capacity_gb", recommended_storage_gb,
+            "20% headroom above the 1-year projection, rounded to the next 100GB for operational safety.",
+            "MAJOR")
+        _add(params, "backup.retention_days", backup_retention_days,
+            "Automated backup retention window. DocumentDB supports 1-35 days.",
+            "MEDIUM")
+        _add(params, "backup.estimated_storage_gb", backup_storage_gb,
+            "Approximate retained backup footprint scaled by retention period.",
+            "MEDIUM")
+        _add(params, "network.max_connections_target", connections,
+            f"Ops/sec-driven connection budget with current avg response time {resp_ms}ms. Stay below 10,000 per instance.",
+            "MEDIUM")
+        _add(params, "cloudwatch.alarm.cpu_utilization", f">{cpu_alarm_pct}% for 5m",
+            "Sustained CPU above 80% usually indicates the primary or replicas are undersized.",
+            "MEDIUM")
+        _add(params, "cloudwatch.alarm.freeable_memory", f"<{memory_alarm_pct}% free",
+            "Low freeable memory is an early signal that the working set no longer fits comfortably in memory.",
+            "MEDIUM")
+        _add(params, "cloudwatch.alarm.database_connections", f">{max_connections_alarm}",
+            "Alarm at 80% of the planned connection budget to avoid hitting instance connection ceilings.",
+            "MEDIUM")
+        _add(params, "cloudwatch.alarm.volume_bytes_used", f">{volume_alarm_gb}GB",
+            "Alert when storage usage crosses 80% of the recommended capacity target.",
+            "MINOR")
+        _add(params, "cloudwatch.alarm.transaction_logs_disk_usage", f">{transaction_log_alarm_gb}GB",
+            "Alert when transaction logs exceed 30% of the planned storage budget.",
+            "MINOR")
+        if secondary_regions:
+            _add(params, "global_cluster.secondary_regions", secondary_regions,
+                "Global clusters can replicate to up to 5 secondary regions for low-latency reads and DR.",
+                "MEDIUM")
+            _add(params, "global_cluster.replication_lag_target", "<1s",
+                "Typical target replication lag for secondary regions under healthy conditions.",
+                "MINOR")
+        _add(params, "security.tls", "enabled",
+            "DocumentDB should always run with TLS in transit and KMS encryption at rest.",
+            "MAJOR")
+        _add(params, "security.audit_logging", "enabled",
+            "Enable audit logging to CloudWatch Logs for access and change tracking.",
+            "MINOR")
+
+        if projected_storage_gb > 65536:
+            _deg(degs, "Cluster storage", f"Projected 1-year storage {projected_storage_gb}GB exceeds the 64TB cluster limit. Split data or archive cold collections.")
+        if total_instances >= 16:
+            _deg(degs, "Instance count", f"Replica recommendation reaches {total_instances} instances. DocumentDB clusters are limited to 16 total instances.")
+        if working_set_gb > ram:
+            warns.append(
+                f"CAPACITY WARNING: Working set ({working_set_gb:.0f}GB) is larger than supplied RAM baseline ({ram:.0f}GB). Choose a larger instance class."
+            )
+        if connections >= 9000:
+            _deg(degs, "Connection budget", f"Planned connection budget is {connections}, close to the 10,000 per-instance limit. Use connection pooling.")
+        if secondary_regions > 0 and write_rps > 5000:
+            warns.append(
+                f"CAPACITY WARNING: Global cluster writes ({write_rps:,}/sec) may increase replica lag across {secondary_regions} secondary region(s)."
+            )
+
+        fl = max(65535, connections * 2)
+        smx = 65535
+        snip = [
+            f"# Amazon DocumentDB — {instance_type}",
+            f"# 1 primary + {replicas} replica(s)",
+            f"read_throughput_mb_s = {read_mb_s}",
+            f"write_throughput_mb_s = {write_mb_s}",
+            f"projected_storage_1y_gb = {projected_storage_gb}",
+            f"recommended_storage_gb = {recommended_storage_gb}",
+        ]
+
+    elif calc == "aws_rds":
+        engine = str(p.get("engine", "postgresql")).lower()
+        deployment_model = str(p.get("deployment_model", "rds")).lower()
+        workload = str(p.get("workload", "oltp")).lower()
+        storage_type = str(p.get("storage_type", "gp3")).lower()
+        read_rps = max(1, _i(p, "read_rps", max(1, rps)))
+        write_rps = max(1, _i(p, "write_rps", max(1, max(1, rps) // 5)))
+        avg_query_kb = max(1.0, _f(p, "avg_query_kb", 8.0))
+        working_set_gb = max(1.0, _f(p, "working_set_gb", max(8.0, ram)))
+        data_size_gb = max(1.0, _f(p, "data_size_gb", max(100.0, ram * 6)))
+        index_size_gb = max(0.0, _f(p, "index_size_gb", data_size_gb * 0.2))
+        temp_growth_gb = max(0.0, _f(p, "temp_growth_gb", data_size_gb * 0.1))
+        monthly_growth_gb = max(0.0, _f(p, "monthly_growth_gb", max(10.0, data_size_gb * 0.03)))
+        backup_retention_days = min(35, max(1, _i(p, "backup_retention_days", 7)))
+        read_replicas = min(15, max(0, _i(p, "read_replicas", 1)))
+        multi_az = _b(p, "multi_az", True)
+        dev_test = _b(p, "dev_test")
+
+        total_ops = read_rps + write_rps
+        read_mb_s = round((read_rps * avg_query_kb) / 1024, 2)
+        write_mb_s = round((write_rps * avg_query_kb) / 1024, 2)
+        projected_storage_gb = int(math.ceil(data_size_gb + index_size_gb + temp_growth_gb + (monthly_growth_gb * 12)))
+        allocated_storage_gb = int(max(100, math.ceil((projected_storage_gb * 1.2) / 100.0) * 100))
+        backup_storage_gb = int(math.ceil((data_size_gb + index_size_gb) * (backup_retention_days / 35.0)))
+        max_connections = max(100, int(total_ops * max(1.0, resp_ms / 1000.0)))
+
+        if engine in ("postgresql", "aurora-postgresql"):
+            max_connections = max(max_connections, int(ram * 90))
+        elif engine in ("mysql", "mariadb", "aurora-mysql"):
+            max_connections = max(max_connections, int(ram * 75))
+        elif engine == "oracle":
+            max_connections = max(max_connections, int(ram * 40))
+        else:
+            max_connections = max(max_connections, int(ram * 30))
+
+        if storage_type == "io2":
+            baseline_iops = max(3000, int((read_rps * 0.6) + (write_rps * 1.5)))
+        elif storage_type == "gp3":
+            baseline_iops = max(3000, int((read_rps * 0.3) + write_rps))
+        else:
+            baseline_iops = max(1000, int((read_rps * 0.2) + (write_rps * 0.5)))
+        throughput_mbps = max(125, int((read_mb_s + write_mb_s) * 1.3))
+
+        if dev_test:
+            instance_type = "db.t4g.medium" if engine not in ("sqlserver", "oracle") else "db.t3.medium"
+        else:
+            if engine in ("oracle", "sqlserver"):
+                if working_set_gb <= 64 and total_ops <= 4000:
+                    instance_type = "db.r5.xlarge"
+                elif working_set_gb <= 128 and total_ops <= 10000:
+                    instance_type = "db.r5.2xlarge"
+                elif working_set_gb <= 256 and total_ops <= 20000:
+                    instance_type = "db.r5.4xlarge"
+                else:
+                    instance_type = "db.r5.8xlarge"
+            else:
+                if working_set_gb <= 32 and total_ops <= 3000:
+                    instance_type = "db.r6g.large"
+                elif working_set_gb <= 64 and total_ops <= 8000:
+                    instance_type = "db.r6g.xlarge"
+                elif working_set_gb <= 128 and total_ops <= 16000:
+                    instance_type = "db.r6g.2xlarge"
+                elif working_set_gb <= 256 and total_ops <= 32000:
+                    instance_type = "db.r6g.4xlarge"
+                else:
+                    instance_type = "db.r6g.8xlarge"
+
+        if engine in ("aurora-postgresql", "aurora-mysql") or deployment_model == "aurora":
+            replicas_recommended = min(15, max(read_replicas, math.ceil(read_rps / 4000)))
+            ha_model = "Aurora cluster with writer + readers"
+        else:
+            replicas_recommended = min(5, max(read_replicas, math.ceil(read_rps / 5000)))
+            ha_model = "Multi-AZ primary/standby" if multi_az else "Single-AZ primary"
+
+        _add(params, "engine", engine, "Selected AWS RDS engine family for sizing logic.", "MAJOR")
+        _add(params, "deployment_model", deployment_model,
+            "Single calculator supports classic RDS and Aurora-style sizing in one place.", "MEDIUM")
+        _add(params, "workload", workload, "Workload profile influences safety posture and interpretation of the recommendation.", "MINOR")
+        _add(params, "instance_type", instance_type,
+            f"Selected from engine {engine}, working set {working_set_gb:.0f}GB, and throughput {total_ops:,} ops/sec.",
+            "MAJOR")
+        _add(params, "ha.topology", ha_model,
+            "Production-grade baseline: Multi-AZ for RDS or writer/readers for Aurora.",
+            "MAJOR")
+        _add(params, "ha.multi_az", str(multi_az).lower(),
+            "Enable standby failover for production RDS engines.", "MAJOR" if multi_az else "MEDIUM")
+        _add(params, "read_replicas.recommended", replicas_recommended,
+            f"Read scaling heuristic derived from {read_rps:,} reads/sec.", "MAJOR" if replicas_recommended else "MEDIUM")
+        _add(params, "throughput.read_mb_per_sec", read_mb_s,
+            f"read_rps ({read_rps:,}) x avg_query_kb ({avg_query_kb:.1f}) / 1024.", "MAJOR")
+        _add(params, "throughput.write_mb_per_sec", write_mb_s,
+            f"write_rps ({write_rps:,}) x avg_query_kb ({avg_query_kb:.1f}) / 1024.", "MAJOR")
+        _add(params, "storage.projected_1y_gb", projected_storage_gb,
+            f"data + indexes + temp growth + monthly growth x 12 = {projected_storage_gb}GB.", "MAJOR")
+        _add(params, "storage.allocated_gb", allocated_storage_gb,
+            "20% headroom above projected 1-year storage, rounded to the next 100GB.", "MAJOR")
+        _add(params, "storage.type", storage_type,
+            "gp3 is the practical default; io2 is preferred for sustained high write or latency-sensitive workloads.", "MEDIUM")
+        _add(params, "storage.provisioned_iops", baseline_iops,
+            "Baseline IOPS derived from read/write mix and storage class.", "MAJOR")
+        _add(params, "storage.throughput_mbps", throughput_mbps,
+            "Provision enough storage throughput for sustained read/write volume plus headroom.", "MEDIUM")
+        _add(params, "backup.retention_days", backup_retention_days,
+            "Automated backup retention window.", "MEDIUM")
+        _add(params, "backup.estimated_storage_gb", backup_storage_gb,
+            "Approximate retained backup footprint based on current data and retention window.", "MEDIUM")
+        _add(params, "db.max_connections_target", max_connections,
+            "Target connection budget; use app-side pooling before pushing engine limits.", "MAJOR")
+        _add(params, "cloudwatch.alarm.cpu_utilization", ">80% for 5m",
+            "Sustained CPU saturation usually means the chosen class is too small.", "MEDIUM")
+        _add(params, "cloudwatch.alarm.freeable_memory", "<10% free",
+            "Low memory means cache churn, spill-to-disk, and unstable latency.", "MEDIUM")
+        _add(params, "cloudwatch.alarm.free_storage_space", f"<{int(max(20, allocated_storage_gb * 0.2))}GB free",
+            "Alert before free storage gets tight enough to impact maintenance or burst growth.", "MEDIUM")
+        _add(params, "cloudwatch.alarm.database_connections", f">{int(max_connections * 0.8)}",
+            "Alarm at 80% of planned connection budget.", "MEDIUM")
+        if replicas_recommended > 0:
+            _add(params, "cloudwatch.alarm.replica_lag", ">30s",
+                "Lag alarm for read replicas to catch write pressure or under-sized replicas.", "MINOR")
+
+        if projected_storage_gb > 65536:
+            _deg(degs, "Projected storage", f"Projected 1-year storage {projected_storage_gb}GB exceeds 64TB. Partition, archive, or split the workload.")
+        if max_connections > 5000 and engine in ("postgresql", "mysql", "mariadb"):
+            _deg(degs, "High connections", f"Target connection count {max_connections} is high for {engine}. Use PgBouncer, RDS Proxy, or app pooling.")
+        if write_rps > read_rps and replicas_recommended > 2:
+            _deg(degs, "Replica efficiency", "Workload is write-heavy. Extra replicas may add cost without proportionate scaling benefit.")
+        if not multi_az and not dev_test and deployment_model != "aurora":
+            warns.append("CAPACITY WARNING: Production RDS sizing without Multi-AZ leaves failover and maintenance resilience gaps.")
+        if working_set_gb > ram:
+            warns.append(
+                f"CAPACITY WARNING: Working set ({working_set_gb:.0f}GB) exceeds supplied RAM baseline ({ram:.0f}GB). Choose a larger class."
+            )
+        if storage_type == "standard" and total_ops > 3000:
+            _deg(degs, "Storage type", "Magnetic/standard-style storage is not suitable for sustained production throughput at this load.")
+
+        fl = max(65535, max_connections * 2)
+        smx = 65535
+        snip = [
+            f"# AWS RDS Size Calculator — {engine}",
+            f"instance_type = {instance_type}",
+            f"ha_topology = {ha_model}",
+            f"projected_storage_1y_gb = {projected_storage_gb}",
+            f"allocated_storage_gb = {allocated_storage_gb}",
+            f"provisioned_iops = {baseline_iops}",
+            f"read_replicas = {replicas_recommended}",
+        ]
 
     elif calc == "haproxy":
         backends = max(1, _i(p,"backends_count",5))
