@@ -27,6 +27,7 @@ export default function HomePage() {
         {/* Background layers */}
         <div className="absolute inset-0 -z-20 bg-slate-950" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(14,165,233,0.15),transparent)]" />
+        <div className="absolute inset-0 -z-10 hero-grid" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent -z-10" />
 
         {/* Floating animated blobs */}
@@ -77,12 +78,12 @@ export default function HomePage() {
             <AnimateIn delay={0.4} trigger="mount">
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/register"
-                  className="group inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5">
+                  className="motion-button group inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40">
                   Get Started Free
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link href="/contact"
-                  className="group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-xl border border-slate-700 hover:border-slate-600 font-semibold text-sm transition-all">
+                  className="motion-button group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-xl border border-slate-700 hover:border-slate-600 font-semibold text-sm transition-all">
                   Request a Demo
                 </Link>
               </div>
@@ -216,7 +217,7 @@ export default function HomePage() {
                 // { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
               ].map((s) => (
                 <StaggerItem key={s.title}>
-                  <Link href={s.href} className="group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-3.5 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-900/10">
+                  <Link href={s.href} className="motion-card group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-3.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-sky-900/10">
                     <div className={`w-8 h-8 rounded-md flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
                       {s.icon}
                     </div>
@@ -316,7 +317,7 @@ export default function HomePage() {
               { icon: <Shield className="w-7 h-7" />, value: "0", label: "Security Breaches" },
             ].map((s) => (
               <StaggerItem key={s.label}>
-                <div className="text-center p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/30 transition-all duration-300 group hover:-translate-y-1">
+                <div className="motion-card text-center p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/30 transition-all duration-300 group">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-sky-500/10 text-sky-400 mb-4 group-hover:scale-110 transition-transform">
                     {s.icon}
                   </div>
@@ -342,13 +343,13 @@ export default function HomePage() {
                   and AI Interviews for Clients — fully automated enterprise-grade technical assessments at scale.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link href="/hire" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5">
+                  <Link href="/hire" className="motion-button inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-8 py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg">
                     Explore Talent Solutions <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <Link href="/ai-interview" className="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
+                  <Link href="/ai-interview" className="motion-button inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
                     Open AI Interview App
                   </Link>
-                  <Link href="/contact" className="inline-flex items-center gap-2 border border-slate-600 hover:border-sky-500 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
+                  <Link href="/contact" className="motion-button inline-flex items-center gap-2 border border-slate-600 hover:border-sky-500 text-white px-8 py-3.5 rounded-xl text-sm font-semibold transition-all">
                     Book Free Consultation
                   </Link>
                 </div>

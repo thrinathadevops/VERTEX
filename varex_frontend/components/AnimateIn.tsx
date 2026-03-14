@@ -12,24 +12,26 @@ interface AnimateInProps {
     duration?: number;
     once?: boolean;
     trigger?: "inView" | "mount";
+    distance?: number;
 }
 
-const getVariants = (direction: string, duration: number): Variants => {
+const getVariants = (direction: string, duration: number, distance: number): Variants => {
     const directions: Record<string, { x?: number; y?: number }> = {
-        up: { y: 40 },
-        down: { y: -40 },
-        left: { x: 40 },
-        right: { x: -40 },
+        up: { y: distance },
+        down: { y: -distance },
+        left: { x: distance },
+        right: { x: -distance },
         none: {},
     };
 
     return {
-        hidden: { opacity: 0, ...directions[direction] },
+        hidden: { opacity: 0, ...directions[direction], filter: "blur(10px)" },
         visible: {
             opacity: 1,
             x: 0,
             y: 0,
-            transition: { duration, ease: [0.25, 0.4, 0.25, 1] },
+            filter: "blur(0px)",
+            transition: { duration, ease: [0.16, 1, 0.3, 1] },
         },
     };
 };
@@ -42,17 +44,18 @@ export default function AnimateIn({
     duration = 0.6,
     once = true,
     trigger = "inView",
+    distance = 28,
 }: AnimateInProps) {
     const reduceMotion = useReducedMotion();
     const shouldAnimateOnMount = trigger === "mount";
 
     return (
         <motion.div
-            variants={reduceMotion ? getVariants("none", 0.01) : getVariants(direction, duration)}
+            variants={reduceMotion ? getVariants("none", 0.01, 0) : getVariants(direction, duration, distance)}
             initial="hidden"
             animate={shouldAnimateOnMount ? "visible" : undefined}
             whileInView={shouldAnimateOnMount ? undefined : "visible"}
-            viewport={shouldAnimateOnMount ? undefined : { once, margin: "-50px" }}
+            viewport={shouldAnimateOnMount ? undefined : { once, margin: "-64px", amount: 0.18 }}
             transition={{ delay }}
             className={className}
         >
@@ -65,8 +68,8 @@ export default function AnimateIn({
 export function StaggerContainer({
     children,
     className = "",
-    staggerDelay = 0.1,
-    delayChildren = 0.2,
+    staggerDelay = 0.08,
+    delayChildren = 0.12,
 }: {
     children: ReactNode;
     className?: string;
@@ -78,7 +81,7 @@ export function StaggerContainer({
         <motion.div
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
+            viewport={{ once: true, margin: "-64px", amount: 0.18 }}
             variants={{
                 hidden: {},
                 visible: {
@@ -106,11 +109,12 @@ export function StaggerItem({
     return (
         <motion.div
             variants={{
-                hidden: reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30 },
+                hidden: reduceMotion ? { opacity: 0 } : { opacity: 0, y: 22, filter: "blur(8px)" },
                 visible: {
                     opacity: 1,
                     y: 0,
-                    transition: { duration: reduceMotion ? 0.01 : 0.5, ease: [0.25, 0.4, 0.25, 1] },
+                    filter: "blur(0px)",
+                    transition: { duration: reduceMotion ? 0.01 : 0.45, ease: [0.16, 1, 0.3, 1] },
                 },
             }}
             className={className}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { LogIn, LogOut, Rocket, Menu, X, Home, Briefcase, Award, Briefcase as Portfolio, Users, LayoutDashboard, Bot, Calculator } from "lucide-react";
 import { getUserFromCookies, clearTokens } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -144,28 +145,45 @@ export default function Navbar() {
       </div>
 
       {/* ═══ MOBILE MENU DROPDOWN ═══ */}
+      <AnimatePresence initial={false}>
       {menuOpen && (
-        <nav className="md:hidden border-t border-slate-800 bg-[#0B1120] px-4 py-4 space-y-2">
+        <motion.nav
+          initial={{ opacity: 0, y: -10, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -8, height: 0 }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          className="md:hidden overflow-hidden border-t border-slate-800 bg-[#0B1120]"
+        >
+          <div className="px-4 py-4 space-y-2">
           {navLinks.map((link) => {
             const IconComponent = link.icon;
             const isActive = pathname === link.href;
             return (
-              <Link
+              <motion.div
                 key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`flex min-h-11 items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
-                    ? "bg-slate-800 text-cyan-400"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-                  }`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.18 }}
               >
-                <IconComponent className="w-5 h-5" />
-                {link.label}
-              </Link>
+                <Link
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex min-h-11 items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
+                      ? "bg-slate-800 text-cyan-400"
+                      : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    }`}
+                >
+                  <IconComponent className="w-5 h-5" />
+                  {link.label}
+                </Link>
+              </motion.div>
             );
           })}
-        </nav>
+          </div>
+        </motion.nav>
       )}
+      </AnimatePresence>
     </header>
   );
 }
