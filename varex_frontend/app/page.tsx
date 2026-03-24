@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap } from "lucide-react";
+import { CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap, ArrowRight } from "lucide-react";
 import AnimateIn, { StaggerContainer, StaggerItem } from "@/components/AnimateIn";
 import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import VarexIntro from "@/components/VarexIntro";
+import HeroAnimations from "@/components/HeroAnimations";
 
 export default function HomePage() {
   const featureToneClasses: Record<string, string> = {
@@ -19,6 +21,9 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-8 md:gap-10 pb-4">
+
+      {/* ── Dynamic letter-assembly intro ── */}
+      <VarexIntro />
 
       {/* ═══════════════════════════════════════════════════════════
           HERO SECTION — Full-bleed with animated background
@@ -36,74 +41,9 @@ export default function HomePage() {
         <div className="absolute -bottom-20 left-1/3 w-64 h-64 bg-brand-500/10 rounded-full blur-[100px] animate-blob animation-delay-4000" />
 
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
-          {/* LEFT: Text content */}
-          <div className="space-y-8">
-            <AnimateIn delay={0.1} trigger="mount">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs font-semibold uppercase tracking-wider">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute h-full w-full rounded-full bg-sky-400 opacity-75" />
-                  <span className="relative rounded-full h-2 w-2 bg-sky-500" />
-                </span>
-                VAREX: Virtual Architecture, Resilience &amp; Execution
-              </div>
-            </AnimateIn>
-
-            <AnimateIn delay={0.2} trigger="mount">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
-                Engineering Scalable Systems.{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
-                  Securing Digital Futures.
-                </span>
-                {" "}Accelerating Technical Talent.
-              </h1>
-            </AnimateIn>
-
-            <AnimateIn delay={0.3} trigger="mount">
-              <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
-                VAREX is a Cloud Engineering and Talent Acceleration platform focused on
-                Architecture, Resilience, and Execution excellence. We deliver DevSecOps consulting,
-                SAP SD expertise, and scalable, secure, automated infrastructure solutions for
-                startups and enterprises.
-              </p>
-            </AnimateIn>
-
-            <AnimateIn delay={0.35} trigger="mount">
-              <p className="text-sm text-slate-300/90 max-w-2xl leading-relaxed border-l-2 border-sky-500/40 pl-4">
-                Goal: <span className="font-extrabold uppercase tracking-wide text-sky-300">Freelancing-first delivery</span>{" "}
-                with resilient cloud architectures, stronger security posture, and faster deployment of
-                high-impact technical talent for business-critical execution.
-              </p>
-            </AnimateIn>
-
-            <AnimateIn delay={0.4} trigger="mount">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/register"
-                  className="motion-button group inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40">
-                  Get Started Free
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link href="/contact"
-                  className="motion-button group inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-xl border border-slate-700 hover:border-slate-600 font-semibold text-sm transition-all">
-                  Request a Demo
-                </Link>
-              </div>
-            </AnimateIn>
-
-            {/* Stats row */}
-            <AnimateIn delay={0.5} trigger="mount">
-              <div className="flex items-center gap-8 pt-4">
-                {[
-                  { value: "50+", label: "Clients" },
-                  { value: "99.9%", label: "Uptime" },
-                  { value: "7 Days", label: "Talent Delivery" },
-                ].map((s) => (
-                  <div key={s.label}>
-                    <p className="text-2xl font-extrabold text-white">{s.value}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </AnimateIn>
+          {/* LEFT: Enhanced animated content */}
+          <div className="space-y-8 relative">
+            <HeroAnimations />
           </div>
 
           {/* RIGHT: Hero image */}
