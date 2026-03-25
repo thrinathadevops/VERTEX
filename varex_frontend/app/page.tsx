@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap, ArrowRight } from "lucide-react";
 import AnimateIn, { StaggerContainer, StaggerItem } from "@/components/AnimateIn";
 import Testimonials from "@/components/Testimonials";
@@ -10,6 +11,8 @@ import VarexIntro from "@/components/VarexIntro";
 import HeroAnimations from "@/components/HeroAnimations";
 
 export default function HomePage() {
+  const [introDone, setIntroDone] = useState(false);
+
   const featureToneClasses: Record<string, string> = {
     sky: "bg-sky-500/10 text-sky-400",
     indigo: "bg-indigo-500/10 text-indigo-400",
@@ -23,12 +26,12 @@ export default function HomePage() {
     <div className="flex flex-col gap-8 md:gap-10 pb-4">
 
       {/* ── Dynamic letter-assembly intro ── */}
-      <VarexIntro />
+      <VarexIntro onComplete={() => setIntroDone(true)} />
 
       {/* ═══════════════════════════════════════════════════════════
           HERO SECTION — Full-bleed with animated background
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4">
+      <section className={`relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4 transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${introDone ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[1.03] blur-[3px]"}`}>
         {/* Background layers */}
         <div className="absolute inset-0 -z-20 bg-slate-950" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(14,165,233,0.15),transparent)]" />
@@ -43,12 +46,12 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
           {/* LEFT: Enhanced animated content */}
           <div className="space-y-8 relative">
-            <HeroAnimations />
+            <HeroAnimations start={introDone} />
           </div>
 
           {/* RIGHT: Hero image */}
           <AnimateIn delay={0.3} direction="right" trigger="mount">
-            <div className="relative">
+            <div className="relative max-w-[560px] mx-auto lg:mx-0">
               <div className="absolute -inset-4 bg-gradient-to-tr from-sky-500/20 via-indigo-500/10 to-transparent rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-sky-900/20">
                 <Image

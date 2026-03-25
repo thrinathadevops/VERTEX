@@ -1,145 +1,188 @@
 "use client";
 
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-/**
- * Letter-assembly intro that forms VAREX in full screen.
- * Stays for ~4 seconds or click to skip.
- * Booms (scales up massively and fades out) into the hero section.
- */
-export default function VarexIntro() {
-  type Phase = "intro" | "exit" | "done";
-  const [phase, setPhase] = useState<Phase>("intro");
-  const reduceMotion = useReducedMotion();
+type VarexIntroProps = {
+  onComplete?: () => void;
+};
+
+export default function VarexIntro({ onComplete }: VarexIntroProps) {
+  type Phase = "assemble" | "hold" | "boom" | "done";
+  const [phase, setPhase] = useState<Phase>("assemble");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // if (reduceMotion) { setPhase("done"); return; }
-    // console.log("useReducedMotion: ", reduceMotion); // Debug
-    
-    // Uncomment below in production so intro only shows once per session naturally
-    // const seen = sessionStorage.getItem("varex-letter-intro-seen");
-    // if (seen) { setPhase("done"); return; }
+    setMounted(true);
+  }, []);
 
-    // Stay for 4 seconds total before booming out
-    const exitTimer = setTimeout(() => {
-      setPhase("exit");
-      // sessionStorage.setItem("varex-letter-intro-seen", "1");
-    }, 4000);
+  const completeIntro = useCallback(() => {
+    if (phase !== "done") {
+      setPhase("done");
+      onComplete?.();
+    }
+  }, [onComplete, phase]);
 
-    // Completely unmount after an additional 1.5 seconds for the exit animation
-    const doneTimer = setTimeout(() => setPhase("done"), 5500);
-
-    return () => { clearTimeout(exitTimer); clearTimeout(doneTimer); };
-  }, [reduceMotion]);
+  useEffect(() => {
+    if (phase === "assemble") {
+      const timer = setTimeout(() => setPhase("hold"), 1500);
+      return () => clearTimeout(timer);
+    }
+    if (phase === "hold") {
+      const timer = setTimeout(() => setPhase("boom"), 5000);
+      return () => clearTimeout(timer);
+    }
+    if (phase === "boom") {
+      const timer = setTimeout(() => completeIntro(), 850);
+      return () => clearTimeout(timer);
+    }
+  }, [completeIntro, phase]);
 
   const handleSkip = () => {
-    if (phase === "intro") {
-      setPhase("exit");
-      // sessionStorage.setItem("varex-letter-intro-seen", "1");
+    if (phase !== "done") {
+      setPhase("boom");
     }
   };
 
-  if (phase === "done") return null;
+  if (phase === "done" || !mounted) return null;
 
-  // Multi-directional starting positions for each letter
+  const letters = ["V", "A", "R", "E", "X"];
+
   const letterVariants = {
     hidden: (i: number) => {
       const positions = [
-        { x: "-100vw", y: "-100vh", rotate: -90 }, // V (Top Left)
-        { x: "0",      y: "100vh",  rotate: 45 },  // A (Bottom Center)
-        { x: "100vw",  y: "-100vh", rotate: 90 },  // R (Top Right)
-        { x: "-100vw", y: "0",      rotate: -45 }, // E (Middle Left)
-        { x: "100vw",  y: "100vh",  rotate: 180 }, // X (Bottom Right)
+        { x: -420, y: -340, rotate: -55, scale: 0.35 },
+        { x: 0, y: 340, rotate: 40, scale: 0.35 },
+        { x: 420, y: -320, rotate: 55, scale: 0.35 },
+        { x: -380, y: 0, rotate: -35, scale: 0.35 },
+        { x: 420, y: 300, rotate: 90, scale: 0.35 },
       ];
       return {
         opacity: 0,
-        x: positions[i].x,
-        y: positions[i].y,
-        rotate: positions[i].rotate,
-        scale: 0.1
+        ...positions[i],
       };
     },
-    visible: {
+    assemble: (i: number) => ({
       opacity: 1,
       x: 0,
       y: 0,
       rotate: 0,
       scale: 1,
-      transition: { 
-        type: "spring" as const, 
-        damping: 12, 
-        stiffness: 70, 
-        mass: 1.5,
-        duration: 2 
-      }
-    }
+      transition: {
+        type: "spring" as const,
+        stiffness: 120,
+        damping: 14,
+        mass: 0.85,
+        delay: i * 0.08,
+      },
+      transitionEnd: {
+        x: 0,
+        y: 0,
+        rotate: 0,
+        scale: 1,
+      },
+    }),
+    hold: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      rotate: 0,
+      scale: 1,
+      filter: "blur(0px)",
+    },
   };
 
-  const letters = ["V", "A", "R", "E", "X"];
-
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         key="varex-letter-intro"
         initial={{ opacity: 1 }}
-        animate={{ opacity: phase === "exit" ? 0 : 1 }}
-        transition={{ duration: phase === "exit" ? 1.0 : 1, ease: "easeInOut" }}
-        className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950 overflow-hidden"
-        style={{ pointerEvents: phase === "exit" ? "none" : "auto" }}
+        animate={{ opacity: phase === "boom" ? 0 : 1 }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
+        className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950 overflow-hidden"
+        style={{ pointerEvents: phase === "boom" ? "none" : "auto" }}
         onClick={handleSkip}
       >
-        {/* Subtle grid line overlay giving a tech vibe over the whole background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none" />
 
-        {/* The "Boom" container */}
         <motion.div
           animate={
-            phase === "exit"
-              ? { scale: 10, opacity: 0, filter: "blur(30px)" } // Massive BOOM effect
+            phase === "boom"
+              ? { scale: 10, opacity: 0, filter: "blur(32px)" }
               : { scale: 1, opacity: 1, filter: "blur(0px)" }
           }
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative flex flex-col items-center justify-center w-full h-full cursor-pointer"
+          transition={{ duration: 0.82, ease: [0.16, 1, 0.3, 1] }}
+          className="relative flex flex-col items-center justify-center w-full h-full"
         >
-          {/* Invisible click label */}
-          <motion.div 
-             initial={{ opacity: 0 }} 
-             animate={{ opacity: phase === "intro" ? 0.3 : 0 }} 
-             transition={{ delay: 2, duration: 1 }}
-             className="absolute top-[15%] text-slate-500 text-sm tracking-widest uppercase animate-pulse"
+          {/* Skip hint */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: phase === "assemble" || phase === "hold" ? 1 : 0 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="absolute top-[14%] text-slate-500 text-[11px] sm:text-xs tracking-[0.24em] uppercase animate-pulse"
           >
-            Click anywhere to jump
+            Tap anywhere to skip
           </motion.div>
 
-          {/* Letters Container */}
-          <div className="relative z-10 flex items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-6 select-none">
-            {letters.map((char, i) => (
-              <motion.span
-                key={i}
-                custom={i}
-                variants={letterVariants}
-                initial="hidden"
-                animate="visible"
-                className="text-[22vw] sm:text-[20vw] md:text-[18vw] lg:text-[16vw] xl:text-[260px] font-extrabold text-white leading-none tracking-tight drop-shadow-[0_0_40px_rgba(14,165,233,0.3)]"
-                style={{ fontFamily: "var(--font-lexend, sans-serif)" }}
-              >
-                {char}
-              </motion.span>
-            ))}
+          {/* Intro container */}
+          <div className="relative z-10 w-[min(86vw,940px)] px-5 sm:px-10 py-8 sm:py-12 rounded-[28px] border border-sky-500/30 bg-[radial-gradient(80%_120%_at_50%_0%,rgba(14,165,233,0.2),rgba(2,6,23,0.85)),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.92))] shadow-[0_0_100px_rgba(14,165,233,0.16)]">
+            <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-white/10" />
+
+            <div className="relative flex items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-6 select-none">
+              {letters.map((char, i) => (
+                <motion.span
+                  key={i}
+                  custom={i}
+                  variants={letterVariants}
+                  initial="hidden"
+                  animate={phase === "assemble" ? "assemble" : "hold"}
+                  className="text-[17vw] sm:text-[15vw] md:text-[13vw] lg:text-[12vw] xl:text-[180px] font-extrabold text-white leading-none tracking-tight drop-shadow-[0_0_40px_rgba(14,165,233,0.3)] inline-block"
+                  style={{ fontFamily: "var(--font-lexend, sans-serif)" }}
+                >
+                  {char}
+                </motion.span>
+              ))}
+            </div>
           </div>
 
-          {/* Subtitle / Tech identity */}
+          {/* Subtitle / taglines */}
           <motion.p
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.8, duration: 0.8, ease: "easeOut" }}
+            animate={{
+              opacity: phase === "hold" ? 1 : 0,
+              y: phase === "hold" ? 0 : 30,
+            }}
+            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             className="relative z-10 mt-8 sm:mt-12 text-xs sm:text-sm md:text-base lg:text-xl font-bold tracking-[0.6em] md:tracking-[1em] uppercase text-sky-400 drop-shadow-[0_0_15px_rgba(14,165,233,0.6)]"
           >
             TECH INNOVATION
           </motion.p>
         </motion.div>
+
+        {/* Global effects over the letters */}
+        <motion.div
+          animate={
+            phase === "boom"
+              ? { scale: 30, opacity: 0 }
+              : { scale: 1, opacity: 1 }
+          }
+          transition={{ duration: 0.8, ease: "easeIn" }}
+          className="pointer-events-none absolute h-[54vmax] w-[54vmax] rounded-full bg-[radial-gradient(circle,rgba(125,211,252,0.9)_0%,rgba(14,165,233,0.35)_42%,rgba(2,6,23,0)_72%)]"
+        />
+
+        {/* The final blinding white flash */}
+        <motion.div
+          animate={
+            phase === "boom"
+              ? { opacity: [0, 1, 0] }
+              : { opacity: 0 }
+          }
+          transition={{ duration: 0.8, times: [0, 0.4, 1], ease: "easeInOut" }}
+          className="pointer-events-none absolute inset-0 bg-white"
+        />
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

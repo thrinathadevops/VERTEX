@@ -60,8 +60,13 @@ const TECH_BADGES = [
 ];
 
 // ─── Component exported for embedding in the hero ────────────────────────────
-export default function HeroAnimations() {
+type HeroAnimationsProps = {
+  start?: boolean;
+};
+
+export default function HeroAnimations({ start = true }: HeroAnimationsProps) {
   const reduceMotion = useReducedMotion();
+  const canAnimate = reduceMotion || start;
 
   // Mouse parallax for hero glow
   const mouseX = useMotionValue(0);
@@ -97,7 +102,7 @@ export default function HeroAnimations() {
       {/* ── Live status badge ── */}
       <motion.div
         initial={{ opacity: 0, y: -10, scale: 0.9 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        animate={canAnimate ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: -10, scale: 0.9 }}
         transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold tracking-wider hover:border-sky-500/40 transition-colors"
       >
@@ -111,10 +116,10 @@ export default function HeroAnimations() {
       {/* ── Main headline ── */}
       <motion.div
         initial={{ opacity: 0, y: 24, filter: "blur(10px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        animate={canAnimate ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: 24, filter: "blur(10px)" }}
         transition={{ delay: 0.2, duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.15]">
           Engineering Scalable Systems.{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-400">
             Securing Digital Futures.
@@ -126,7 +131,7 @@ export default function HeroAnimations() {
       {/* ── Tech stack badges ── */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        animate={canAnimate ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 0.35, duration: 0.5 }}
         className="flex flex-wrap gap-2 pt-2"
       >
@@ -134,7 +139,7 @@ export default function HeroAnimations() {
           <motion.span
             key={label}
             initial={{ opacity: 0, scale: 0.8, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            animate={canAnimate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.8, y: 12 }}
             transition={{ delay: 0.38 + i * 0.07, type: "spring", stiffness: 260, damping: 20 }}
             whileHover={{ scale: 1.05, y: -2 }}
             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-gradient-to-r ${color} border ${border} text-slate-300 text-xs font-medium cursor-default shadow-sm backdrop-blur-sm bg-slate-900/40`}
@@ -147,9 +152,9 @@ export default function HeroAnimations() {
       {/* ── Description ── */}
       <motion.p
         initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        animate={canAnimate ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: 18, filter: "blur(8px)" }}
         transition={{ delay: 0.3, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="text-lg text-slate-400 leading-relaxed max-w-xl font-light"
+        className="mt-5 text-xs sm:text-sm md:text-[15px] text-slate-400 leading-relaxed max-w-lg font-light"
       >
         VAREX is a Cloud Engineering and Talent Acceleration platform focused on
         Architecture, Resilience, and Execution excellence. We deliver DevSecOps consulting,
@@ -160,9 +165,9 @@ export default function HeroAnimations() {
       {/* ── Freelancing motto ── */}
       <motion.p
         initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
+        animate={canAnimate ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }}
         transition={{ delay: 0.38, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-        className="text-sm text-slate-300/90 max-w-2xl leading-relaxed border-l-2 border-sky-500/40 pl-4"
+        className="mt-6 text-[11px] sm:text-xs md:text-sm text-slate-300/90 max-w-lg leading-relaxed border-l-2 border-sky-500/40 pl-3.5"
       >
         Goal: <span className="font-extrabold uppercase tracking-wide text-sky-300">Freelancing-first delivery</span>{" "}
         with resilient cloud architectures, stronger security posture, and faster deployment of
@@ -172,7 +177,7 @@ export default function HeroAnimations() {
       {/* ── CTA Buttons ── */}
       <motion.div
         initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={canAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
         transition={{ delay: 0.42, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col sm:flex-row gap-4 pt-4"
       >

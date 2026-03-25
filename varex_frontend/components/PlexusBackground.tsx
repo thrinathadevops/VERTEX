@@ -88,13 +88,18 @@ export default function PlexusBackground({ className = "" }: { className?: strin
     };
   }, [reduceMotion]);
 
-  if (reduceMotion) return <div className={`absolute inset-0 bg-slate-950 ${className}`} />;
-
+  // Return a stable DOM struct to avoid hydration errors
   return (
-    <canvas
-      ref={canvasRef}
-      className={`absolute inset-0 pointer-events-none ${className}`}
-      style={{ background: "radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)" }}
-    />
+    <div className={`absolute inset-0 ${className}`}>
+      {reduceMotion ? (
+        <div className="absolute inset-0 bg-slate-950" />
+      ) : (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)" }}
+        />
+      )}
+    </div>
   );
 }
