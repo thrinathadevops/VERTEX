@@ -109,11 +109,12 @@ export default function VarexIntro({ onComplete }: VarexIntroProps) {
         <motion.div
           animate={
             phase === "boom"
-              ? { scale: 10, opacity: 0, filter: "blur(32px)" }
-              : { scale: 1, opacity: 1, filter: "blur(0px)" }
+              ? { scale: 8, opacity: 0 }
+              : { scale: 1, opacity: 1 }
           }
-          transition={{ duration: 0.82, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="relative flex flex-col items-center justify-center w-full h-full"
+          style={{ willChange: "transform, opacity" }}
         >
           {/* Skip hint */}
           <motion.div
@@ -138,7 +139,7 @@ export default function VarexIntro({ onComplete }: VarexIntroProps) {
                   initial="hidden"
                   animate={phase === "assemble" ? "assemble" : "hold"}
                   className="text-[17vw] sm:text-[15vw] md:text-[13vw] lg:text-[12vw] xl:text-[180px] font-extrabold text-white leading-none tracking-tight drop-shadow-[0_0_40px_rgba(14,165,233,0.3)] inline-block"
-                  style={{ fontFamily: "var(--font-lexend, sans-serif)" }}
+                  style={{ fontFamily: "var(--font-lexend, sans-serif)", willChange: "transform, opacity" }}
                 >
                   {char}
                 </motion.span>
@@ -155,6 +156,7 @@ export default function VarexIntro({ onComplete }: VarexIntroProps) {
             }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             className="relative z-10 mt-8 sm:mt-12 text-xs sm:text-sm md:text-base lg:text-xl font-bold tracking-[0.6em] md:tracking-[1em] uppercase text-sky-400 drop-shadow-[0_0_15px_rgba(14,165,233,0.6)]"
+            style={{ willChange: "transform, opacity" }}
           >
             TECH INNOVATION
           </motion.p>
@@ -164,22 +166,12 @@ export default function VarexIntro({ onComplete }: VarexIntroProps) {
         <motion.div
           animate={
             phase === "boom"
-              ? { scale: 30, opacity: 0 }
+              ? { scale: [1, 5, 8], opacity: [1, 0.4, 0] }
               : { scale: 1, opacity: 1 }
           }
           transition={{ duration: 0.8, ease: "easeIn" }}
-          className="pointer-events-none absolute h-[54vmax] w-[54vmax] rounded-full bg-[radial-gradient(circle,rgba(125,211,252,0.9)_0%,rgba(14,165,233,0.35)_42%,rgba(2,6,23,0)_72%)]"
-        />
-
-        {/* The final blinding white flash */}
-        <motion.div
-          animate={
-            phase === "boom"
-              ? { opacity: [0, 1, 0] }
-              : { opacity: 0 }
-          }
-          transition={{ duration: 0.8, times: [0, 0.4, 1], ease: "easeInOut" }}
-          className="pointer-events-none absolute inset-0 bg-white"
+          className="pointer-events-none absolute h-[54vmax] w-[54vmax] rounded-full bg-[radial-gradient(circle,rgba(14,165,233,0.6)_0%,rgba(14,165,233,0.15)_42%,rgba(2,6,23,0)_72%)] mix-blend-screen"
+          style={{ willChange: "transform, opacity" }}
         />
       </motion.div>
     </AnimatePresence>,
