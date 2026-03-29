@@ -112,12 +112,53 @@ export async function getProject(slug: string): Promise<Project> {
 // ════════════════════════════════════════════════════════════════
 // TEAM
 // ════════════════════════════════════════════════════════════════
+const founderProfile: TeamMember = {
+  id: "founder-1",
+  name: "Sai Charitha Chinthakunta",
+  slug: "sai-charitha-chinthakunta",
+  role: "Founder & CEO",
+  title: "Founder & CEO, SAP SD Architect",
+  bio: "With a deep specialization in SAP Sales & Distribution (SD) and large-scale enterprise deployments, Sai Charitha founded VAREX to bridge the gap between rigorous enterprise software practices and agile cloud infrastructure.",
+  specializations: ["SAP SD", "Cloud Architecture", "Enterprise Deployments", "Technical Leadership"],
+  tools: ["SAP ERP", "S/4HANA", "AWS", "Jira", "Confluence"],
+  certifications: ["SAP Certified Application Associate - Sales and Distribution", "AWS Certified Cloud Practitioner"],
+  linkedin_url: "https://www.linkedin.com/company/varextech",
+  avatar_url: "/founder.jpg",
+  display_order: 0,
+  is_published: true,
+  created_at: new Date().toISOString()
+};
+
+const devSecOpsProfile: TeamMember = {
+  id: "team-thrinatha-1",
+  name: "Thrinatha Reddy",
+  slug: "thrinatha-reddy",
+  role: "DevSecOps Engineer",
+  title: "DevSecOps Engineer",
+  bio: "A dedicated DevSecOps professional specializing in automating secure deployment pipelines, cloud infrastructure resilience, and continuous threat modeling. Thrinatha ensures security is ingrained seamlessly into high-velocity engineering workflows.",
+  specializations: ["Cybersecurity", "CI/CD Pipelines", "Cloud Infrastructure", "Security Hardening"],
+  tools: ["Docker", "Kubernetes", "AWS", "GitHub Actions", "Terraform", "Jenkins"],
+  certifications: ["AWS Certified Security - Specialty", "Certified Kubernetes Security Specialist (CKS)"],
+  linkedin_url: "https://www.linkedin.com/in/thrinatha",
+  avatar_url: "/thrinatha.png",
+  display_order: 1,
+  is_published: true,
+  created_at: new Date().toISOString()
+};
+
 export async function listTeam(): Promise<TeamMember[]> {
-  const res = await api.get<TeamMember[]>("/team");
-  return res.data;
+  try {
+    const res = await api.get<TeamMember[]>("/team");
+    return [founderProfile, devSecOpsProfile, ...res.data];
+  } catch (error) {
+    console.warn("Backend team fetch failed, returning mocked profiles only.", error);
+    return [founderProfile, devSecOpsProfile];
+  }
 }
 
 export async function getTeamMember(slug: string): Promise<TeamMember> {
+  if (slug === founderProfile.slug) return founderProfile;
+  if (slug === devSecOpsProfile.slug) return devSecOpsProfile;
   const res = await api.get<TeamMember>(`/team/${slug}`);
   return res.data;
 }

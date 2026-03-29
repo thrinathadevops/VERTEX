@@ -85,6 +85,7 @@ export interface TeamMember {
   github_url?: string;           // ADDED (Bug 3.17)
   specialisations?: string[];
   specializations?: string[];
+  certifications?: string[];
   enterprise_projects?: string[];         // ADDED (Bug 3.17)
   title?: string;
   years_experience?: number;

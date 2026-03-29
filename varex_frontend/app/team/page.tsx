@@ -20,9 +20,13 @@ export default function TeamPage() {
           <Link key={m.id} href={`/team/${m.slug}`}
             className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 hover:border-sky-600/70 block">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-12 w-12 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-300 font-bold text-lg">
-                {m.name[0]}
-              </div>
+              {m.avatar_url ? (
+                <img src={m.avatar_url} alt={m.name} className="h-12 w-12 rounded-full object-cover border border-slate-700" />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-300 font-bold text-lg">
+                  {m.name[0]}
+                </div>
+              )}
               <div>
                 <p className="text-sm font-semibold">{m.name}</p>
                 <p className="text-xs text-slate-400">{m.title}</p>

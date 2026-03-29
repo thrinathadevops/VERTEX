@@ -9,6 +9,7 @@ import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import VarexIntro from "@/components/VarexIntro";
 import HeroAnimations from "@/components/HeroAnimations";
+import FounderSection from "@/components/FounderSection";
 
 export default function HomePage() {
   const [introDone, setIntroDone] = useState(false);
@@ -218,9 +219,24 @@ export default function HomePage() {
             </StaggerContainer>
 
             <AnimateIn delay={0.5}>
-              <Link href="/team" className="inline-flex items-center gap-2 text-sky-400 hover:text-sky-300 font-semibold text-sm mt-4 group">
-                Meet Our Team <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-8 pt-4 border-t border-slate-800/50">
+                <Link href="/about" className="group flex items-center gap-4 p-2 pr-5 rounded-full border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-sky-500/30 transition-all shadow-lg hover:shadow-sky-900/20">
+                  <Image 
+                    src="/founder.jpg" 
+                    width={48} height={48} 
+                    className="rounded-full object-cover border-2 border-slate-700 group-hover:border-sky-500/50 transition-colors h-12 w-12" 
+                    alt="Sai Charitha Chinthakunta" 
+                  />
+                  <div>
+                    <p className="text-sm font-bold text-white group-hover:text-sky-100 transition-colors">Sai Charitha Chinthakunta</p>
+                    <p className="text-xs text-sky-400 font-medium">Founder & CEO</p>
+                  </div>
+                </Link>
+
+                <Link href="/team" className="inline-flex items-center gap-2 text-sky-400 hover:text-sky-300 font-semibold text-sm group">
+                  Meet Our Team <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
             </AnimateIn>
           </div>
 
