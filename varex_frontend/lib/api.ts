@@ -75,9 +75,93 @@ export async function createSubscription(plan_type: string): Promise<Subscriptio
 // ════════════════════════════════════════════════════════════════
 // CONTENT / BLOG
 // ════════════════════════════════════════════════════════════════
+
+const cicdBlogPost: ContentItem = {
+  id: "blog-cicd-1",
+  title: "5 CI/CD Pipeline Best Practices Every DevSecOps Engineer Should Know",
+  slug: "cicd-best-practices",
+  body: `
+<p>A poorly built CI/CD pipeline doesn't just slow down deployments—it acts as an open backdoor to your production databases. When building enterprise-grade infrastructure at VAREX, we treat pipelines exactly like production code: immutable, secure, and blazing fast.</p>
+
+<p>Here are the 5 non-negotiable CI/CD architecture principles your team must adopt to safely scale deployment velocity.</p>
+
+<h2>1. Shift-Left Security (DevSecOps Integration)</h2>
+<p>Waiting to run security scans in staging or production is a critical anti-pattern. Vulnerabilities must be caught immediately upon commit. You must "shift left" by embedding Static Application Security Testing (SAST) and Dependency Scanning directly into your initial build stages.</p>
+
+<blockquote><p>⚠️ <strong>Critical Rule:</strong> If a developer pushes code containing a known high-severity vulnerability (like a critical CVE in an NPM package), the CI pipeline must outright fail the build and block the merge request.</p></blockquote>
+
+<h2>2. Build Once, Deploy Everywhere (Immutability)</h2>
+<p>Never recompile code or rebuild Docker images between environments. Your CI system should build your artifact exactly <strong>once</strong>, tag it with a unique SHA or version, and store it in a secure registry (like AWS ECR or GitHub Packages).</p>
+<p>Your CD system then simply takes that exact, unchanging artifact and promotes it through Dev ➔ Staging ➔ Production. This guarantees you are deploying the exact same code you tested.</p>
+
+<h2>3. Fail Fast</h2>
+<p>Engineering velocity requires immediate feedback. Structure your pipeline sequentially to run the fastest checks first.</p>
+<ul>
+<li><strong>0-1 Min:</strong> Code Linting, Secret Scanning (Trivy), Unit Tests</li>
+<li><strong>1-5 Mins:</strong> Integration Tests, SAST (SonarQube)</li>
+<li><strong>10+ Mins:</strong> Heavy End-to-End browser tests (Playwright)</li>
+</ul>
+<p>If there is a syntax error or a leaked AWS key, the pipeline should reject the commit in 15 seconds, not 45 minutes.</p>
+
+<h2>4. Never Hardcode Secrets in Pipelines</h2>
+<p>Modern CI/CD environments are highly targeted by attackers. Hardcoding database passwords or AWS keys into your <code>.gitlab-ci.yml</code> or GitHub Actions workflows is a fatal error.</p>
+<p>Instead, strictly utilize <strong>OIDC (OpenID Connect)</strong> to assume short-lived cloud roles, or fetch temporary credentials dynamically from an encrypted vault like AWS Secrets Manager or HashiCorp Vault during runtime.</p>
+
+<pre><code class="language-yaml"># Example: Using OIDC strictly instead of static AWS Access Keys
+steps:
+  - name: Configure AWS Credentials using OIDC
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::1234567890:role/GitHubActionsRole
+      aws-region: us-east-1
+</code></pre>
+
+<h2>5. Treat Infrastructure as Code (IaC)</h2>
+<p>Your pipeline itself, as well as the environments it provisions, should be stored alongside the application source code. Whether using Terraform or AWS CDK, your CI/CD agent must execute the infrastructure changes autonomously.</p>
+<p>No human should be clicking buttons in the AWS Console to deploy an app. It must be reproducible, version-controlled, and transparent.</p>
+
+<hr />
+<p><strong>Ready to transform your cloud engineering workflows?</strong> At VAREX, we architect customized, threat-resilient CI/CD pipelines for enterprise ecosystems. <a href="/contact">Connect with us</a> to schedule a technical architecture review.</p>
+`,
+  category: "devops",
+  access_level: "free",
+  is_published: true,
+  author_id: "founder-1",
+  created_at: new Date().toISOString()
+};
+
 export async function listFreeContent(): Promise<ContentItem[]> {
-  const res = await api.get<ContentItem[]>("/content/free");
-  return res.data;
+  try {
+    // 1. Try to fetch from Native Local Markdown system (Option 2)
+    let localPosts: ContentItem[] = [];
+    try {
+      const localRes = await fetch("/api/content/local");
+      if (localRes.ok) {
+        localPosts = await localRes.json();
+      }
+    } catch (e) {
+      console.warn("Could not fetch local markdown posts");
+    }
+
+    // 2. Try to fetch from Backend Database system (Option 1)
+    let backendPosts: ContentItem[] = [];
+    try {
+      const dbRes = await api.get<ContentItem[]>("/content/free");
+      backendPosts = dbRes.data;
+    } catch (error) {
+      console.warn("Backend Postgres fetch failed. Disabling Option 1 DB posts.");
+    }
+
+    // Combine both arrays uniquely
+    const combined = [...localPosts, ...backendPosts];
+    
+    // Sort combined by created date descending
+    return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+  } catch (error) {
+    console.error("Critical failure resolving Free Content.", error);
+    return [];
+  }
 }
 
 export async function listPremiumContent(): Promise<ContentItem[]> {
@@ -86,6 +170,19 @@ export async function listPremiumContent(): Promise<ContentItem[]> {
 }
 
 export async function getContentBySlug(slug: string): Promise<ContentItem> {
+  // Try retrieving locally first
+  try {
+    const localRes = await fetch("/api/content/local");
+    if (localRes.ok) {
+      const localPosts: ContentItem[] = await localRes.json();
+      const match = localPosts.find(p => p.slug === slug || p.id === slug);
+      if (match) return match;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Fallback to database
   const res = await api.get<ContentItem>(`/content/${slug}`);
   return res.data;
 }
