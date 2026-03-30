@@ -141,7 +141,7 @@ export default function InterviewRoom() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0B1120] text-slate-300 flex flex-col font-sans overflow-hidden">
+    <div className="relative w-full h-[85vh] rounded-3xl border border-slate-800 bg-[#0B1120] text-slate-300 flex flex-col font-sans overflow-hidden shadow-2xl mt-4">
       
       {/* ── TOP BAR (Header) ──────────────────────────────────────────────── */}
       <header className="h-14 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between px-6 shrink-0 z-10">
