@@ -130,51 +130,33 @@ export default function HomePage() {
             </p>
           </AnimateIn>
 
-          <div className="grid lg:grid-cols-2 gap-5">
-            {/* Left: Image */}
-            <AnimateIn direction="left" className="hidden lg:block">
-              <div className="relative w-full aspect-[2/3] max-h-[760px] lg:self-start rounded-2xl overflow-hidden border border-slate-800 bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,0.18),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.14),transparent_40%),#020617]">
-                <Image
-                  src="/devops.png"
-                  alt="VAREX DevOps Services Overview"
-                  width={1024}
-                  height={1536}
-                  className="w-full h-full object-contain object-center"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-950/20 to-transparent pointer-events-none" />
-                <div className="absolute inset-0 ring-1 ring-sky-500/10 rounded-2xl pointer-events-none" />
-              </div>
-            </AnimateIn>
-
-            {/* Right: Service cards */}
-            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" staggerDelay={0.08}>
-              {[
-                { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipeline Setup", desc: "Automated code build, testing, and deployment pipelines using Jenkins and GitHub Actions.", href: "/services/ci-cd-pipeline-setup", color: "blue" },
-                { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure Setup & Automation", desc: "Secure, scalable AWS, Azure, and GCP infrastructure provisioning with IaC.", href: "/services/cloud-infrastructure-automation", color: "sky" },
-                { icon: <Server className="w-5 h-5" />, title: "Containerization & Orchestration", desc: "Docker and Kubernetes setup for scalable, containerized application deployments.", href: "/services/containerization-orchestration", color: "indigo" },
-                { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring & Logging Solutions", desc: "Real-time monitoring and log management with Prometheus, Grafana, and Loki.", href: "/services/monitoring-logging-solutions", color: "teal" },
-                { icon: <Shield className="w-5 h-5" />, title: "DevSecOps Implementation", desc: "Security scanning and compliance integration embedded directly into CI/CD pipelines.", href: "/services/devsecops-implementation", color: "emerald" },
-                { icon: <Database className="w-5 h-5" />, title: "Capacity Planning & Optimization", desc: "Performance and cost optimization for cloud, Kubernetes, and on-prem infrastructure.", href: "/services/capacity-planning-optimization", color: "violet" },
-                { icon: <BarChart3 className="w-5 h-5" />, title: "FinOps & Cost Governance", desc: "Cloud cost visibility, budgeting controls, and spend optimization aligned to engineering velocity.", href: "/services/finops-cost-governance", color: "sky" },
-                { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
-                // { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
-                // { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
-              ].map((s) => (
-                <StaggerItem key={s.title}>
-                  <Link href={s.href} className="motion-card group block h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-3.5 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-sky-900/10">
-                    <div className={`w-8 h-8 rounded-md flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
-                      {s.icon}
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-200 mb-1 group-hover:text-white transition-colors">{s.title}</h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2">{s.desc}</p>
-                    <span className="inline-flex items-center text-[11px] font-semibold text-sky-400 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      Learn more <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </Link>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" staggerDelay={0.08}>
+            {[
+              { icon: <Blocks className="w-5 h-5" />, title: "CI/CD Pipeline Setup", desc: "Automated code build, testing, and deployment pipelines using Jenkins and GitHub Actions.", href: "/services/ci-cd-pipeline-setup", color: "blue" },
+              { icon: <Cloud className="w-5 h-5" />, title: "Cloud Infrastructure Setup", desc: "Secure, scalable AWS, Azure, and GCP infrastructure provisioning with IaC.", href: "/services/cloud-infrastructure-automation", color: "sky" },
+              { icon: <Server className="w-5 h-5" />, title: "Container Orchestration", desc: "Docker and Kubernetes setup for scalable, containerized application deployments.", href: "/services/containerization-orchestration", color: "indigo" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "Monitoring Solutions", desc: "Real-time monitoring and log management with Prometheus, Grafana, and Loki.", href: "/services/monitoring-logging-solutions", color: "teal" },
+              { icon: <Shield className="w-5 h-5" />, title: "DevSecOps Implementation", desc: "Security scanning and compliance integration embedded directly into CI/CD pipelines.", href: "/services/devsecops-implementation", color: "emerald" },
+              { icon: <Database className="w-5 h-5" />, title: "Capacity Planning", desc: "Performance and cost optimization for cloud, Kubernetes, and on-prem infrastructure.", href: "/services/capacity-planning-optimization", color: "violet" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "FinOps & Cost Governance", desc: "Cloud cost visibility, budgeting controls, and spend optimization.", href: "/services/finops-cost-governance", color: "sky" },
+              { icon: <Shield className="w-5 h-5" />, title: "Cybersecurity", desc: "Continuous threat modeling, penetration testing, and compliance frameworks.", href: "/services/cybersecurity", color: "indigo" },
+              { icon: <Database className="w-5 h-5" />, title: "SAP Solutions", desc: "SAP consulting, implementation support, and integration aligned to enterprise workflows.", href: "/services/sap-solutions", color: "blue" },
+              { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
+            ].map((s) => (
+              <StaggerItem key={s.title}>
+                <Link href={s.href} className="motion-card group flex flex-col h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-sky-900/10">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
+                    {s.icon}
+                  </div>
+                  <h4 className="text-[15px] font-bold text-slate-200 mb-2 group-hover:text-white transition-colors">{s.title}</h4>
+                  <p className="text-[13px] text-slate-400 leading-relaxed mb-4 flex-grow">{s.desc}</p>
+                  <span className="inline-flex items-center text-xs font-semibold text-sky-400 opacity-60 group-hover:opacity-100 transition-all duration-300 mt-auto">
+                    Learn more <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
         </div>
       </section>
 
@@ -221,11 +203,11 @@ export default function HomePage() {
             <AnimateIn delay={0.5}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-8 pt-4 border-t border-slate-800/50">
                 <Link href="/about" className="group flex items-center gap-4 p-2 pr-5 rounded-full border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-sky-500/30 transition-all shadow-lg hover:shadow-sky-900/20">
-                  <Image 
-                    src="/founder.jpg" 
-                    width={48} height={48} 
-                    className="rounded-full object-cover border-2 border-slate-700 group-hover:border-sky-500/50 transition-colors h-12 w-12" 
-                    alt="Sai Charitha Chinthakunta" 
+                  <Image
+                    src="/founder.jpg"
+                    width={48} height={48}
+                    className="rounded-full object-cover border-2 border-slate-700 group-hover:border-sky-500/50 transition-colors h-12 w-12"
+                    alt="Sai Charitha Chinthakunta"
                   />
                   <div>
                     <p className="text-sm font-bold text-white group-hover:text-sky-100 transition-colors">Sai Charitha Chinthakunta</p>
