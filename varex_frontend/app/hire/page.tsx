@@ -24,9 +24,13 @@ export default function HirePage() {
             className="w-full sm:w-auto rounded-xl bg-cyan-500 hover:bg-cyan-400 px-8 py-3.5 text-sm font-bold text-white shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all">
             Deploy Enterprise Pipeline
           </Link>
+          <Link href="/interview-room"
+            className="w-full sm:w-auto rounded-xl border border-rose-500/50 bg-rose-500/10 hover:bg-rose-500/20 px-8 py-3.5 text-sm font-bold text-rose-300 hover:text-white transition-all shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+            Live Room Demo
+          </Link>
           <Link href="/ai-interview"
             className="w-full sm:w-auto rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:border-cyan-500 px-8 py-3.5 text-sm font-bold text-slate-300 hover:text-white transition-all">
-            Take a Mock Interview
+            Take mock interview
           </Link>
         </div>
       </header>
