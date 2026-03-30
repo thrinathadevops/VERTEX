@@ -13,7 +13,6 @@ const NAV_LINKS = [
   { href: "/", label: "HOME", icon: Home },
   { href: "/services", label: "SERVICES", icon: Briefcase },
   { href: "/hire", label: "HIRE", icon: Award },
-  { href: "/ai-interview", label: "AI INTERVIEW", icon: Bot },
   { href: "/calculator", label: "CALCULATOR", icon: Calculator },
   { href: "/portfolio", label: "PORTFOLIO", icon: Portfolio },
   { href: "/blog", label: "BLOG", icon: FileText },
