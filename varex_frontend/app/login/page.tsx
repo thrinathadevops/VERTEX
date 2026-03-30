@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
+import { Lock } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,8 +31,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-      <h1 className="mb-2 text-2xl font-semibold">Welcome back</h1>
+    <div className="relative mx-auto max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
+      <Link 
+        href="/admin" 
+        className="absolute top-6 right-6 inline-flex items-center gap-1.5 rounded-full bg-slate-800/50 px-3 py-1.5 text-[10px] font-semibold tracking-wide text-slate-300 transition-colors hover:bg-sky-500/20 hover:text-sky-300 border border-slate-700/50 hover:border-sky-500/30"
+      >
+        <Lock className="h-3 w-3" />
+        ADMIN LOGIN
+      </Link>
+      
+      <h1 className="mb-2 text-2xl font-semibold mt-6 pr-24 leading-tight">Welcome back</h1>
       <p className="mb-6 text-sm text-slate-300">
         Sign in to access your dashboard, premium content, and learning paths.
       </p>
