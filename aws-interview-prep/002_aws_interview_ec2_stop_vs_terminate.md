@@ -12,6 +12,35 @@
 
 ---
 
+## 📊 Visual Architecture Flow: Stop vs. Terminate
+
+```mermaid
+stateDiagram-v2
+    [*] --> Running : Launch EC2 Instance
+    
+    %% Stop Flow
+    Running --> Stopped : 🛑 Stop \n (Graceful OS Shutdown)
+    Stopped --> Running : ▶️ Start \n (Restarts on new host)
+    note right of Stopped
+      - EBS Root Volume Preserved
+      - Instance ID Retained
+      - Compute billing stops
+    end note
+    
+    %% Terminate Flow
+    Running --> Terminated : 💥 Terminate \n (Permanent Deletion)
+    Stopped --> Terminated : 💥 Terminate \n (Permanent Deletion)
+    note right of Terminated
+      - Instance ID Deleted Forever
+      - Root EBS Deleted (By default)
+      - Ephemeral Data Lost
+    end note
+    
+    Terminated --> [*]
+```
+
+---
+
 ## 🔍 Detailed Explanation
 
 ### 1. 🛑 Stopping an EC2 Instance
@@ -93,5 +122,5 @@ To stand out in your interview, intentionally mention these advanced edge cases 
 
 ---
 
-## ⭐ Final Interview-Ready Summary
-*"Stopping an EC2 instance preserves the EBS volume and allows you to restart it later, saving on compute costs. In contrast, terminating an instance permanently deletes the server, its Instance ID, and usually its root volume, making it completely unrecoverable."*
+## 🎤 Final Interview-Ready Answer
+*"Stopping an EC2 instance securely preserves the attached EBS volume and uniquely allows you to restart it later seamlessly, fundamentally saving on compute costs during off-hours. In stark contrast, terminating an instance permanently explicitly deletes the server, irretrievably destroying its Instance ID and usually its underlying root volume, functionally making the server completely unrecoverable for production use."*

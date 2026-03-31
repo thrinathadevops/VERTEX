@@ -12,6 +12,36 @@ Amazon CloudWatch can be configured to automatically recover an EC2 instance if 
 
 ---
 
+## 📊 Visual Architecture Flow: EC2 Auto Recovery
+
+```mermaid
+sequenceDiagram
+    participant Hardware as Underlying AWS Hardware
+    participant EC2 as EC2 Instance (i-1234)
+    participant CW as CloudWatch Alarm
+
+    Hardware--xHardware: Hardware Failure (Power/Network)
+    EC2--xEC2: Instance Goes Offline
+    CW->>CW: Monitor: StatusCheckFailed_System = 1
+    
+    rect rgb(139, 0, 0)
+    Note over CW: Evaluation Period Reached (e.g., 2 mins)
+    CW->>EC2: Trigger "Recover" Action
+    end
+    
+    rect rgb(40, 44, 52)
+    Note over EC2: Migrating EC2 to New Healthy Physical Host...
+    EC2-->>EC2: Rebooting on New Host
+    end
+    
+    rect rgb(0, 100, 0)
+    Note right of EC2: IP Address, Instance ID, and EBS Volumes preserved
+    EC2->>EC2: EC2 is Back Online
+    end
+```
+
+---
+
 ## 🔍 Detailed Explanation: The Two Types of Status Checks
 
 Before configuring recovery, you must understand what kind of failures CloudWatch can actually fix:
@@ -22,7 +52,7 @@ Before configuring recovery, you must understand what kind of failures CloudWatc
 | **⚙️ System Status** | AWS Hardware-level | Loss of network connectivity, Loss of system power, Software issues on the physical host | ✅ **Yes!** (CloudWatch Auto Recovery handles this perfectly) |
 
 > [!WARNING]
-> **Important Distinction:** Auto Recovery works **only** for System Status Check failures. If your application crashes or the OS freezes, this alarm will not help you.
+> **Important Distinction:** Auto Recovery works **only** for System Status Check failures. If your application crashes or the OS freezes, this specific alarm action will not help you.
 
 ---
 
@@ -84,6 +114,7 @@ aws cloudwatch put-metric-alarm \
 - ✔️ **Combine with SNS** to ensure operations teams still proactively get a Slack/Email notification when an automated recovery is triggered.
 - ✔️ **Monitor both checks.** Set up alerts for `StatusCheckFailed_Instance` as well, so your engineering team is notified of OS-level failures even if you can't natively auto-recover from them.
 
-> [!IMPORTANT]
-> **Final Interview-Ready Summary:**
-> *"To ensure high availability against hardware failures, we configure a CloudWatch Alarm specifically on the `StatusCheckFailed_System` metric. By attaching the `Recover` action to this alarm, AWS automatically migrates our instance to healthy managed hardware while securely preserving its exact network footprint and volume data, resulting in minimal downtime and zero manual intervention."*
+---
+
+## 🎤 Final Interview-Ready Answer
+*"To ensure high availability against catastrophic underlying hardware failures, we natively configure a CloudWatch Alarm explicitly on the `StatusCheckFailed_System` metric. By exclusively attaching the exact `Recover` action inherently to this architectural alarm, AWS automatically dynamically migrates our critical physical EC2 instance natively to cleanly healthy managed physical hardware while functionally securely preserving its exact static network footprint, permanent Instance ID, and EBS volume data, functionally resulting in minimized downtime and precisely zero manual intervention."*
