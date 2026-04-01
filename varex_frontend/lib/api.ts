@@ -152,8 +152,19 @@ export async function listFreeContent(): Promise<ContentItem[]> {
       console.warn("Backend Postgres fetch failed. Disabling Option 1 DB posts.");
     }
 
-    // Combine both arrays uniquely
-    const combined = [...localPosts, ...backendPosts];
+    // 3. Try to fetch from GitHub Repository
+    let githubPosts: ContentItem[] = [];
+    try {
+      const ghRes = await fetch("/api/content/github");
+      if (ghRes.ok) {
+        githubPosts = await ghRes.json();
+      }
+    } catch (e) {
+      console.warn("Could not fetch GitHub markdown posts");
+    }
+
+    // Combine all three sources uniquely
+    const combined = [...localPosts, ...backendPosts, ...githubPosts];
     
     // Sort combined by created date descending
     return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -176,6 +187,18 @@ export async function getContentBySlug(slug: string): Promise<ContentItem> {
     if (localRes.ok) {
       const localPosts: ContentItem[] = await localRes.json();
       const match = localPosts.find(p => p.slug === slug || p.id === slug);
+      if (match) return match;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Try GitHub content
+  try {
+    const ghRes = await fetch("/api/content/github");
+    if (ghRes.ok) {
+      const ghPosts: ContentItem[] = await ghRes.json();
+      const match = ghPosts.find(p => p.slug === slug || p.id === slug);
       if (match) return match;
     }
   } catch (e) {

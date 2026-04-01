@@ -11,7 +11,7 @@ const CONTENT_DIR = path.join(process.cwd(), "content", "blog");
 
 export async function GET() {
   try {
-    const categories = ["devops", "sap", "security", "architecture", "ai_hiring"];
+    const categories = ["devops", "sap", "security", "architecture", "ai_hiring", "aws_interview"];
     const allPosts: any[] = [];
 
     // Recursively read all folders

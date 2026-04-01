@@ -6,14 +6,15 @@ import Link from "next/link";
 import { listFreeContent, listPremiumContent } from "@/lib/api";
 import { getUserFromCookies } from "@/lib/auth";
 import type { ContentItem } from "@/lib/types";
-import { Bot, Boxes, Calendar, Clock3, Cpu, Shield, Waypoints, Lock } from "lucide-react";
+import { Bot, Boxes, Calendar, Clock3, Cpu, Shield, Waypoints, Lock, BookOpen } from "lucide-react";
 
 const CATEGORIES = [
-  { slug: "devops",       label: "DevOps",        icon: Cpu,      color: "border-sky-700/50 text-sky-300" },
-  { slug: "security",     label: "Cybersecurity", icon: Shield,   color: "border-red-700/50 text-red-300" },
-  { slug: "sap",          label: "SAP SD",        icon: Boxes,    color: "border-amber-700/50 text-amber-300" },
-  { slug: "architecture", label: "Architecture",  icon: Waypoints,color: "border-purple-700/50 text-purple-300" },
-  { slug: "ai_hiring",    label: "AI Hiring",     icon: Bot,      color: "border-emerald-700/50 text-emerald-300" },
+  { slug: "devops",        label: "DevOps",         icon: Cpu,      color: "border-sky-700/50 text-sky-300" },
+  { slug: "security",      label: "Cybersecurity",  icon: Shield,   color: "border-red-700/50 text-red-300" },
+  { slug: "sap",           label: "SAP SD",         icon: Boxes,    color: "border-amber-700/50 text-amber-300" },
+  { slug: "architecture",  label: "Architecture",   icon: Waypoints,color: "border-purple-700/50 text-purple-300" },
+  { slug: "ai_hiring",     label: "AI Hiring",      icon: Bot,      color: "border-emerald-700/50 text-emerald-300" },
+  { slug: "aws_interview", label: "AWS Interview",  icon: BookOpen, color: "border-teal-700/50 text-teal-300" },
 ] as const;
 
 type CategorySlug = typeof CATEGORIES[number]["slug"] | "all";

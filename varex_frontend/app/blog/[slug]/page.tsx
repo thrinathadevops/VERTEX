@@ -36,6 +36,129 @@ export default function BlogPostPage() {
   useEffect(() => {
     if (!post || !bodyRef.current) return;
 
+    /**
+     * Sanitize raw Mermaid graph definitions from the markdown files.
+     * Many GitHub posts use emojis, <br/>, and parentheses inside node
+     * labels without quoting them, which causes Mermaid parse errors.
+     */
+    function sanitizeMermaid(raw: string): string {
+      const lines = raw.split("\n");
+      const result: string[] = [];
+
+      for (const line of lines) {
+        let out = line;
+
+        // Skip style/classDef/click lines — they don't have node labels
+        const trimmed = out.trim();
+        if (
+          trimmed.startsWith("style ") ||
+          trimmed.startsWith("classDef ") ||
+          trimmed.startsWith("click ") ||
+          trimmed.startsWith("%%") ||
+          trimmed === ""
+        ) {
+          result.push(out);
+          continue;
+        }
+
+        // Fix square bracket labels: ID[...content...] → ID["...content..."]
+        // Only if content has special chars and isn't already quoted
+        out = out.replace(
+          /(\w+)\[([^\]"]+)\]/g,
+          (_match, id, content) => {
+            // Check if the content needs quoting (has emojis, <br/>, parens, etc)
+            const needsQuoting =
+              /[^\x20-\x7E]/.test(content) || // non-ASCII (emojis)
+              /<br\s*\/?>/.test(content) ||     // HTML br tags
+              /[(){}]/.test(content);            // parentheses/braces
+            if (needsQuoting) {
+              const cleaned = content
+                .replace(/<br\s*\/?>/gi, "<br/>") // normalize br tags
+                .replace(/[^\x20-\x7E<>/\-:.'&,;!?@#$%^*+=~`|\\]/g, "") // strip emojis
+                .trim();
+              return `${id}["${cleaned}"]`;
+            }
+            return `${id}[${content}]`;
+          }
+        );
+
+        // Fix double-paren labels (circle nodes): ID((content)) → ID(("content"))
+        out = out.replace(
+          /(\w+)\(\(([^)"]+)\)\)/g,
+          (_match, id, content) => {
+            const hasSpecial = /[^\x20-\x7E]/.test(content);
+            if (hasSpecial) {
+              const cleaned = content.replace(/[^\x20-\x7E]/g, "").trim();
+              return `${id}(("${cleaned}"))`;
+            }
+            return `${id}(("${content}"))`;
+          }
+        );
+
+        // Fix cylinder labels: ID[(content)] → ID[("content")]
+        out = out.replace(
+          /(\w+)\[\(([^)"]+)\)\]/g,
+          (_match, id, content) => {
+            const cleaned = content.replace(/[^\x20-\x7E]/g, "").trim();
+            return `${id}[("${cleaned}")]`;
+          }
+        );
+
+        // Fix round-paren labels (stadium): ID([content]) → ID(["content"])
+        out = out.replace(
+          /(\w+)\(\[([^\]"]+)\]\)/g,
+          (_match, id, content) => {
+            const cleaned = content.replace(/[^\x20-\x7E]/g, "").trim();
+            return `${id}(["${cleaned}"])`;
+          }
+        );
+
+        // Fix diamond/rhombus labels: ID{content} → ID{"content"}
+        out = out.replace(
+          /(\w+)\{([^}"]+)\}/g,
+          (_match, id, content) => {
+            const hasSpecial =
+              /[^\x20-\x7E]/.test(content) || /<br\s*\/?>/.test(content);
+            if (hasSpecial) {
+              const cleaned = content
+                .replace(/<br\s*\/?>/gi, "<br/>")
+                .replace(/[^\x20-\x7E<>/\-:.'&,;!?@#$%^*+=~`|\\]/g, "")
+                .trim();
+              return `${id}{"${cleaned}"}`;
+            }
+            return _match;
+          }
+        );
+
+        // Fix subgraph names with parentheses: subgraph "Name (stuff)"
+        // Mermaid chokes on parens inside quoted subgraph names sometimes
+        out = out.replace(
+          /^(\s*subgraph\s+)"([^"]+)"/,
+          (_match, prefix, name) => {
+            const cleaned = name.replace(/\(/g, "- ").replace(/\)/g, "");
+            return `${prefix}"${cleaned}"`;
+          }
+        );
+
+        // Fix edge labels with special characters in pipe syntax: |label|
+        out = out.replace(
+          /\|([^|"]+)\|/g,
+          (_match, content) => {
+            const hasSpecial = /[^\x20-\x7E]/.test(content);
+            if (hasSpecial) {
+              const cleaned = content.replace(/[^\x20-\x7E]/g, "").trim();
+              return `|"${cleaned}"|`;
+            }
+            return `|"${content}"|`;
+          }
+        );
+
+        result.push(out);
+      }
+
+      return result.join("\n");
+    }
+
     const renderMermaid = async () => {
       const mermaid = (await import("mermaid")).default;
       mermaid.initialize({
@@ -63,14 +186,16 @@ export default function BlogPostPage() {
 
       for (let i = 0; i < codeBlocks.length; i++) {
         const codeEl = codeBlocks[i] as HTMLElement;
-        const graphDef = codeEl.textContent || "";
+        const rawDef = codeEl.textContent || "";
         const preEl = codeEl.parentElement; // the <pre> wrapper
 
-        if (!preEl || !graphDef.trim()) continue;
+        if (!preEl || !rawDef.trim()) continue;
 
         try {
+          // Sanitize the Mermaid syntax before rendering
+          const graphDef = sanitizeMermaid(rawDef.trim());
           const id = `mermaid-diagram-${i}-${Date.now()}`;
-          const { svg } = await mermaid.render(id, graphDef.trim());
+          const { svg } = await mermaid.render(id, graphDef);
 
           // Create a styled wrapper and replace the <pre> block
           const wrapper = document.createElement("div");
@@ -79,6 +204,7 @@ export default function BlogPostPage() {
           preEl.replaceWith(wrapper);
         } catch (err) {
           console.warn("Mermaid render failed for block", i, err);
+          // Keep the raw code block visible as fallback
         }
       }
     };

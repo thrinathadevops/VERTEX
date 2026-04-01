@@ -855,3 +855,39 @@ varex/
 ---
 
 *Built by VAREX Technologies · Bengaluru, India · varextech.in*
+
+
+GitHub-Based Blog Content Integration — Walkthrough
+What Was Built
+The VAREX blog now dynamically fetches 161 AWS Interview Prep markdown posts from the GitHub repository at https://github.com/thrinathadevops/VERTEX/tree/main/aws-interview-prep.
+
+Architecture
+/api/content/github
+List files
+Fetch raw .md
+5-min cache
+ContentItem[]
+Browser
+GitHub API Route
+GitHub Contents API
+raw.githubusercontent.com
+In-Memory Cache
+The frontend fetches from 3 content sources in parallel:
+
+Local Markdown (/api/content/local) — files in content/blog/
+Backend Database (/api/v1/content/free) — PostgreSQL via FastAPI
+GitHub Repository (/api/content/github) — NEW ← fetches from GitHub
+Files Changed
+File	Action	Purpose
+route.ts
+NEW	GitHub content API with caching
+aws_interview/page.tsx
+NEW	AWS Interview category page
+api.ts
+Modified	Added GitHub as 3rd content source
+blog/page.tsx
+Modified	Added AWS Interview category
+local/route.ts
+Modified	Added aws_interview category
+.env.local.example
+Modified	Added GitHub config vars
