@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getContentBySlug } from "@/lib/api";
@@ -13,6 +13,7 @@ export default function BlogPostPage() {
   const [post, setPost] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -30,6 +31,62 @@ export default function BlogPostPage() {
       })
       .finally(() => setLoading(false));
   }, [slug]);
+
+  // ── Mermaid diagram rendering ────────────────────────────────
+  useEffect(() => {
+    if (!post || !bodyRef.current) return;
+
+    const renderMermaid = async () => {
+      const mermaid = (await import("mermaid")).default;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "dark",
+        themeVariables: {
+          darkMode: true,
+          background: "#0f172a",
+          primaryColor: "#38bdf8",
+          primaryTextColor: "#f1f5f9",
+          primaryBorderColor: "#475569",
+          lineColor: "#64748b",
+          secondaryColor: "#1e293b",
+          tertiaryColor: "#1e293b",
+        },
+        flowchart: { curve: "basis", htmlLabels: true },
+        securityLevel: "loose",
+      });
+
+      const el = bodyRef.current;
+      if (!el) return;
+
+      // Find all mermaid code blocks (marked wraps them in <pre><code class="language-mermaid">)
+      const codeBlocks = el.querySelectorAll("code.language-mermaid");
+
+      for (let i = 0; i < codeBlocks.length; i++) {
+        const codeEl = codeBlocks[i] as HTMLElement;
+        const graphDef = codeEl.textContent || "";
+        const preEl = codeEl.parentElement; // the <pre> wrapper
+
+        if (!preEl || !graphDef.trim()) continue;
+
+        try {
+          const id = `mermaid-diagram-${i}-${Date.now()}`;
+          const { svg } = await mermaid.render(id, graphDef.trim());
+
+          // Create a styled wrapper and replace the <pre> block
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-wrapper my-6 flex justify-center overflow-x-auto rounded-lg border border-slate-700 bg-slate-900/60 p-4";
+          wrapper.innerHTML = svg;
+          preEl.replaceWith(wrapper);
+        } catch (err) {
+          console.warn("Mermaid render failed for block", i, err);
+        }
+      }
+    };
+
+    // Small delay to ensure the DOM has been painted
+    const timer = setTimeout(renderMermaid, 100);
+    return () => clearTimeout(timer);
+  }, [post]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[40vh]">
@@ -111,6 +168,7 @@ export default function BlogPostPage() {
 
       {/* ── Body ────────────────────────────────────────────────── */}
       <section
+        ref={bodyRef}
         className="prose prose-invert prose-sm max-w-none
           prose-headings:font-semibold prose-headings:text-slate-100
           prose-p:text-slate-300 prose-p:leading-relaxed
