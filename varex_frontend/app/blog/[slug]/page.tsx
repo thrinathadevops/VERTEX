@@ -260,11 +260,13 @@ export default function BlogPostPage() {
     security: "bg-red-500/20 text-red-300",
     sap: "bg-amber-500/20 text-amber-300",
     architecture: "bg-purple-500/20 text-purple-300",
+    aws_interview: "bg-teal-500/20 text-teal-300",
+    ai_hiring: "bg-emerald-500/20 text-emerald-300",
   };
   const category = (post as any).category ?? "devops";
 
   return (
-    <article className="max-w-2xl mx-auto space-y-6">
+    <article className="max-w-5xl mx-auto space-y-6">
       {/* ── Breadcrumb ──────────────────────────────────────────── */}
       <nav className="flex items-center gap-1 text-[11px] text-slate-400">
         <Link href="/blog" className="hover:text-sky-300">Blog</Link>
