@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Bot, Building2, Check, CircleHelp, Mic, MicOff, Volume2, VolumeX, Target, Zap } from "lucide-react";
 
 /* ─── Types ───────────────────────────────────────────────── */
@@ -8,6 +9,7 @@ type InterviewMode = "mock_free" | "mock_paid" | "real";
 
 type SessionPayload = {
   id: string;
+  session_token: string;
   status: string;
   interview_mode: string;
   package_interviews: number;
@@ -51,14 +53,6 @@ type ReportPayload = {
   } | null;
 };
 
-type Eligibility = {
-  eligible: boolean;
-  free_mock_used: boolean;
-  mock_count: number;
-  real_count: number;
-  next_mock_charge_rupees: number;
-};
-
 /* ─── Role Options ────────────────────────────────────────── */
 const ROLE_OPTIONS = [
   "DevOps Engineer",
@@ -87,6 +81,7 @@ function recommendBadge(r: string) {
 
 /* ════════════════════════════════════════════════════════════ */
 export default function HomePage() {
+  const searchParams = useSearchParams();
   // ── State
   const [step, setStep] = useState<"landing" | "form" | "intro" | "interview" | "report">("landing");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -107,8 +102,8 @@ export default function HomePage() {
   const [lastAnswer, setLastAnswer] = useState<AnswerPayload | null>(null);
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [error, setError] = useState("");
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [eligibility, setEligibility] = useState<Eligibility | null>(null);
 
   // ── Voice state ─────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(true);
@@ -128,6 +123,19 @@ export default function HomePage() {
     [session, currentQuestion, answer, loading]
   );
 
+  const resolvedInterviewMode = mode === "real" ? "enterprise" : mode;
+
+  const sessionHeaders = useMemo<Record<string, string>>(
+    () => {
+      const headers: Record<string, string> = {};
+      if (session) {
+        headers["X-Interview-Token"] = session.session_token;
+      }
+      return headers;
+    },
+    [session]
+  );
+
   // ── Detect Web Speech API support ──────────────────────
   useEffect(() => {
     setSpeechSupported(typeof window !== "undefined" && "speechSynthesis" in window);
@@ -141,6 +149,33 @@ export default function HomePage() {
       window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     }
   }, []);
+
+  useEffect(() => {
+    const verifyToken = searchParams.get("verify_token");
+    if (!verifyToken) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/v1/auth/verify-email?token=${encodeURIComponent(verifyToken)}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok) {
+          setVerificationMessage("Email verified successfully. You can continue with additional mock interviews.");
+        } else {
+          setVerificationMessage(data.message || "Verification link is invalid or expired.");
+        }
+      } catch {
+        if (!cancelled) {
+          setVerificationMessage("Unable to verify your email right now. Please try again.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   // ── Find best female English voice ─────────────────────
   const pickFemaleVoice = useCallback(() => {
@@ -347,25 +382,6 @@ export default function HomePage() {
   const realBaseTotal = realInterviewCount * 500;
   const realFinalPayable = Math.floor(realBaseTotal * (100 - realDiscount) / 100);
 
-  /* ── Eligibility check when email changes ─────────────── */
-  useEffect(() => {
-    if (!candidateEmail || !candidateEmail.includes("@")) return;
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/v1/interview/eligibility?email=${encodeURIComponent(candidateEmail)}`);
-        if (res.ok) setEligibility(await res.json());
-      } catch { /* ignore */ }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [candidateEmail]);
-
-  /* ── Auto-select mode based on eligibility ────────────── */
-  useEffect(() => {
-    if (eligibility?.free_mock_used && mode === "mock_free") {
-      setMode("mock_paid");
-    }
-  }, [eligibility, mode]);
-
   /* ── Start session ────────────────────────────────────── */
   async function startSession(e: FormEvent) {
     e.preventDefault();
@@ -379,7 +395,7 @@ export default function HomePage() {
           candidate_name: candidateName,
           candidate_email: candidateEmail,
           target_role: targetRole,
-          interview_mode: mode,
+          interview_mode: resolvedInterviewMode,
           company_name: mode === "real" ? companyName : undefined,
           company_interview_code: mode === "real" ? companyInterviewCode : undefined,
           package_interviews: mode === "real" ? realInterviewCount : 1,
@@ -414,6 +430,7 @@ export default function HomePage() {
       formData.append("file", resumeFile);
       const res = await fetch(`/api/v1/interview/session/${session.id}/upload-resume`, {
         method: "POST",
+        headers: sessionHeaders,
         body: formData,
       });
       if (!res.ok) {
@@ -424,7 +441,10 @@ export default function HomePage() {
       setResumeParsedSkills(data.skills || []);
 
       // Regenerate introduction with resume context
-      const introRes = await fetch(`/api/v1/interview/session/${session.id}/regenerate-intro`, { method: "POST" });
+      const introRes = await fetch(`/api/v1/interview/session/${session.id}/regenerate-intro`, {
+        method: "POST",
+        headers: sessionHeaders,
+      });
       if (introRes.ok) {
         const introData = await introRes.json();
         setSession(prev => prev ? {
@@ -473,7 +493,7 @@ export default function HomePage() {
       }
       const res = await fetch(`/api/v1/interview/session/${session.id}/answer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...sessionHeaders },
         body: JSON.stringify({ answer: submitAnswer }),
       });
       if (!res.ok) throw new Error("Failed to submit answer.");
@@ -485,7 +505,9 @@ export default function HomePage() {
       setTotalQuestions(data.total_questions);
 
       if (data.status === "completed") {
-        const rr = await fetch(`/api/v1/interview/session/${session.id}/report`);
+        const rr = await fetch(`/api/v1/interview/session/${session.id}/report`, {
+          headers: sessionHeaders,
+        });
         if (rr.ok) setReport(await rr.json());
         const endMsg = data.feedback
           ? `${data.feedback}. That completes your interview. Let me generate your report.`
@@ -529,6 +551,7 @@ export default function HomePage() {
     setLastAnswer(null);
     setReport(null);
     setError("");
+    setVerificationMessage(null);
     setTurnNumber(1);
     setResumeFile(null);
     setResumeParsedSkills([]);
@@ -538,7 +561,6 @@ export default function HomePage() {
   /*  LANDING – Mode Selection                              */
   /* ════════════════════════════════════════════════════════ */
   if (step === "landing") {
-    const nextMockPrice = eligibility?.next_mock_charge_rupees ?? 0;
     return (
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 20px" }}>
         {/* Hero */}
@@ -584,18 +606,34 @@ export default function HomePage() {
           Pricing: <strong>1st mock interview is complimentary</strong>. Additional practice sessions are <strong>₹50 each</strong>. Enterprise Assessment packages start at <strong>₹500/interview</strong> with volume discounts up to 50%.
           {candidateEmail && (
             <span style={{ display: "block", marginTop: 6, color: "#93c5fd" }}>
-              Current email next mock charge: {nextMockPrice === 0 ? "FREE" : `₹${nextMockPrice}`}
+              First mock is open. To continue with another personal mock, that email must be verified.
             </span>
           )}
         </div>
+
+        {verificationMessage && (
+          <div className="animate-fadeInUp delay-150" style={{
+            margin: "0 auto 24px",
+            maxWidth: 740,
+            padding: "12px 16px",
+            borderRadius: 12,
+            border: "1px solid rgba(16,185,129,0.28)",
+            background: "rgba(16,185,129,0.08)",
+            color: "#bbf7d0",
+            fontSize: 13,
+            textAlign: "center",
+          }}>
+            {verificationMessage}
+          </div>
+        )}
 
         {/* Mode Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginBottom: 48 }}>
           {/* Free Mock */}
           <ModeCard
             active={mode === "mock_free"}
-            disabled={eligibility?.free_mock_used ?? false}
-            onClick={() => !eligibility?.free_mock_used && setMode("mock_free")}
+            disabled={false}
+            onClick={() => setMode("mock_free")}
             gradient="linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03))"
             borderColor="rgba(16,185,129,0.3)"
             icon={<Target size={24} color="#ffffff" aria-hidden="true" />}
@@ -603,11 +641,11 @@ export default function HomePage() {
             title="Practice Interview"
             subtitle="Complimentary first assessment"
             description="Get a feel for our AI evaluation engine with a free practice session. Answer 5 industry-standard DevOps & Cloud questions and receive instant scoring with actionable feedback."
-            price={eligibility?.free_mock_used ? "Locked" : "FREE"}
+            price="FREE"
             priceSubtext="One-time per email"
             features={["5 curated DevOps questions", "Instant AI scoring & feedback", "Performance report card"]}
-            badge={eligibility?.free_mock_used ? "USED" : "RECOMMENDED"}
-            badgeColor={eligibility?.free_mock_used ? "#ef4444" : "#10b981"}
+            badge="RECOMMENDED"
+            badgeColor="#10b981"
           />
 
           {/* Paid Mock */}
@@ -622,7 +660,7 @@ export default function HomePage() {
             title="Pro Practice Session"
             subtitle="Sharpen your skills, unlimited retakes"
             description="Take unlimited practice interviews to refine your answers and benchmark your growth. Each session evaluates your technical depth across real-world production scenarios with detailed feedback."
-            price={eligibility?.free_mock_used ? "₹50" : "₹50 (2nd+)"}
+            price="₹50"
             priceSubtext="Per session"
             features={["5 expert-level questions", "Detailed scoring breakdown", "Unlimited retakes", "Track improvement over sessions"]}
             badge="POPULAR"
@@ -707,13 +745,12 @@ export default function HomePage() {
             <InputField label="Full Name" value={candidateName} onChange={setCandidateName} placeholder="John Doe" required />
             <InputField label="Email Address" type="email" value={candidateEmail} onChange={setCandidateEmail} placeholder="john@company.com" required />
 
-            {/* Eligibility notice */}
-            {eligibility?.free_mock_used && mode === "mock_free" && (
+            {mode !== "real" && (
               <div style={{
                 padding: "10px 14px", borderRadius: 10, fontSize: 13,
-                background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#fbbf24",
+                background: "rgba(14,165,233,0.08)", border: "1px solid rgba(14,165,233,0.22)", color: "#bae6fd",
               }}>
-                Free mock already used for this email. Switch to <strong>Paid Mock (₹50)</strong>.
+                First personal mock works without verification. If you continue with another personal interview later, we will send a verification link to this email.
               </div>
             )}
 
@@ -1019,7 +1056,7 @@ export default function HomePage() {
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>VAREX AI Interview</span>
             <span style={{ fontSize: 11, color: "#64748b" }}>
-              • {session?.interview_mode === "real" ? "Enterprise" : "Practice"}
+              • {session?.interview_mode === "enterprise" ? "Enterprise" : "Practice"}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1240,7 +1277,7 @@ export default function HomePage() {
 
           <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Interview Complete</h2>
           <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 24 }}>
-            {report.interview_mode === "real" ? "Enterprise Assessment" : "Practice Session"} • {report.answered_turns}/{report.total_questions} questions answered
+            {report.interview_mode === "enterprise" ? "Enterprise Assessment" : "Practice Session"} • {report.answered_turns}/{report.total_questions} questions answered
           </p>
 
           {/* Recommendation Badge */}
@@ -1262,7 +1299,7 @@ export default function HomePage() {
           }}>
             <StatBox label="Questions" value={`${report.answered_turns}/${report.total_questions}`} />
             <StatBox label="Avg Score" value={`${report.average_score}/10`} />
-            <StatBox label="Mode" value={report.interview_mode === "real" ? "Enterprise" : "Practice"} />
+            <StatBox label="Mode" value={report.interview_mode === "enterprise" ? "Enterprise" : "Practice"} />
           </div>
 
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 24 }}>

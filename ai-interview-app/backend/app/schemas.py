@@ -19,13 +19,12 @@ class UserRegister(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=2, max_length=150)
     password: str = Field(min_length=8, max_length=128)
-    role: str = Field(default="candidate", pattern="^(candidate|enterprise_admin|super_admin)$")
     company_name: str | None = Field(default=None, max_length=180)
     company_code: str | None = Field(default=None, max_length=80)
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username_or_email: str = Field(min_length=1, max_length=255)
     password: str
 
 
@@ -35,6 +34,7 @@ class TokenResponse(BaseModel):
     user_id: str
     role: str
     full_name: str
+    must_change_password: bool = False
 
 
 class UserProfile(BaseModel):
@@ -71,6 +71,7 @@ class SessionCreate(BaseModel):
 
 class SessionResponse(BaseModel):
     id: str
+    session_token: str
     status: str
     interview_mode: str
     difficulty_level: str
@@ -152,6 +153,16 @@ class EligibilityResponse(BaseModel):
     mock_count: int
     enterprise_count: int
     next_mock_charge_rupees: int
+
+
+class VerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
 
 
 class PricingRequest(BaseModel):

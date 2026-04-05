@@ -5,6 +5,7 @@ Token creation, verification, and password hashing.
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -29,6 +30,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_interview_token(session_id: str, candidate_email: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.INTERVIEW_TOKEN_EXPIRE_MINUTES)
+    payload: dict[str, Any] = {
+        "sub": session_id,
+        "email": candidate_email,
+        "type": "interview",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict | None:

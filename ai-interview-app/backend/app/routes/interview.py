@@ -15,19 +15,19 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..ai import engine as ai_engine
 from ..ai.resume_parser import extract_text, parse_resume_with_llm
+from ..auth.jwt_handler import create_interview_token, decode_access_token
 from ..auth.deps import get_optional_user
 from ..config import settings
 from ..database import get_db
-from ..models import AntiCheatEvent, InterviewSession, InterviewTurn, User
+from ..models import InterviewSession, InterviewTurn, User
 from ..schemas import (
     AntiCheatEventCreate,
-    AntiCheatSummary,
     AnswerResponse,
     AnswerSubmit,
     EligibilityResponse,
@@ -38,6 +38,12 @@ from ..schemas import (
     ScoreBreakdown,
     SessionCreate,
     SessionResponse,
+)
+from ..services.email_verification import (
+    is_email_verified,
+    issue_verification_token,
+    normalize_email,
+    send_verification_email,
 )
 from ..services.anti_cheat import (
     BROWSER_EVENT_TYPES,
@@ -68,6 +74,19 @@ def _require_proctor_secret(
         return
     if x_proctor_secret != settings.PROCTOR_SHARED_SECRET:
         raise HTTPException(status_code=401, detail="Invalid proctor credentials.")
+
+
+def _require_interview_token(
+    session_id: str,
+    x_interview_token: str | None = Header(default=None, alias="X-Interview-Token"),
+) -> dict:
+    if not x_interview_token:
+        raise HTTPException(status_code=401, detail="Interview session token is required.")
+
+    payload = decode_access_token(x_interview_token)
+    if not payload or payload.get("type") != "interview" or payload.get("sub") != session_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired interview session token.")
+    return payload
 
 
 def _get_resume_summary(session: InterviewSession) -> str | None:
@@ -142,27 +161,13 @@ def calculate_price(
 
 @router.get("/eligibility", response_model=EligibilityResponse)
 def check_eligibility(email: str, db: Session = Depends(get_db)):
-    """Check if a user is eligible for free mock interview."""
-    mock_count = db.scalar(
-        select(func.count(InterviewSession.id)).where(
-            InterviewSession.candidate_email == email,
-            InterviewSession.interview_mode.in_(["mock_free", "mock_paid"]),
-        )
-    ) or 0
-    enterprise_count = db.scalar(
-        select(func.count(InterviewSession.id)).where(
-            InterviewSession.candidate_email == email,
-            InterviewSession.interview_mode == "enterprise",
-        )
-    ) or 0
-
-    free_mock_used = mock_count > 0
+    """Return a generic eligibility response without exposing candidate history."""
     return EligibilityResponse(
         eligible=True,
-        free_mock_used=free_mock_used,
-        mock_count=int(mock_count),
-        enterprise_count=int(enterprise_count),
-        next_mock_charge_rupees=50 if free_mock_used else 0,
+        free_mock_used=False,
+        mock_count=0,
+        enterprise_count=0,
+        next_mock_charge_rupees=0,
     )
 
 
@@ -174,6 +179,7 @@ def check_eligibility(email: str, db: Session = Depends(get_db)):
 async def upload_resume(
     session_id: str,
     file: UploadFile = File(...),
+    _session_claims: dict = Depends(_require_interview_token),
     db: Session = Depends(get_db),
 ):
     """Upload and parse resume for an interview session."""
@@ -233,12 +239,20 @@ async def upload_resume(
 @router.post("/session", response_model=SessionResponse)
 async def create_session(
     payload: SessionCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ):
     """Create a new interview session with pricing, difficulty, and AI intro."""
     mode = payload.interview_mode
     difficulty = payload.difficulty_level
+    normalized_email = normalize_email(payload.candidate_email)
+    prior_mock_sessions = db.scalar(
+        select(func.count(InterviewSession.id)).where(
+            InterviewSession.candidate_email == normalized_email,
+            InterviewSession.interview_mode.in_(["mock_free", "mock_paid"]),
+        )
+    ) or 0
 
     # ── Enforce free mock limit ───────────────────────────────
     if mode == "mock_free":
@@ -251,7 +265,7 @@ async def create_session(
         # Fallback: check by email
         existing_free = db.scalar(
             select(func.count(InterviewSession.id)).where(
-                InterviewSession.candidate_email == payload.candidate_email,
+                InterviewSession.candidate_email == normalized_email,
                 InterviewSession.interview_mode == "mock_free",
             )
         ) or 0
@@ -260,6 +274,14 @@ async def create_session(
                 status_code=403,
                 detail="Your free Practice Interview has been used. Select Pro Practice (₹50) to continue.",
             )
+
+    if mode != "enterprise" and prior_mock_sessions > 0 and not is_email_verified(db, normalized_email):
+        token = issue_verification_token(db, normalized_email)
+        background_tasks.add_task(send_verification_email, normalized_email, token)
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email to continue. A verification link has been sent if the email can be verified.",
+        )
 
     # ── Enterprise validation ─────────────────────────────────
     if mode == "enterprise":
@@ -288,7 +310,7 @@ async def create_session(
     session = InterviewSession(
         user_id=user.id if user else None,
         candidate_name=payload.candidate_name,
-        candidate_email=payload.candidate_email,
+        candidate_email=normalized_email,
         target_role=payload.target_role,
         company_name=payload.company_name.strip() if payload.company_name else None,
         company_interview_code=payload.company_interview_code.strip() if payload.company_interview_code else None,
@@ -340,9 +362,11 @@ async def create_session(
     session.status = "in_progress"
     session.started_at = datetime.now(timezone.utc)
     db.commit()
+    session_token = create_interview_token(session.id, session.candidate_email)
 
     return SessionResponse(
         id=session.id,
+        session_token=session_token,
         status=session.status,
         interview_mode=mode,
         difficulty_level=difficulty,
@@ -366,7 +390,11 @@ async def create_session(
 # ═══════════════════════════════════════════════════════════════════
 
 @router.post("/session/{session_id}/regenerate-intro")
-async def regenerate_introduction(session_id: str, db: Session = Depends(get_db)):
+async def regenerate_introduction(
+    session_id: str,
+    _session_claims: dict = Depends(_require_interview_token),
+    db: Session = Depends(get_db),
+):
     """Regenerate AI introduction and first question using resume context."""
     session = db.get(InterviewSession, session_id)
     if not session:
@@ -420,6 +448,7 @@ async def submit_answer(
     session_id: str,
     payload: AnswerSubmit,
     background_tasks: BackgroundTasks,
+    _session_claims: dict = Depends(_require_interview_token),
     db: Session = Depends(get_db),
 ):
     """
@@ -570,6 +599,7 @@ async def _run_background_evaluation(**kwargs):
 def record_anti_cheat_event(
     session_id: str,
     payload: AntiCheatEventCreate,
+    _session_claims: dict = Depends(_require_interview_token),
     db: Session = Depends(get_db),
 ):
     """Record an anti-cheat event (tab switch, window blur, etc.)."""
@@ -593,7 +623,11 @@ def record_anti_cheat_event(
 
 
 @router.get("/session/{session_id}/anti-cheat")
-def get_anti_cheat_summary(session_id: str, db: Session = Depends(get_db)):
+def get_anti_cheat_summary(
+    session_id: str,
+    _session_claims: dict = Depends(_require_interview_token),
+    db: Session = Depends(get_db),
+):
     """Get comprehensive anti-cheat summary for a session."""
     result = get_session_anti_cheat_summary(db, session_id)
     if "error" in result:
@@ -630,6 +664,7 @@ def proctor_heartbeat(
 @router.get("/session/{session_id}/proctor-health")
 def proctor_health(
     session_id: str,
+    _session_claims: dict = Depends(_require_interview_token),
     db: Session = Depends(get_db),
 ):
     """
@@ -648,7 +683,11 @@ def proctor_health(
 # ═══════════════════════════════════════════════════════════════════
 
 @router.get("/session/{session_id}/status")
-def get_session_status(session_id: str, db: Session = Depends(get_db)):
+def get_session_status(
+    session_id: str,
+    _session_claims: dict = Depends(_require_interview_token),
+    db: Session = Depends(get_db),
+):
     """Get current session status and evaluation progress."""
     session = db.get(InterviewSession, session_id)
     if not session:
@@ -694,7 +733,11 @@ def get_session_status(session_id: str, db: Session = Depends(get_db)):
 # ═══════════════════════════════════════════════════════════════════
 
 @router.get("/session/{session_id}/report", response_model=ReportResponse)
-async def get_report(session_id: str, db: Session = Depends(get_db)):
+async def get_report(
+    session_id: str,
+    _session_claims: dict = Depends(_require_interview_token),
+    db: Session = Depends(get_db),
+):
     """Get the final interview report. Only available after completion."""
     session = db.get(InterviewSession, session_id)
     if not session:

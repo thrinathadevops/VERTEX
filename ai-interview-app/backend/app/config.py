@@ -5,11 +5,15 @@ class Settings(BaseSettings):
     APP_NAME: str = "VAREX AI Interview Platform"
     DATABASE_URL: str = "postgresql+psycopg2://ai_interview:ai_interview_password@ai_interview_db:5432/ai_interview_db"
     ALLOWED_ORIGINS: str = "http://localhost:3010,http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:3010"
 
     # ─── JWT Authentication ────────────────────────────────────
     SECRET_KEY: str = "change-this-to-a-strong-random-secret-in-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    INTERVIEW_TOKEN_EXPIRE_MINUTES: int = 180
+    SENDGRID_API_KEY: str = ""
+    FROM_EMAIL: str = "noreply@varextech.in"
 
     # ─── AI Provider settings ──────────────────────────────────
     AI_PROVIDER: str = "gemini"  # openai | gemini | ollama

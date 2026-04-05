@@ -76,6 +76,15 @@ class User(Base):
     )
 
 
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    email: Mapped[str] = mapped_column(String(255), primary_key=True)
+    token: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  INTERVIEW SESSION MODEL
 # ═══════════════════════════════════════════════════════════════════
