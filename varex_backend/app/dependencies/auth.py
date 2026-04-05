@@ -5,17 +5,18 @@
 # FIX: JWT blacklist check on every request (Bug 5.1)
 # FIX: Role hierarchy via _require_role factory
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
+from app.models.auth_session import AuthSession
 from app.models.user import User, UserRole
 from app.services.token_blacklist import is_blacklisted
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # ── Role hierarchy — higher index = more permissions ─────────────
 ROLE_HIERARCHY: dict[UserRole, int] = {
@@ -29,7 +30,8 @@ ROLE_HIERARCHY: dict[UserRole, int] = {
 
 # ── Core token → user resolver (single definition) ───────────────
 async def _get_user_from_token(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
@@ -38,7 +40,11 @@ async def _get_user_from_token(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    payload = decode_access_token(token)
+    raw_token = token or request.cookies.get("access_token")
+    if not raw_token:
+        raise credentials_exception
+
+    payload = decode_access_token(raw_token)
     if payload is None:
         raise credentials_exception
 
@@ -55,8 +61,9 @@ async def _get_user_from_token(
     if not user_id:
         raise credentials_exception
 
-    import uuid
     try:
+        import uuid
+
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         raise credentials_exception
@@ -65,6 +72,32 @@ async def _get_user_from_token(
     user   = result.scalar_one_or_none()
     if not user:
         raise credentials_exception
+
+    token_session_version = payload.get("sv")
+    if token_session_version is None or int(token_session_version) != user.session_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    session_id = payload.get("sid")
+    if not session_id:
+        raise credentials_exception
+
+    try:
+        session_uuid = uuid.UUID(session_id)
+    except ValueError:
+        raise credentials_exception
+
+    session_result = await db.execute(select(AuthSession).where(AuthSession.id == session_uuid, AuthSession.user_id == user.id))
+    auth_session = session_result.scalar_one_or_none()
+    if not auth_session or auth_session.revoked_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return user
 

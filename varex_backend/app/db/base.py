@@ -5,6 +5,7 @@ from app.db.base_class import Base  # noqa: F401
 
 # Import all models so Alembic can detect them for autogenerate
 from app.models.user         import User          # noqa: F401
+from app.models.auth_session import AuthSession   # noqa: F401
 from app.models.subscription import Subscription  # noqa: F401
 from app.models.content      import Content       # noqa: F401
 from app.models.lead         import ConsultationLead  # noqa: F401

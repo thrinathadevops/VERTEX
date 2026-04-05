@@ -7,15 +7,18 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
 from app.core.logger import structured_logger
 from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.token_blacklist import close_redis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     start_scheduler()    # Start APScheduler on startup
     yield
+    await close_redis()
     stop_scheduler()     # Graceful shutdown
 
 
@@ -26,6 +29,22 @@ app = FastAPI(
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url=None,
 )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault("Cache-Control", "no-store" if request.url.path.startswith("/api/v1/auth") else "public, max-age=0, must-revalidate")
+        if settings.ENVIRONMENT == "production":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ── CORS (must be LAST added so it runs FIRST on requests) ───────
 app.add_middleware(

@@ -2,29 +2,25 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { register } from "@/lib/api";
-import { login } from "@/lib/api";
-import { setTokens } from "@/lib/auth";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
     try {
       await register({ name, email, password });
-      const tokens = await login({ email, password });
-      setTokens(tokens);
-      router.push("/dashboard");
+      setSuccess("Check your email for the verification link before signing in.");
     } catch (err: any) {
       setError(err.message ?? "Unable to register");
     } finally {
@@ -69,6 +65,7 @@ export default function RegisterPage() {
             required
           />
         </div>
+        {success && <p className="text-xs text-emerald-400">{success}</p>}
         {error && <p className="text-xs text-red-400">{error}</p>}
         <button
           type="submit"
@@ -84,6 +81,9 @@ export default function RegisterPage() {
         <Link href="/login" className="text-sky-400 hover:text-sky-300">
           Sign in
         </Link>
+      </p>
+      <p className="mt-2 text-xs text-slate-500">
+        Accounts stay inactive until the email address is verified.
       </p>
     </div>
   );
