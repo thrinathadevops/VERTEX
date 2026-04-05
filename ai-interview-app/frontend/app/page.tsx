@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Activity, AlertTriangle, Bot, Building2, Check, CircleHelp, Eye, Mic, MicOff, ShieldAlert, ShieldCheck, Volume2, VolumeX, Target, Zap } from "lucide-react";
@@ -791,6 +792,30 @@ export default function HomePage() {
     return (
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 20px", position: "relative" }}>
         <div className="orbital-grid" style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+        <div className="animate-fadeInUp" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 18 }}>
+          <Link
+            href="/reviewer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 14px",
+              borderRadius: 999,
+              border: "1px solid rgba(248,113,113,0.26)",
+              background: "rgba(127,29,29,0.16)",
+              color: "#fecaca",
+              fontSize: 12,
+              fontWeight: 800,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              textDecoration: "none",
+              boxShadow: "0 10px 24px rgba(127,29,29,0.16)",
+            }}
+          >
+            <ShieldAlert size={14} />
+            Reviewer Console
+          </Link>
+        </div>
         {/* Hero */}
         <div className="animate-fadeInUp" style={{ textAlign: "center", marginBottom: 56 }}>
           <div style={{
@@ -872,6 +897,24 @@ export default function HomePage() {
             {verificationMessage}
           </div>
         )}
+
+        <div className="animate-fadeInUp delay-150" style={{
+          margin: "0 auto 30px",
+          maxWidth: 740,
+          padding: "12px 16px",
+          borderRadius: 12,
+          border: "1px solid rgba(248,113,113,0.22)",
+          background: "linear-gradient(90deg, rgba(127,29,29,0.18), rgba(30,41,59,0.18))",
+          color: "#fecaca",
+          fontSize: 13,
+          textAlign: "center",
+          lineHeight: 1.6,
+        }}>
+          Interviewers and enterprise reviewers can monitor live anti-cheat telemetry from the{" "}
+          <Link href="/reviewer" style={{ color: "#fda4af", fontWeight: 800, textDecoration: "none" }}>
+            Reviewer Console
+          </Link>.
+        </div>
 
         {/* Mode Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginBottom: 48 }}>
