@@ -18,13 +18,24 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..auth.deps import get_current_user, require_role
+from ..ai import engine as ai_engine
+from ..auth.deps import require_role
 from ..database import get_db
-from ..models import InterviewSession, InterviewTurn, User
-from ..schemas import CandidateRanking, EnterpriseDashboard, ScoreBreakdown
+from ..models import AntiCheatEvent, InterviewSession, InterviewTurn, User
+from ..schemas import (
+    CandidateRanking,
+    EnterpriseDashboard,
+    LiveControlCenterDetail,
+    LiveControlCenterResponse,
+    LiveControlCenterSession,
+    ManualReviewStopRequest,
+    ScoreBreakdown,
+)
+from ..services.anti_cheat import check_proctor_health, get_session_anti_cheat_summary
 from ..services.report_generator import generate_csv_report
 
 router = APIRouter(prefix="/api/v1/enterprise", tags=["Enterprise Dashboard"])
+QUESTION_COUNTS = ai_engine.QUESTION_COUNTS
 
 
 @router.get("/dashboard", response_model=EnterpriseDashboard)
@@ -126,6 +137,81 @@ def get_enterprise_dashboard(
     )
 
 
+@router.get("/live-control-center", response_model=LiveControlCenterResponse)
+def get_live_control_center(
+    user: User = Depends(require_role("enterprise_admin", "super_admin")),
+    db: Session = Depends(get_db),
+):
+    sessions = _get_scoped_enterprise_sessions(db, user)
+    live_sessions = [_build_live_session_card(db, session) for session in sessions if session.status in ("scheduled", "in_progress", "evaluating")]
+    recent_sessions = [_build_live_session_card(db, session) for session in sessions[:12]]
+
+    return LiveControlCenterResponse(
+        company_name=user.company_name if user.role != "super_admin" or user.company_name else None,
+        active_sessions=live_sessions,
+        recent_sessions=recent_sessions,
+    )
+
+
+@router.get("/session/{session_id}/live-control-center", response_model=LiveControlCenterDetail)
+def get_live_control_center_detail(
+    session_id: str,
+    user: User = Depends(require_role("enterprise_admin", "super_admin")),
+    db: Session = Depends(get_db),
+):
+    session = _get_scoped_session(db, user, session_id)
+    summary = get_session_anti_cheat_summary(db, session_id)
+    if "error" in summary:
+        raise HTTPException(status_code=404, detail=summary["error"])
+
+    return LiveControlCenterDetail(
+        session=_build_live_session_card(db, session, summary=summary),
+        event_feed=summary["events"][-30:][::-1],
+    )
+
+
+@router.post("/session/{session_id}/stop")
+def stop_enterprise_session(
+    session_id: str,
+    payload: ManualReviewStopRequest,
+    user: User = Depends(require_role("enterprise_admin", "super_admin")),
+    db: Session = Depends(get_db),
+):
+    session = _get_scoped_session(db, user, session_id)
+
+    if session.status == "completed":
+        return {"message": "Interview already completed.", "status": session.status}
+
+    answered = db.scalar(
+        select(func.count(InterviewTurn.id)).where(
+            InterviewTurn.session_id == session_id,
+            InterviewTurn.answer.is_not(None),
+        )
+    ) or 0
+
+    event = AntiCheatEvent(
+        session_id=session.id,
+        event_type="reviewer_manual_stop",
+        severity="warning",
+        details=(payload.reason or f"Interview manually stopped by reviewer {user.full_name}.")[:500],
+        timestamp=datetime.now(timezone.utc),
+    )
+    db.add(event)
+
+    session.suspicious_activity = True
+    session.status = "evaluating" if answered > 0 else "completed"
+    if session.status == "completed":
+        session.completed_at = datetime.now(timezone.utc)
+
+    db.commit()
+
+    return {
+        "message": "Interview stopped by reviewer.",
+        "status": session.status,
+        "reason": event.details,
+    }
+
+
 @router.get("/report/csv")
 def download_csv_report(
     user: User = Depends(require_role("enterprise_admin", "super_admin")),
@@ -224,3 +310,101 @@ def _compute_skill_gaps(db: Session, session_ids: list[str]) -> dict:
     )
 
     return result
+
+
+def _get_scoped_enterprise_sessions(db: Session, user: User) -> list[InterviewSession]:
+    query = select(InterviewSession).where(InterviewSession.interview_mode == "enterprise")
+    if user.role != "super_admin" or user.company_name:
+        if not user.company_name:
+            raise HTTPException(status_code=400, detail="No company associated with your account.")
+        query = query.where(InterviewSession.company_name == user.company_name)
+
+    return db.scalars(query.order_by(InterviewSession.created_at.desc())).all()
+
+
+def _get_scoped_session(db: Session, user: User, session_id: str) -> InterviewSession:
+    session = db.get(InterviewSession, session_id)
+    if not session or session.interview_mode != "enterprise":
+        raise HTTPException(status_code=404, detail="Enterprise interview session not found.")
+
+    if user.role != "super_admin" or user.company_name:
+        if session.company_name != user.company_name:
+            raise HTTPException(status_code=403, detail="You do not have access to this interview session.")
+
+    return session
+
+
+def _build_live_session_card(
+    db: Session,
+    session: InterviewSession,
+    *,
+    summary: dict | None = None,
+) -> LiveControlCenterSession:
+    if summary is None:
+        summary = get_session_anti_cheat_summary(db, session.id)
+    if "error" in summary:
+        raise HTTPException(status_code=404, detail=summary["error"])
+
+    health = check_proctor_health(db, session.id)
+    if "error" in health:
+        raise HTTPException(status_code=404, detail=health["error"])
+
+    answered = db.scalar(
+        select(func.count(InterviewTurn.id)).where(
+            InterviewTurn.session_id == session.id,
+            InterviewTurn.answer.is_not(None),
+        )
+    ) or 0
+    evaluated = db.scalar(
+        select(func.count(InterviewTurn.id)).where(
+            InterviewTurn.session_id == session.id,
+            InterviewTurn.evaluation_status == "evaluated",
+        )
+    ) or 0
+    current_turn = db.scalar(
+        select(func.max(InterviewTurn.turn_number)).where(
+            InterviewTurn.session_id == session.id,
+        )
+    ) or 0
+
+    reviewer_alert = None
+    if summary.get("risk_level") == "critical":
+        reviewer_alert = "Integrity is critically low. Reviewer attention is required."
+    elif summary.get("suspicious"):
+        reviewer_alert = "Suspicious activity threshold has been crossed."
+    elif health.get("proctor_connected") and not health.get("proctor_alive"):
+        reviewer_alert = "Proctor heartbeat was lost during the interview."
+
+    return LiveControlCenterSession(
+        session_id=session.id,
+        candidate_name=session.candidate_name,
+        candidate_email=session.candidate_email,
+        target_role=session.target_role,
+        company_name=session.company_name,
+        company_interview_code=session.company_interview_code,
+        interview_mode=session.interview_mode,
+        difficulty_level=session.difficulty_level,
+        status=session.status,
+        current_turn=int(current_turn),
+        answered=int(answered),
+        evaluated=int(evaluated),
+        total_questions=QUESTION_COUNTS.get(session.interview_mode, 5),
+        integrity_score=session.integrity_score,
+        integrity_grade=summary.get("integrity_grade", "Unknown"),
+        risk_level=summary.get("risk_level", "watch"),
+        suspicious_activity=session.suspicious_activity,
+        tab_switch_count=session.tab_switch_count,
+        ai_violations_count=session.ai_violations_count,
+        total_events=summary.get("total_events", 0),
+        critical_events=summary.get("critical_events", 0),
+        warning_events=summary.get("warning_events", 0),
+        proctor_connected=health.get("proctor_connected", False),
+        proctor_alive=health.get("proctor_alive", False),
+        proctor_heartbeat_count=health.get("heartbeat_count", 0),
+        last_heartbeat_gap_seconds=health.get("last_heartbeat_gap_seconds"),
+        last_event_type=summary.get("recent_event_type"),
+        last_event_at=datetime.fromisoformat(summary["recent_event_at"]) if summary.get("recent_event_at") else None,
+        reviewer_alert=reviewer_alert,
+        started_at=session.started_at,
+        created_at=session.created_at,
+    )

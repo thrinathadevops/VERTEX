@@ -2,7 +2,7 @@
 
 import { CSSProperties, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Bot, Building2, Check, CircleHelp, Mic, MicOff, Volume2, VolumeX, Target, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Bot, Building2, Check, CircleHelp, Eye, Mic, MicOff, ShieldAlert, ShieldCheck, Volume2, VolumeX, Target, Zap } from "lucide-react";
 
 /* ─── Types ───────────────────────────────────────────────── */
 type InterviewMode = "mock_free" | "mock_paid" | "real";
@@ -51,6 +51,67 @@ type ReportPayload = {
     skill_ratings?: Record<string, number>;
     suggested_next_steps?: string;
   } | null;
+  anti_cheat_summary?: {
+    tab_switches: number;
+    ai_violations: number;
+    integrity_score: number;
+    suspicious: boolean;
+    proctor_was_connected: boolean;
+    proctor_heartbeats: number;
+  } | null;
+};
+
+type SessionStatusPayload = {
+  session_id: string;
+  status: string;
+  total_questions: number;
+  answered: number;
+  evaluated: number;
+  all_evaluated: boolean;
+  timer: {
+    expired: boolean;
+    elapsed_seconds?: number;
+    remaining_seconds?: number;
+  };
+  suspicious_activity: boolean;
+  tab_switch_count: number;
+  ai_violations_count: number;
+  integrity_score: number;
+  proctor_connected: boolean;
+  proctor_heartbeat_count: number;
+};
+
+type AntiCheatSummaryPayload = {
+  session_id: string;
+  tab_switch_count: number;
+  proctor_connected: boolean;
+  proctor_heartbeat_count: number;
+  proctor_environment: Record<string, unknown> | null;
+  ai_violations_count: number;
+  integrity_score: number;
+  integrity_grade: string;
+  risk_level?: string;
+  suspicious: boolean;
+  total_events: number;
+  critical_events: number;
+  warning_events: number;
+  browser_alerts?: number;
+  recent_event_type?: string | null;
+  recent_event_at?: string | null;
+  events: Array<{
+    type: string;
+    severity: string;
+    details: string | null;
+    timestamp: string | null;
+  }>;
+};
+
+type ProctorHealthPayload = {
+  proctor_connected: boolean;
+  proctor_alive: boolean;
+  heartbeat_count: number;
+  last_heartbeat_gap_seconds: number | null;
+  integrity_score: number;
 };
 
 /* ─── Role Options ────────────────────────────────────────── */
@@ -79,6 +140,17 @@ function recommendBadge(r: string) {
   return { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.35)", text: "#f87171" };
 }
 
+function antiCheatTone(score: number, suspicious: boolean) {
+  if (score < 40) return { label: "Critical", color: "#f87171", glow: "rgba(248,113,113,0.25)" };
+  if (suspicious || score < 70) return { label: "Elevated", color: "#fbbf24", glow: "rgba(251,191,36,0.22)" };
+  if (score < 90) return { label: "Watch", color: "#38bdf8", glow: "rgba(56,189,248,0.22)" };
+  return { label: "Clear", color: "#4ade80", glow: "rgba(74,222,128,0.2)" };
+}
+
+function formatAntiCheatEvent(type: string) {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
 /* ════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   const searchParams = useSearchParams();
@@ -104,6 +176,10 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatusPayload | null>(null);
+  const [antiCheatSummary, setAntiCheatSummary] = useState<AntiCheatSummaryPayload | null>(null);
+  const [proctorHealth, setProctorHealth] = useState<ProctorHealthPayload | null>(null);
+  const [localEventFeed, setLocalEventFeed] = useState<Array<{ type: string; details: string; at: number }>>([]);
 
   // ── Voice state ─────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(true);
@@ -117,6 +193,7 @@ export default function HomePage() {
   const answerBufferRef = useRef("");
   const forceSubmitRef = useRef(false);
   const forceAdvanceRef = useRef(false);
+  const antiCheatDedupRef = useRef<Record<string, number>>({});
 
   const canSubmit = useMemo(
     () => !!session && !!currentQuestion && answer.trim().length >= 5 && !loading,
@@ -135,6 +212,47 @@ export default function HomePage() {
     },
     [session]
   );
+
+  const pushLocalEvent = useCallback((type: string, details: string) => {
+    setLocalEventFeed((prev) => [
+      { type, details, at: Date.now() },
+      ...prev,
+    ].slice(0, 8));
+  }, []);
+
+  const postAntiCheatEvent = useCallback(async (
+    eventType: "tab_switch" | "window_blur" | "copy_paste" | "right_click" | "devtools_shortcut" | "print_attempt",
+    details: string,
+  ) => {
+    if (!session) return;
+
+    const dedupKey = `${eventType}:${details}`;
+    const now = Date.now();
+    const lastSent = antiCheatDedupRef.current[dedupKey] ?? 0;
+    if (now - lastSent < 4000) {
+      return;
+    }
+    antiCheatDedupRef.current[dedupKey] = now;
+
+    pushLocalEvent(eventType, details);
+    try {
+      const res = await fetch(`/api/v1/interview/session/${session.id}/anti-cheat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...sessionHeaders,
+        },
+        body: JSON.stringify({
+          event_type: eventType,
+          details,
+        }),
+      });
+      if (!res.ok) return;
+      await res.json();
+    } catch {
+      // Keep interview flow uninterrupted if event logging fails.
+    }
+  }, [pushLocalEvent, session, sessionHeaders]);
 
   // ── Detect Web Speech API support ──────────────────────
   useEffect(() => {
@@ -362,6 +480,107 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion, step]);
 
+  useEffect(() => {
+    if (step !== "interview" || !session) return;
+
+    let cancelled = false;
+
+    const syncAntiCheat = async () => {
+      try {
+        const [statusRes, summaryRes, proctorRes] = await Promise.all([
+          fetch(`/api/v1/interview/session/${session.id}/status`, { headers: sessionHeaders }),
+          fetch(`/api/v1/interview/session/${session.id}/anti-cheat`, { headers: sessionHeaders }),
+          fetch(`/api/v1/interview/session/${session.id}/proctor-health`, { headers: sessionHeaders }),
+        ]);
+
+        if (cancelled) return;
+
+        if (statusRes.ok) {
+          const data: SessionStatusPayload = await statusRes.json();
+          if (!cancelled) setSessionStatus(data);
+        }
+        if (summaryRes.ok) {
+          const data: AntiCheatSummaryPayload = await summaryRes.json();
+          if (!cancelled) setAntiCheatSummary(data);
+        }
+        if (proctorRes.ok) {
+          const data: ProctorHealthPayload = await proctorRes.json();
+          if (!cancelled) setProctorHealth(data);
+        }
+      } catch {
+        // Live telemetry should never interrupt the interview itself.
+      }
+    };
+
+    void syncAntiCheat();
+    const intervalId = window.setInterval(syncAntiCheat, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [session, sessionHeaders, step]);
+
+  useEffect(() => {
+    if (step !== "interview" || !session) return;
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        void postAntiCheatEvent("tab_switch", "Candidate moved away from the active interview tab.");
+      }
+    };
+
+    const onWindowBlur = () => {
+      void postAntiCheatEvent("window_blur", "Browser window lost focus during the interview.");
+    };
+
+    const onCopy = () => {
+      void postAntiCheatEvent("copy_paste", "Copy action detected during the interview.");
+    };
+
+    const onPaste = () => {
+      void postAntiCheatEvent("copy_paste", "Paste action detected during the interview.");
+    };
+
+    const onContextMenu = () => {
+      void postAntiCheatEvent("right_click", "Right-click context menu opened during the interview.");
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const ctrlOrMeta = event.ctrlKey || event.metaKey;
+      const devToolsShortcut =
+        key === "f12"
+        || (ctrlOrMeta && event.shiftKey && ["i", "j", "c"].includes(key))
+        || (ctrlOrMeta && key === "u");
+      const printShortcut = ctrlOrMeta && key === "p";
+
+      if (devToolsShortcut) {
+        void postAntiCheatEvent("devtools_shortcut", "Developer-tools shortcut detected during the interview.");
+      }
+
+      if (printShortcut) {
+        void postAntiCheatEvent("print_attempt", "Print or save shortcut detected during the interview.");
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("blur", onWindowBlur);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("contextmenu", onContextMenu);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("blur", onWindowBlur);
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("contextmenu", onContextMenu);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [postAntiCheatEvent, session, step]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -412,6 +631,10 @@ export default function HomePage() {
       setAnswer("");
       setLastAnswer(null);
       setReport(null);
+      setSessionStatus(null);
+      setAntiCheatSummary(null);
+      setProctorHealth(null);
+      setLocalEventFeed([]);
       setStep("intro");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start session.");
@@ -555,6 +778,10 @@ export default function HomePage() {
     setTurnNumber(1);
     setResumeFile(null);
     setResumeParsedSkills([]);
+    setSessionStatus(null);
+    setAntiCheatSummary(null);
+    setProctorHealth(null);
+    setLocalEventFeed([]);
   }
 
   /* ════════════════════════════════════════════════════════ */
@@ -1048,6 +1275,13 @@ export default function HomePage() {
         voicePhase === "listening" ? "#4ade80" :
           voicePhase === "evaluating" ? "#f59e0b" :
             voicePhase === "feedback" ? "#a78bfa" : "#64748b";
+    const integrityScore = antiCheatSummary?.integrity_score ?? sessionStatus?.integrity_score ?? proctorHealth?.integrity_score ?? 100;
+    const suspiciousState = antiCheatSummary?.suspicious ?? sessionStatus?.suspicious_activity ?? false;
+    const tone = antiCheatTone(integrityScore, suspiciousState);
+    const recentEvents = antiCheatSummary?.events.slice(-5).reverse() ?? [];
+    const remainingMinutes = sessionStatus?.timer.remaining_seconds != null
+      ? Math.max(0, Math.ceil(sessionStatus.timer.remaining_seconds / 60))
+      : null;
 
     return (
       <div style={{
@@ -1079,6 +1313,18 @@ export default function HomePage() {
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: `1px solid ${tone.glow}`,
+              background: tone.glow,
+              color: tone.color,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+            }}>
+              Integrity {integrityScore} • {tone.label}
+            </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>
               {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
             </span>
@@ -1090,6 +1336,207 @@ export default function HomePage() {
                 transition: "width 0.6s ease",
               }} />
             </div>
+          </div>
+        </div>
+
+        <div className="animate-fadeInUp" style={{
+          width: "100%",
+          maxWidth: 1120,
+          marginTop: 74,
+          marginBottom: 20,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: 18,
+          alignItems: "stretch",
+        }}>
+          <div className="spatial-panel" style={{
+            padding: "18px 20px",
+            borderRadius: 22,
+            border: "1px solid rgba(56,189,248,0.16)",
+            background: "linear-gradient(140deg, rgba(10,18,38,0.88), rgba(12,23,46,0.72))",
+            boxShadow: "0 24px 70px rgba(2,6,23,0.4)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <ShieldAlert size={18} color={tone.color} />
+                  <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.6, textTransform: "uppercase", color: "#cbd5e1" }}>
+                    Live Anti-Cheating Control Center
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                  Real-time browser telemetry, proctor heartbeat status, and integrity scoring are active during this interview.
+                </div>
+              </div>
+              <div style={{
+                minWidth: 130,
+                padding: "12px 14px",
+                borderRadius: 18,
+                background: tone.glow,
+                border: `1px solid ${tone.color}40`,
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: 11, color: "#cbd5e1", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>Integrity Score</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: tone.color }}>{integrityScore}</div>
+                <div style={{ fontSize: 11, color: "#e2e8f0" }}>{antiCheatSummary?.integrity_grade ?? tone.label}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 16 }}>
+              <TelemetryStat
+                icon={<Eye size={14} color="#38bdf8" />}
+                label="Focus Alerts"
+                value={String(sessionStatus?.tab_switch_count ?? antiCheatSummary?.tab_switch_count ?? 0)}
+                tone="#38bdf8"
+              />
+              <TelemetryStat
+                icon={<Activity size={14} color="#fbbf24" />}
+                label="Warnings"
+                value={String(antiCheatSummary?.warning_events ?? 0)}
+                tone="#fbbf24"
+              />
+              <TelemetryStat
+                icon={<AlertTriangle size={14} color="#f87171" />}
+                label="Criticals"
+                value={String(antiCheatSummary?.critical_events ?? 0)}
+                tone="#f87171"
+              />
+              <TelemetryStat
+                icon={<Bot size={14} color="#c084fc" />}
+                label="AI Violations"
+                value={String(sessionStatus?.ai_violations_count ?? antiCheatSummary?.ai_violations_count ?? 0)}
+                tone="#c084fc"
+              />
+              <TelemetryStat
+                icon={proctorHealth?.proctor_alive ? <ShieldCheck size={14} color="#4ade80" /> : <ShieldAlert size={14} color="#fbbf24" />}
+                label="Proctor"
+                value={proctorHealth?.proctor_alive ? "Live" : (session?.interview_mode === "enterprise" ? "Waiting" : "Optional")}
+                tone={proctorHealth?.proctor_alive ? "#4ade80" : "#fbbf24"}
+              />
+              <TelemetryStat
+                icon={<Zap size={14} color="#e2e8f0" />}
+                label="Heartbeats"
+                value={String(proctorHealth?.heartbeat_count ?? antiCheatSummary?.proctor_heartbeat_count ?? 0)}
+                tone="#e2e8f0"
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1px solid rgba(148,163,184,0.16)",
+                background: "rgba(7,15,30,0.68)",
+              }}>
+                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>Decision Signals</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <SignalRow label="Suspicious activity flag" value={suspiciousState ? "Raised" : "Clear"} color={suspiciousState ? "#fbbf24" : "#4ade80"} />
+                  <SignalRow label="Browser alerts captured" value={String(antiCheatSummary?.browser_alerts ?? antiCheatSummary?.total_events ?? localEventFeed.length)} color="#38bdf8" />
+                  <SignalRow label="Timer remaining" value={remainingMinutes != null ? `${remainingMinutes} min` : "Tracking"} color="#e2e8f0" />
+                  <SignalRow label="Recent backend event" value={antiCheatSummary?.recent_event_type ? formatAntiCheatEvent(antiCheatSummary.recent_event_type) : "No backend alert yet"} color="#cbd5e1" />
+                </div>
+              </div>
+
+              <div style={{
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1px solid rgba(148,163,184,0.16)",
+                background: "rgba(7,15,30,0.68)",
+              }}>
+                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>Response Guidance</div>
+                <div style={{ display: "grid", gap: 8, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+                  <div>Keep this window focused and avoid opening browser tools, print dialogs, or copy/paste actions.</div>
+                  <div>{session?.interview_mode === "enterprise" ? "Enterprise mode expects steady proctor heartbeat continuity." : "Practice mode still records integrity signals for the final report."}</div>
+                  <div>{proctorHealth?.last_heartbeat_gap_seconds != null ? `Latest proctor heartbeat gap: ${proctorHealth.last_heartbeat_gap_seconds}s.` : "Waiting for the next telemetry refresh."}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="spatial-panel" style={{
+            padding: "18px 18px 16px",
+            borderRadius: 22,
+            border: "1px solid rgba(167,139,250,0.18)",
+            background: "linear-gradient(160deg, rgba(20,12,37,0.82), rgba(10,18,38,0.76))",
+            boxShadow: "0 24px 70px rgba(2,6,23,0.36)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.4, textTransform: "uppercase", color: "#e2e8f0" }}>Event Feed</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Newest backend and browser-side signals surface here live.</div>
+              </div>
+              <span style={{
+                padding: "5px 9px",
+                borderRadius: 999,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: 1,
+                color: tone.color,
+                background: tone.glow,
+                border: `1px solid ${tone.color}40`,
+              }}>
+                {antiCheatSummary?.risk_level?.toUpperCase() ?? tone.label.toUpperCase()}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
+              {recentEvents.length > 0 ? recentEvents.map((event, index) => (
+                <EventFeedRow
+                  key={`${event.type}-${event.timestamp ?? index}`}
+                  title={formatAntiCheatEvent(event.type)}
+                  details={event.details || "Signal captured by the integrity engine."}
+                  severity={event.severity}
+                  timestamp={event.timestamp}
+                />
+              )) : (
+                <div style={{
+                  padding: "14px 16px",
+                  borderRadius: 14,
+                  background: "rgba(15,23,42,0.55)",
+                  border: "1px solid rgba(148,163,184,0.12)",
+                  color: "#94a3b8",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}>
+                  Backend anti-cheat telemetry is active. Browser and proctor signals will appear here as soon as activity is recorded.
+                </div>
+              )}
+            </div>
+
+            {localEventFeed.length > 0 && (
+              <div style={{
+                paddingTop: 12,
+                borderTop: "1px solid rgba(148,163,184,0.14)",
+              }}>
+                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>
+                  Local Browser Watchers
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {localEventFeed.slice(0, 4).map((event) => (
+                    <div
+                      key={`${event.type}-${event.at}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        background: "rgba(15,23,42,0.45)",
+                        border: "1px solid rgba(56,189,248,0.12)",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 2 }}>{formatAntiCheatEvent(event.type)}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{event.details}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>
+                        {new Date(event.at).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1479,6 +1926,101 @@ function ModeCard({
           animation: "pulse-glow 2s ease-in-out infinite",
         }} />
       )}
+    </div>
+  );
+}
+
+function TelemetryStat({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div style={{
+      padding: "12px 14px",
+      borderRadius: 16,
+      border: "1px solid rgba(148,163,184,0.14)",
+      background: "rgba(7,15,30,0.68)",
+      minHeight: 88,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{
+          width: 28,
+          height: 28,
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: `${tone}18`,
+          border: `1px solid ${tone}30`,
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.1 }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>{value}</div>
+    </div>
+  );
+}
+
+function SignalRow({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ color: "#94a3b8", fontSize: 12 }}>{label}</span>
+      <span style={{ color, fontWeight: 700, fontSize: 12, textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
+function EventFeedRow({
+  title,
+  details,
+  severity,
+  timestamp,
+}: {
+  title: string;
+  details: string;
+  severity: string;
+  timestamp: string | null;
+}) {
+  const tone = severity === "critical"
+    ? { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.2)" }
+    : severity === "warning"
+      ? { color: "#fbbf24", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.18)" }
+      : { color: "#38bdf8", bg: "rgba(56,189,248,0.08)", border: "rgba(56,189,248,0.18)" };
+
+  return (
+    <div style={{
+      padding: "12px 14px",
+      borderRadius: 14,
+      background: tone.bg,
+      border: `1px solid ${tone.border}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: tone.color, boxShadow: `0 0 16px ${tone.color}70` }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{title}</span>
+        </div>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: tone.color, textTransform: "uppercase" }}>{severity}</span>
+      </div>
+      <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 4 }}>{details}</div>
+      <div style={{ fontSize: 11, color: "#64748b" }}>
+        {timestamp ? new Date(timestamp).toLocaleTimeString() : "Just now"}
+      </div>
     </div>
   );
 }

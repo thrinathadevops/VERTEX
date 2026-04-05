@@ -200,6 +200,7 @@ class AntiCheatEventCreate(BaseModel):
     event_type: str = Field(
         pattern=(
             "^(tab_switch|window_blur|copy_paste|right_click"
+            "|devtools_shortcut|print_attempt"
             "|ai_app_detected|ai_network_connection|non_browser_window"
             "|ai_browser_tab|virtual_machine_detected|remote_desktop_detected"
             "|forbidden_app_detected"
@@ -272,3 +273,52 @@ class AdminAnalytics(BaseModel):
     revenue_by_mode: dict[str, int]
     top_roles: list[dict]
     recent_sessions: list[dict]
+
+
+class LiveControlCenterSession(BaseModel):
+    session_id: str
+    candidate_name: str
+    candidate_email: str
+    target_role: str
+    company_name: str | None = None
+    company_interview_code: str | None = None
+    interview_mode: str
+    difficulty_level: str
+    status: str
+    current_turn: int
+    answered: int
+    evaluated: int
+    total_questions: int
+    integrity_score: int
+    integrity_grade: str
+    risk_level: str
+    suspicious_activity: bool
+    tab_switch_count: int
+    ai_violations_count: int
+    total_events: int
+    critical_events: int
+    warning_events: int
+    proctor_connected: bool
+    proctor_alive: bool
+    proctor_heartbeat_count: int
+    last_heartbeat_gap_seconds: int | None = None
+    last_event_type: str | None = None
+    last_event_at: datetime | None = None
+    reviewer_alert: str | None = None
+    started_at: datetime | None = None
+    created_at: datetime
+
+
+class LiveControlCenterDetail(BaseModel):
+    session: LiveControlCenterSession
+    event_feed: list[dict]
+
+
+class LiveControlCenterResponse(BaseModel):
+    company_name: str | None = None
+    active_sessions: list[LiveControlCenterSession]
+    recent_sessions: list[LiveControlCenterSession]
+
+
+class ManualReviewStopRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)

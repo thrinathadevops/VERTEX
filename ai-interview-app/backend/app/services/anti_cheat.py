@@ -52,6 +52,8 @@ INTEGRITY_DEDUCTIONS = {
     "window_blur": 2,
     "copy_paste": 5,
     "right_click": 1,
+    "devtools_shortcut": 8,
+    "print_attempt": 6,
     # OS-level proctor events (CRITICAL)
     "ai_app_detected": 25,          # ChatGPT, Copilot, etc. detected
     "ai_network_connection": 20,    # Connection to AI API detected
@@ -99,6 +101,8 @@ EVENT_SEVERITY = {
     "window_blur": "info",
     "copy_paste": "warning",
     "right_click": "info",
+    "devtools_shortcut": "warning",
+    "print_attempt": "warning",
     "ai_app_detected": "critical",
     "ai_network_connection": "critical",
     "non_browser_window": "warning",
@@ -131,6 +135,8 @@ BROWSER_EVENT_TYPES = {
     "window_blur",
     "copy_paste",
     "right_click",
+    "devtools_shortcut",
+    "print_attempt",
 }
 
 PROCTOR_EVENT_TYPES = {
@@ -250,11 +256,39 @@ def record_event(
         if deduction > 0:
             session.integrity_score = max(0, session.integrity_score - deduction)
 
+    copy_paste_events = db.scalar(
+        select(func.count())
+        .select_from(AntiCheatEvent)
+        .where(
+            AntiCheatEvent.session_id == session_id,
+            AntiCheatEvent.event_type == "copy_paste",
+        )
+    ) or 0
+    browser_focus_events = db.scalar(
+        select(func.count())
+        .select_from(AntiCheatEvent)
+        .where(
+            AntiCheatEvent.session_id == session_id,
+            AntiCheatEvent.event_type.in_(["tab_switch", "window_blur"]),
+        )
+    ) or 0
+    tool_probe_events = db.scalar(
+        select(func.count())
+        .select_from(AntiCheatEvent)
+        .where(
+            AntiCheatEvent.session_id == session_id,
+            AntiCheatEvent.event_type.in_(["devtools_shortcut", "print_attempt"]),
+        )
+    ) or 0
+
     # ── Flag as suspicious ────────────────────────────────────
     if (
         session.tab_switch_count >= settings.MAX_TAB_SWITCHES_BEFORE_FLAG
         or session.ai_violations_count >= 1
         or session.integrity_score < 70
+        or copy_paste_events >= 2
+        or browser_focus_events >= 4
+        or tool_probe_events >= 1
     ):
         session.suspicious_activity = True
 
@@ -338,6 +372,7 @@ def record_event(
         "integrity_score": session.integrity_score,
         "warning": warning,
         "warning_message": warning_message,
+        "risk_level": _risk_level(session.integrity_score, session.suspicious_activity),
     }
 
 
@@ -514,10 +549,14 @@ def get_session_anti_cheat_summary(db: Session, session_id: str) -> dict:
         # Aggregated
         "integrity_score": session.integrity_score,
         "integrity_grade": _integrity_grade(session.integrity_score),
+        "risk_level": _risk_level(session.integrity_score, session.suspicious_activity),
         "suspicious": session.suspicious_activity,
         "total_events": len(events),
         "critical_events": len(critical_events),
         "warning_events": len(warning_events),
+        "browser_alerts": len([e for e in events if e.event_type in BROWSER_EVENT_TYPES]),
+        "recent_event_type": events[-1].event_type if events else None,
+        "recent_event_at": events[-1].timestamp.isoformat() if events and events[-1].timestamp else None,
         "events": [
             {
                 "type": e.event_type,
@@ -541,3 +580,13 @@ def _integrity_grade(score: int) -> str:
     if score >= 25:
         return "D — Major Integrity Issues"
     return "F — Interview Integrity Compromised"
+
+
+def _risk_level(score: int, suspicious: bool) -> str:
+    if score < 40:
+        return "critical"
+    if suspicious or score < 70:
+        return "elevated"
+    if score < 90:
+        return "watch"
+    return "clear"
