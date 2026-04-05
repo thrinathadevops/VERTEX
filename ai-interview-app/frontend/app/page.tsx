@@ -562,9 +562,28 @@ export default function HomePage() {
   /* ════════════════════════════════════════════════════════ */
   if (step === "landing") {
     return (
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 20px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 20px", position: "relative" }}>
+        <div className="orbital-grid" style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
         {/* Hero */}
         <div className="animate-fadeInUp" style={{ textAlign: "center", marginBottom: 56 }}>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 14px",
+            borderRadius: 999,
+            marginBottom: 18,
+            border: "1px solid rgba(167,139,250,0.26)",
+            background: "rgba(16,16,37,0.72)",
+            color: "#d8ccff",
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: 2.2,
+            textTransform: "uppercase",
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 18px rgba(244,63,94,0.65)" }} />
+            Spatial Interview Experience
+          </div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 14,
@@ -726,7 +745,7 @@ export default function HomePage() {
           ← Back to modes
         </button>
 
-        <div className="animate-fadeInUp" style={cardStyle}>
+        <div className="animate-fadeInUp spatial-panel depth-ring" style={cardStyle}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <span style={{
               display: "inline-block", padding: "6px 16px", borderRadius: 20, fontSize: 12, fontWeight: 700,
@@ -1519,11 +1538,12 @@ function Spinner() {
 
 /* ─── Shared Styles ──────────────────────────────────────── */
 const cardStyle: CSSProperties = {
-  background: "rgba(15,23,42,0.6)",
-  border: "1px solid rgba(51,65,85,0.4)",
-  borderRadius: 20,
+  background: "linear-gradient(180deg, rgba(18,18,42,0.84), rgba(10,10,24,0.92))",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 24,
   padding: 28,
-  backdropFilter: "blur(12px)",
+  backdropFilter: "blur(18px)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 24px 60px rgba(3,2,20,0.42)",
 };
 
 const labelStyle: CSSProperties = {
@@ -1533,16 +1553,17 @@ const labelStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   width: "100%", padding: "12px 16px", borderRadius: 12,
-  border: "1px solid rgba(51,65,85,0.6)", background: "rgba(2,6,23,0.6)",
+  border: "1px solid rgba(255,255,255,0.1)", background: "rgba(9,9,24,0.72)",
   color: "#f1f5f9", fontSize: 14, outline: "none", transition: "border-color 0.3s ease",
   fontFamily: "var(--font-source-sans), sans-serif",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
 };
 
 const primaryBtnStyle: CSSProperties = {
   padding: "14px 32px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 14,
   color: "#fff", cursor: "pointer",
-  background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
-  boxShadow: "0 4px 20px rgba(14,165,233,0.25)",
+  background: "linear-gradient(135deg, #7c3aed, #f43f5e)",
+  boxShadow: "0 10px 30px rgba(124,58,237,0.28)",
   transition: "all 0.3s ease",
   fontFamily: "var(--font-source-sans), sans-serif",
 };

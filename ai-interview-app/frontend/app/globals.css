@@ -4,23 +4,26 @@
 
 @layer base {
   :root {
-    --background: #020617;
-    --foreground: #e2e8f0;
-    --surface: #0f172a;
-    --surface-2: #152238;
-    --muted: #94a3b8;
-    --ring: #38bdf8;
+    --background: #090816;
+    --foreground: #ecf2ff;
+    --surface: #12122a;
+    --surface-2: #1b1b39;
+    --muted: #9fa8c6;
+    --ring: #a78bfa;
+    --cta: #f43f5e;
   }
 
   body {
     background:
-      radial-gradient(1200px 600px at 8% -15%, rgba(14, 165, 233, 0.2), transparent 60%),
-      radial-gradient(1200px 700px at 92% -10%, rgba(59, 130, 246, 0.16), transparent 60%),
-      linear-gradient(180deg, var(--surface), var(--background));
+      radial-gradient(900px 540px at 10% -8%, rgba(124, 58, 237, 0.28), transparent 58%),
+      radial-gradient(900px 520px at 90% -4%, rgba(244, 63, 94, 0.16), transparent 52%),
+      radial-gradient(800px 400px at 50% 18%, rgba(167, 139, 250, 0.12), transparent 55%),
+      linear-gradient(180deg, #151530 0%, var(--background) 100%);
     color: var(--foreground);
     @apply antialiased selection:bg-[#0369A1] selection:text-white;
     font-family: var(--font-source-sans), sans-serif;
     line-height: 1.6;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -59,6 +62,45 @@
 
   .animate-float {
     animation: floatSoft 3.5s ease-in-out infinite;
+  }
+
+  .spatial-panel {
+    background:
+      linear-gradient(180deg, rgba(18, 18, 42, 0.84), rgba(10, 10, 24, 0.92)),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 22px 60px rgba(3, 2, 20, 0.42);
+    backdrop-filter: blur(18px);
+  }
+
+  .orbital-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 95%);
+    opacity: 0.55;
+  }
+
+  .depth-ring {
+    position: relative;
+  }
+
+  .depth-ring::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04), rgba(167,139,250,0.18));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
   }
 
   .delay-100 { animation-delay: 100ms; }

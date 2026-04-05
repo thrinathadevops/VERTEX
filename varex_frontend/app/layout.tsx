@@ -1,16 +1,16 @@
-import { Lexend, Source_Sans_3 } from "next/font/google";
+import { DM_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-const lexend = Lexend({
+const headingFont = Space_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-lexend",
   display: "swap",
 });
 
-const sourceSans = Source_Sans_3({
+const bodyFont = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-source-sans",
@@ -43,7 +43,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${lexend.variable} ${sourceSans.variable} bg-kyc-background text-kyc-text antialiased`}>
+      <body className={`${headingFont.variable} ${bodyFont.variable} bg-kyc-background text-kyc-text antialiased`}>
         <Navbar />
         <main className="mx-auto max-w-6xl px-4 py-8">
           {children}

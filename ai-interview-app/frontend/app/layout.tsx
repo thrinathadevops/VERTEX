@@ -1,14 +1,14 @@
-import { Lexend, Source_Sans_3 } from "next/font/google";
+import { Nunito_Sans, Rubik } from "next/font/google";
 import "./globals.css";
 import type { ReactNode } from "react";
 
-const bodyFont = Source_Sans_3({
+const bodyFont = Nunito_Sans({
   subsets: ["latin"],
   variable: "--font-source-sans",
   display: "swap",
 });
 
-const headingFont = Lexend({
+const headingFont = Rubik({
   weight: ["500", "600", "700", "800"],
   subsets: ["latin"],
   variable: "--font-lexend",

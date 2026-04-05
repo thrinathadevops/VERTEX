@@ -34,27 +34,48 @@ export default function HomePage() {
          ═══════════════════════════════════════════════════════════ */}
       <section className={`relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4 transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${introDone ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[1.03] blur-[3px]"}`}>
         {/* Background layers */}
-        <div className="absolute inset-0 -z-20 bg-slate-950" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(14,165,233,0.15),transparent)]" />
+        <div className="absolute inset-0 -z-20 bg-[#020504]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_50%_at_50%_-12%,rgba(0,255,136,0.14),transparent)]" />
         <div className="absolute inset-0 -z-10 hero-grid" />
+        <div className="absolute inset-0 -z-10 command-grid" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent -z-10" />
 
         {/* Floating animated blobs */}
-        <div className="absolute top-20 -left-32 w-72 h-72 bg-sky-500/10 rounded-full blur-[100px] animate-blob" />
-        <div className="absolute top-40 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-20 left-1/3 w-64 h-64 bg-brand-500/10 rounded-full blur-[100px] animate-blob animation-delay-4000" />
+        <div className="absolute top-20 -left-32 w-72 h-72 bg-emerald-400/10 rounded-full blur-[100px] animate-blob" />
+        <div className="absolute top-40 -right-32 w-80 h-80 bg-lime-300/10 rounded-full blur-[100px] animate-blob animation-delay-2000" />
+        <div className="absolute -bottom-20 left-1/3 w-64 h-64 bg-cyan-300/10 rounded-full blur-[100px] animate-blob animation-delay-4000" />
 
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
           {/* LEFT: Enhanced animated content */}
           <div className="space-y-8 relative">
+            <div className="space-y-4">
+              <span className="terminal-label">Engineering Command Layer</span>
+              <div className="glass-panel glass-outline rounded-3xl p-5 md:p-6">
+                <div className="grid grid-cols-3 gap-3 text-[11px] uppercase tracking-[0.24em] text-emerald-200/70">
+                  <div>
+                    <p className="text-white text-2xl font-bold tracking-tight">7 Days</p>
+                    <p>Talent Delivery</p>
+                  </div>
+                  <div>
+                    <p className="text-white text-2xl font-bold tracking-tight">12x</p>
+                    <p>Release Velocity</p>
+                  </div>
+                  <div>
+                    <p className="text-white text-2xl font-bold tracking-tight">Zero</p>
+                    <p>Chaos by Default</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <HeroAnimations start={introDone} />
           </div>
 
           {/* RIGHT: Hero image */}
           <AnimateIn delay={0.3} direction="right" trigger="mount">
             <div className="relative max-w-[560px] mx-auto lg:mx-0">
-              <div className="absolute -inset-4 bg-gradient-to-tr from-sky-500/20 via-indigo-500/10 to-transparent rounded-3xl blur-2xl" />
-              <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-sky-900/20">
+              <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-400/20 via-lime-300/8 to-transparent rounded-3xl blur-2xl" />
+              <div className="absolute -inset-[1px] rounded-[1.6rem] bg-gradient-to-br from-emerald-300/30 via-white/10 to-transparent opacity-80" />
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-emerald-950/20">
                 <Image
                   src="/hero-cloud-infra.png"
                   alt="VAREX Cloud Infrastructure"
@@ -64,7 +85,16 @@ export default function HomePage() {
                   priority
                 />
                 {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#020504]/70 via-transparent to-transparent" />
+                <div className="absolute left-4 right-4 bottom-4 glass-panel rounded-2xl p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/70 mb-2">Active Delivery Lanes</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-slate-200">
+                    <div className="rounded-xl bg-white/5 p-3">Cloud modernization</div>
+                    <div className="rounded-xl bg-white/5 p-3">DevSecOps hardening</div>
+                    <div className="rounded-xl bg-white/5 p-3">AI hiring automation</div>
+                    <div className="rounded-xl bg-white/5 p-3">SAP enterprise delivery</div>
+                  </div>
+                </div>
               </div>
             </div>
           </AnimateIn>
@@ -74,7 +104,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           TRUST BAR — Key capabilities
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-16 border-y border-slate-800/50 bg-slate-950 rounded-2xl">
+      <section className="relative overflow-hidden py-16 border border-white/5 bg-[#06110f] rounded-[2rem]">
         <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
             {
@@ -103,7 +133,7 @@ export default function HomePage() {
             },
           ].map((f) => (
             <StaggerItem key={f.title}>
-              <div className="flex items-start gap-5 group">
+              <div className="glass-panel rounded-2xl p-6 flex items-start gap-5 group">
                 <div className={`flex-shrink-0 p-3.5 rounded-xl group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[f.color]}`}>
                   {f.icon}
                 </div>
@@ -120,7 +150,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SERVICES SECTION — What We Do
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-16 bg-slate-950 rounded-2xl">
+      <section className="relative overflow-hidden py-16 bg-[#040909] rounded-[2rem] border border-white/5">
         <div className="max-w-6xl mx-auto px-4">
           <AnimateIn className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
@@ -144,7 +174,7 @@ export default function HomePage() {
               { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
             ].map((s) => (
               <StaggerItem key={s.title}>
-                <Link href={s.href} className="motion-card group flex flex-col h-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-sky-500/40 p-5 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-sky-900/10">
+                <Link href={s.href} className="motion-card group flex flex-col h-full glass-panel hover:bg-white/[0.08] border border-white/5 hover:border-emerald-300/30 p-5 rounded-[1.4rem] transition-all duration-300 hover:shadow-xl hover:shadow-emerald-950/10">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
                     {s.icon}
                   </div>
@@ -163,7 +193,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           ABOUT SECTION — with image
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-slate-900/50 border-y border-slate-800/50 rounded-2xl">
+      <section className="relative overflow-hidden py-24 bg-[#07100f]/90 border border-white/5 rounded-[2rem]">
         <div className="max-w-6xl mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
           {/* Left: Content */}
           <div className="lg:w-1/2 space-y-6">
@@ -243,7 +273,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           WHY VAREX — Numbers & CTA
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-slate-950 rounded-2xl">
+      <section className="relative overflow-hidden py-24 bg-[#030808] rounded-[2rem] border border-white/5">
         <div className="max-w-6xl mx-auto px-4">
           <AnimateIn className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">Why Choose VAREX</h2>
@@ -258,7 +288,7 @@ export default function HomePage() {
               { icon: <Shield className="w-7 h-7" />, value: "0", label: "Security Breaches" },
             ].map((s) => (
               <StaggerItem key={s.label}>
-                <div className="motion-card text-center p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/30 transition-all duration-300 group">
+                <div className="motion-card text-center p-8 rounded-[1.6rem] glass-panel border border-white/5 hover:border-emerald-300/25 transition-all duration-300 group">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-sky-500/10 text-sky-400 mb-4 group-hover:scale-110 transition-transform">
                     {s.icon}
                   </div>
@@ -271,9 +301,9 @@ export default function HomePage() {
 
           {/* CTA Banner */}
           <AnimateIn>
-            <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-gradient-to-r from-sky-950/80 via-slate-900 to-indigo-950/80 p-10 md:p-14 text-center">
-              <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-[120px]" />
-              <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px]" />
+            <div className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-[linear-gradient(135deg,rgba(6,20,16,0.95),rgba(10,28,20,0.88),rgba(5,10,10,0.95))] p-10 md:p-14 text-center">
+              <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-[120px]" />
+              <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-lime-300/10 rounded-full blur-[100px]" />
               <div className="relative z-10">
                 <Cpu className="w-12 h-12 text-sky-400 mx-auto mb-6" />
                 <h4 className="text-2xl md:text-3xl font-extrabold text-white mb-4">
