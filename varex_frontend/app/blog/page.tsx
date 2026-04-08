@@ -6,7 +6,7 @@ import Link from "next/link";
 import { listFreeContent, listPremiumContent } from "@/lib/api";
 import { getUserFromCookies } from "@/lib/auth";
 import type { ContentItem } from "@/lib/types";
-import { Bot, Boxes, Calendar, Clock3, Cpu, Shield, Waypoints, Lock, BookOpen } from "lucide-react";
+import { Bot, Boxes, Calendar, Clock3, Cpu, Shield, Waypoints, Lock, BookOpen, Cloud, Terminal, LayoutGrid } from "lucide-react";
 
 const CATEGORIES = [
   { slug: "devops",        label: "DevOps",         icon: Cpu,      color: "border-sky-700/50 text-sky-300" },
@@ -15,6 +15,9 @@ const CATEGORIES = [
   { slug: "architecture",  label: "Architecture",   icon: Waypoints,color: "border-purple-700/50 text-purple-300" },
   { slug: "ai_hiring",     label: "AI Hiring",      icon: Bot,      color: "border-emerald-700/50 text-emerald-300" },
   { slug: "aws_interview", label: "AWS Interview",  icon: BookOpen, color: "border-teal-700/50 text-teal-300" },
+  { slug: "azure_interview", label: "Azure Interview", icon: Cloud, color: "border-blue-700/50 text-blue-300" },
+  { slug: "linux_interview", label: "Linux Interview", icon: Terminal, color: "border-emerald-700/50 text-emerald-300" },
+  { slug: "kubernetes_interview", label: "K8s Interview", icon: LayoutGrid, color: "border-indigo-700/50 text-indigo-300" },
 ] as const;
 
 type CategorySlug = typeof CATEGORIES[number]["slug"] | "all";
@@ -54,9 +57,9 @@ export default function BlogPage() {
 
       {/* Header */}
       <header>
-        <h1 className="text-2xl font-bold mb-1">Blog</h1>
+        <h1 className="text-2xl font-bold mb-1">Expert Blog & Interview Prep</h1>
         <p className="text-sm text-slate-300">
-          Expert articles on DevSecOps, Cybersecurity, SAP SD, Architecture, and AI Hiring.
+          Deep-dives into DevSecOps, Architecture, and Enterprise-grade Interview Questions for AWS, Azure, Linux & K8s.
         </p>
       </header>
 

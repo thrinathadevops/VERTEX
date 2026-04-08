@@ -8,28 +8,8 @@ import type {
 function resolveApiBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
   if (typeof window !== "undefined") {
-    const browserOrigin = window.location.origin;
-    if (!fromEnv) return browserOrigin;
-
-    try {
-      const configured = new URL(fromEnv);
-      const configuredHost = configured.hostname.toLowerCase();
-      const browserHost = window.location.hostname.toLowerCase();
-      const configuredIsLocal =
-        configuredHost === "localhost" ||
-        configuredHost === "127.0.0.1" ||
-        configuredHost === "0.0.0.0";
-      const browserIsDifferentHost = configuredHost !== browserHost;
-
-      // When the site is opened through a LAN IP/domain/reverse proxy, keep browser calls same-origin.
-      if (configuredIsLocal && browserIsDifferentHost) {
-        return browserOrigin;
-      }
-    } catch {
-      return browserOrigin;
-    }
-
-    return fromEnv.replace(/\/$/, "");
+    // Always use same-origin in the browser and let Next.js/nginx proxy /api/v1.
+    return "";
   }
 
   if (fromEnv) return fromEnv.replace(/\/$/, "");

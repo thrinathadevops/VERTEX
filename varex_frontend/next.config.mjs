@@ -39,6 +39,28 @@ const nextConfig = {
       { source: "/blog/devsecops", destination: "/blog/devops", permanent: true },
     ];
   },
+
+  async rewrites() {
+    const backendBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendBase}/api/v1/:path*`,
+      },
+      {
+        source: "/docs",
+        destination: `${backendBase}/docs`,
+      },
+      {
+        source: "/redoc",
+        destination: `${backendBase}/redoc`,
+      },
+      {
+        source: "/openapi.json",
+        destination: `${backendBase}/openapi.json`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

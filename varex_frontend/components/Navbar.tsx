@@ -55,6 +55,12 @@ export default function Navbar() {
           : "border-slate-800 bg-[#0B1120] shadow-xl"
         }`}
     >
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-0 h-24 w-72 rounded-full bg-emerald-400/10 blur-[70px]" />
+        <div className="absolute left-1/3 top-[-18px] h-20 w-56 rounded-full bg-cyan-400/10 blur-[60px]" />
+        <div className="absolute -right-16 top-0 h-24 w-64 rounded-full bg-indigo-500/10 blur-[72px]" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-400/35 to-transparent" />
+      </div>
       <div
         className={`mx-auto max-w-7xl flex items-center justify-between px-3 sm:px-5 lg:px-7 transition-[height] duration-300 ${isScrolled ? "h-[62px]" : "h-[68px]"
           }`}
@@ -84,9 +90,9 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex min-h-11 items-center gap-1.5 px-2.5 lg:px-3.5 py-1.5 rounded-md text-[11px] lg:text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
-                    ? "bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/40"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/70"
+                className={`flex min-h-11 items-center gap-1.5 px-2.5 lg:px-3.5 py-1.5 rounded-md text-[11px] lg:text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${isActive
+                    ? "bg-[linear-gradient(135deg,rgba(14,165,233,0.16),rgba(16,185,129,0.12))] text-sky-200 ring-1 ring-sky-400/40 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_12px_28px_rgba(8,145,178,0.14)]"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800/70 hover:ring-1 hover:ring-emerald-400/20"
                   }`}
               >
                 <IconComponent className="w-4 h-4 hidden lg:inline" />
@@ -125,7 +131,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/register"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-[linear-gradient(135deg,#0891b2,#0ea5e9)] hover:brightness-110 px-3 py-1.5 text-xs font-semibold text-white transition-all shadow-[0_14px_30px_rgba(14,165,233,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
               >
                 <Rocket className="w-4 h-4" />
                 <span className="hidden xl:inline">Get Started</span>

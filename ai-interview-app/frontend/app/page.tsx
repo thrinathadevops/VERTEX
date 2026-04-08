@@ -792,6 +792,25 @@ export default function HomePage() {
     return (
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 20px", position: "relative" }}>
         <div className="orbital-grid" style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+        <div className="chromatic-orbit" style={{ position: "absolute", top: 80, left: -40, width: 320, height: 320, pointerEvents: "none" }} />
+        <div className="chromatic-orbit" style={{ position: "absolute", top: 120, right: -30, width: 280, height: 280, pointerEvents: "none" }} />
+        <div className="signal-beam" style={{ position: "absolute", inset: "18% 8% auto 18%", height: 240, pointerEvents: "none" }} />
+        <svg
+          className="absolute inset-0 pointer-events-none opacity-45"
+          viewBox="0 0 1200 900"
+          fill="none"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M92 186H420C468 186 506 224 506 272V314" stroke="rgba(56,189,248,0.22)" strokeWidth="1.2" strokeDasharray="7 10" />
+          <path d="M1108 198H786C724 198 680 242 680 304V382" stroke="rgba(167,139,250,0.22)" strokeWidth="1.2" strokeDasharray="7 10" />
+          <path d="M184 628H420C508 628 578 558 578 470V426" stroke="rgba(244,63,94,0.16)" strokeWidth="1.1" strokeDasharray="6 12" />
+          <path d="M1024 646H814C728 646 660 578 660 492V430" stroke="rgba(34,211,238,0.18)" strokeWidth="1.1" strokeDasharray="6 12" />
+          <circle cx="506" cy="314" r="4" fill="rgba(56,189,248,0.72)" />
+          <circle cx="680" cy="382" r="4" fill="rgba(167,139,250,0.74)" />
+          <circle cx="578" cy="426" r="3.5" fill="rgba(244,63,94,0.66)" />
+          <circle cx="660" cy="430" r="3.5" fill="rgba(34,211,238,0.68)" />
+        </svg>
         <div className="animate-fadeInUp" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 18 }}>
           <Link
             href="/reviewer"
@@ -835,6 +854,32 @@ export default function HomePage() {
           }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 18px rgba(244,63,94,0.65)" }} />
             Spatial Interview Experience
+          </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 10,
+            maxWidth: 560,
+            margin: "0 auto 22px",
+          }}>
+            {[
+              { label: "Inference Engine", value: "Live" },
+              { label: "Integrity Mesh", value: "Active" },
+              { label: "Report Pipeline", value: "Ready" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="spatial-panel"
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontSize: 10, color: "#8ea0c3", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#eef2ff" }}>{item.value}</div>
+              </div>
+            ))}
           </div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <div style={{
@@ -880,6 +925,35 @@ export default function HomePage() {
               First mock is open. To continue with another personal mock, that email must be verified.
             </span>
           )}
+        </div>
+
+        <div className="animate-fadeInUp delay-100 spatial-panel depth-ring" style={{
+          margin: "0 auto 26px",
+          maxWidth: 820,
+          padding: "16px 18px",
+          borderRadius: 18,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+          gap: 12,
+        }}>
+          {[
+            "Adaptive question sequencing",
+            "Voice-first candidate experience",
+            "Instant scoring & report synthesis",
+            "Live anti-cheat reviewer telemetry",
+          ].map((item) => (
+            <div key={item} style={{
+              padding: "10px 12px",
+              borderRadius: 12,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "#dbeafe",
+              fontSize: 12,
+              lineHeight: 1.6,
+            }}>
+              {item}
+            </div>
+          ))}
         </div>
 
         {verificationMessage && (
@@ -1154,13 +1228,41 @@ export default function HomePage() {
   /* ════════════════════════════════════════════════════════ */
   if (step === "intro" && session) {
     return (
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 20px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "48px 20px", position: "relative" }}>
+        <div className="chromatic-orbit" style={{ position: "absolute", top: 18, left: -60, width: 220, height: 220, pointerEvents: "none" }} />
+        <div className="signal-beam" style={{ position: "absolute", inset: "8% 12% auto 12%", height: 220, pointerEvents: "none" }} />
         {/* AI Interviewer Card */}
         <div className="animate-fadeInUp" style={{
           ...cardStyle, textAlign: "center", marginBottom: 24, padding: 36,
           background: "linear-gradient(135deg, rgba(14,165,233,0.08), rgba(139,92,246,0.06))",
           borderColor: "rgba(14,165,233,0.25)",
         }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 10,
+            marginBottom: 20,
+          }}>
+            {[
+              { label: "Interviewer", value: "Aria" },
+              { label: "Voice Layer", value: voiceMode ? "Enabled" : "Manual" },
+              { label: "Session State", value: session.resume_uploaded ? "Contextualized" : "Primed" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontSize: 10, color: "#93c5fd", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
           <div className="animate-float" style={{
             width: 88, height: 88, borderRadius: "50%", margin: "0 auto 16px",
             boxShadow: "0 0 40px rgba(14,165,233,0.3), 0 0 80px rgba(139,92,246,0.15)",
@@ -1190,6 +1292,31 @@ export default function HomePage() {
           <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16 }}>
             Uploading your resume helps Aria ask personalised questions based on your skills and experience.
           </p>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 10,
+            marginBottom: 16,
+          }}>
+            {[
+              "Resume summarization",
+              "Skill extraction",
+              "Question tailoring",
+              "Intro regeneration",
+            ].map((item) => (
+              <div key={item} style={{
+                padding: "9px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+                color: "#cbd5e1",
+                fontSize: 12,
+              }}>
+                {item}
+              </div>
+            ))}
+          </div>
 
           <div style={{
             border: "2px dashed rgba(51,65,85,0.5)", borderRadius: 14,
@@ -1328,10 +1455,94 @@ export default function HomePage() {
 
     return (
       <div style={{
+        position: "relative",
+        overflow: "hidden",
         minHeight: "100vh", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", padding: "20px",
-        background: "radial-gradient(ellipse at 50% 30%, rgba(14,165,233,0.06) 0%, transparent 60%)",
+        background: "radial-gradient(ellipse at 50% 24%, rgba(37,99,235,0.1) 0%, transparent 62%), linear-gradient(180deg, rgba(9,14,28,0.14), rgba(9,14,28,0.04))",
       }}>
+        <div
+          className="chromatic-orbit"
+          style={{
+            position: "absolute",
+            top: 110,
+            left: -70,
+            width: 280,
+            height: 280,
+            pointerEvents: "none",
+            opacity: 0.45,
+          }}
+        />
+        <div
+          className="chromatic-orbit"
+          style={{
+            position: "absolute",
+            right: -40,
+            bottom: 120,
+            width: 250,
+            height: 250,
+            pointerEvents: "none",
+            opacity: 0.4,
+            animationDelay: "4s",
+          }}
+        />
+        <div
+          className="signal-beam"
+          style={{
+            position: "absolute",
+            inset: "22% 12% auto 16%",
+            height: 240,
+            pointerEvents: "none",
+            opacity: 0.32,
+          }}
+        />
+        <div
+          className="orbital-grid"
+          style={{
+            position: "absolute",
+            inset: "12% 10% 8%",
+            pointerEvents: "none",
+            opacity: 0.18,
+          }}
+        />
+        <svg
+          className="telemetry-mesh"
+          viewBox="0 0 1440 900"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            opacity: 0.34,
+          }}
+        >
+          <defs>
+            <linearGradient id="interviewMeshA" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(34,211,238,0)" />
+              <stop offset="48%" stopColor="rgba(34,211,238,0.32)" />
+              <stop offset="100%" stopColor="rgba(167,139,250,0)" />
+            </linearGradient>
+            <linearGradient id="interviewMeshB" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(244,63,94,0)" />
+              <stop offset="52%" stopColor="rgba(244,63,94,0.22)" />
+              <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+            </linearGradient>
+          </defs>
+          <path d="M64 212C186 212 248 154 370 154C492 154 588 262 718 262C848 262 912 176 1030 176C1156 176 1244 246 1374 246" stroke="url(#interviewMeshA)" strokeWidth="1.4" />
+          <path d="M118 612C242 612 316 544 432 544C566 544 622 652 760 652C900 652 968 572 1088 572C1206 572 1288 632 1396 632" stroke="url(#interviewMeshB)" strokeWidth="1.25" />
+          <path d="M252 114L382 154L522 228L718 262L896 220L1030 176L1188 198" stroke="rgba(148,163,184,0.12)" strokeWidth="1" />
+          <path d="M214 706L432 544L652 584L760 652L972 604L1172 648" stroke="rgba(148,163,184,0.1)" strokeWidth="1" />
+          <circle cx="382" cy="154" r="4" fill="rgba(56,189,248,0.62)" />
+          <circle cx="718" cy="262" r="4.5" fill="rgba(167,139,250,0.55)" />
+          <circle cx="1030" cy="176" r="4" fill="rgba(34,211,238,0.54)" />
+          <circle cx="432" cy="544" r="4" fill="rgba(244,63,94,0.46)" />
+          <circle cx="760" cy="652" r="4.5" fill="rgba(56,189,248,0.48)" />
+          <circle cx="1088" cy="572" r="4" fill="rgba(167,139,250,0.46)" />
+        </svg>
+
         {/* Hidden auto-submit trigger */}
         <button id="voice-auto-submit" onClick={submitCurrentAnswer} style={{ display: "none" }} />
 
@@ -1339,19 +1550,19 @@ export default function HomePage() {
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
           padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "rgba(2,6,23,0.85)", backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(51,65,85,0.3)",
+          background: "rgba(255,255,255,0.86)", backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(148,163,184,0.18)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
               width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
+              background: "linear-gradient(135deg, #2563eb, #0ea5e9)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <Bot size={14} color="#fff" />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>VAREX AI Interview</span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#15304b" }}>VAREX AI Interview</span>
+            <span style={{ fontSize: 11, color: "#5d728a" }}>
               • {session?.interview_mode === "enterprise" ? "Enterprise" : "Practice"}
             </span>
           </div>
@@ -1368,14 +1579,14 @@ export default function HomePage() {
             }}>
               Integrity {integrityScore} • {tone.label}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#2563eb" }}>
               {turnNumber > totalQuestions ? totalQuestions : turnNumber} / {totalQuestions}
             </span>
             {/* Progress bar mini */}
-            <div style={{ width: 80, height: 3, borderRadius: 2, background: "rgba(51,65,85,0.5)" }}>
+            <div style={{ width: 80, height: 3, borderRadius: 2, background: "rgba(191,219,254,0.9)" }}>
               <div style={{
                 height: "100%", borderRadius: 2, width: `${progress}%`,
-                background: "linear-gradient(90deg, #0ea5e9, #8b5cf6)",
+                background: "linear-gradient(90deg, #2563eb, #f97316)",
                 transition: "width 0.6s ease",
               }} />
             </div>
@@ -1642,10 +1853,10 @@ export default function HomePage() {
           </div>
 
           {/* Name */}
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", marginBottom: 2 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#15304b", marginBottom: 2 }}>
             Aria
           </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginBottom: 16, letterSpacing: 0.5 }}>
+          <div style={{ fontSize: 11, color: "#5d728a", marginBottom: 16, letterSpacing: 0.5 }}>
             VAREX AI Interviewer
           </div>
 
@@ -1687,19 +1898,19 @@ export default function HomePage() {
         {currentQuestion && (
           <div className="animate-fadeInUp" style={{
             maxWidth: 700, width: "100%",
-            background: "rgba(15,23,42,0.6)", backdropFilter: "blur(12px)",
-            border: "1px solid rgba(51,65,85,0.4)", borderRadius: 20,
+            background: "rgba(255,255,255,0.84)", backdropFilter: "blur(12px)",
+            border: "1px solid rgba(148,163,184,0.18)", borderRadius: 20,
             padding: "28px 32px", textAlign: "center",
-            boxShadow: `0 0 40px ${phaseColor}08`,
+            boxShadow: `0 18px 40px rgba(37,99,235,0.08)`,
           }}>
             <div style={{
-              fontSize: 11, fontWeight: 700, color: "#64748b",
+              fontSize: 11, fontWeight: 700, color: "#5d728a",
               textTransform: "uppercase", letterSpacing: 2, marginBottom: 12,
             }}>
               Question {turnNumber}
             </div>
             <p style={{
-              fontSize: 20, fontWeight: 600, lineHeight: 1.6, color: "#e2e8f0",
+              fontSize: 20, fontWeight: 600, lineHeight: 1.6, color: "#15304b",
               margin: 0,
             }}>
               {currentQuestion}
@@ -1712,7 +1923,7 @@ export default function HomePage() {
           <div className="animate-fadeIn" style={{
             marginTop: 24, display: "flex", alignItems: "center", gap: 10,
             padding: "12px 20px", borderRadius: 12,
-            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+            background: "rgba(255,247,237,0.96)", border: "1px solid rgba(249,115,22,0.18)",
           }}>
             <Spinner />
             <span style={{ fontSize: 13, color: "#fbbf24", fontWeight: 600 }}>

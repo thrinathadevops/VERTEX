@@ -262,6 +262,9 @@ export default function BlogPostPage() {
     architecture: "bg-purple-500/20 text-purple-300",
     aws_interview: "bg-teal-500/20 text-teal-300",
     ai_hiring: "bg-emerald-500/20 text-emerald-300",
+    azure_interview: "bg-blue-500/20 text-blue-300",
+    linux_interview: "bg-emerald-500/20 text-emerald-300",
+    kubernetes_interview: "bg-indigo-500/20 text-indigo-300",
   };
   const category = (post as any).category ?? "devops";
 

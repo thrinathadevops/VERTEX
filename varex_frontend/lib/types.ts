@@ -102,19 +102,36 @@ export interface PortfolioProject {
   id: string;
   title: string;
   slug: string;
-  summary?: string;
-  body?: string;
-  description?: string;
-  category?: string;
+  summary: string;
+  description: string;
+  category: string;
+  project_type?: "client_work" | "personal_project" | "internal_product" | "case_study";
   tech_stack?: string[];
   outcomes?: string[];
+  hero_image_url?: string;
+  screenshots?: string[];
   client_name?: string;
+  duration?: string;
+  team_size?: number;
+  role_played?: string;
   diagram_s3_key?: string;    // ADDED (Bug 3.16)
   case_study_url?: string;    // ADDED (Bug 3.16)
   github_url?: string;
+  demo_url?: string;
+  case_study_content?: {
+    problem_statement?: string;
+    solution_approach?: string;
+    architecture_overview?: string;
+    security_considerations?: string;
+    deployment_flow?: string;
+    results?: string;
+    lessons_learned?: string;
+  };
   is_featured?: boolean;
   is_published: boolean;
+  display_order?: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Certification {

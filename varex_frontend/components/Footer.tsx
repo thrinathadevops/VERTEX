@@ -56,8 +56,34 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-slate-800 bg-slate-950">
+    <footer className="relative overflow-hidden border-t border-slate-800 bg-slate-950">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-0 top-0 h-48 w-72 bg-emerald-400/10 blur-[100px]" />
+        <div className="absolute right-0 top-8 h-48 w-72 bg-cyan-400/10 blur-[100px]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+        <svg className="absolute inset-0 h-full w-full opacity-30 footer-signal" viewBox="0 0 1440 420" fill="none" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 112C146 112 186 168 298 168C410 168 448 120 576 120C696 120 736 192 868 192C1012 192 1084 128 1204 128C1300 128 1362 156 1440 156" stroke="rgba(56,189,248,0.18)" strokeWidth="1.2" strokeDasharray="7 10" />
+          <path d="M86 290C214 290 284 240 406 240C532 240 596 302 722 302C850 302 926 258 1042 258C1162 258 1260 316 1440 316" stroke="rgba(16,185,129,0.16)" strokeWidth="1.1" strokeDasharray="6 12" />
+          <path d="M128 82H284L368 120H576L648 90H820L868 192L1020 192L1122 128H1304" stroke="rgba(190,242,100,0.12)" strokeWidth="1" strokeDasharray="8 12" />
+          <circle cx="576" cy="120" r="4" fill="rgba(56,189,248,0.55)" />
+          <circle cx="868" cy="192" r="4" fill="rgba(16,185,129,0.55)" />
+          <circle cx="722" cy="302" r="3.5" fill="rgba(99,102,241,0.45)" />
+          <circle cx="1122" cy="128" r="3.5" fill="rgba(190,242,100,0.45)" />
+        </svg>
+      </div>
       <div className="mx-auto max-w-6xl px-4 py-16">
+        <div className="mb-10 grid gap-3 rounded-[1.6rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-sm sm:grid-cols-3">
+          {[
+            { label: "Delivery Velocity", value: "7-Day Bench" },
+            { label: "Execution Coverage", value: "Cloud • Security • SAP" },
+            { label: "Interview Stack", value: "Mock + Enterprise AI" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-white/5 bg-slate-900/55 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-200">{item.value}</p>
+            </div>
+          ))}
+        </div>
 
         {/* ── Top: Brand + Links grid ───────────────────────── */}
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
@@ -74,9 +100,13 @@ export default function Footer() {
                 style={{ maxHeight: "40px", width: "auto" }}
               />
             </Link>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-[200px]">
+            <p className="text-sm text-slate-400 leading-relaxed max-w-[220px]">
               Engineering & Talent Acceleration for DevSecOps, Cybersecurity, SAP SD, and AI Hiring.
             </p>
+            <div className="rounded-2xl border border-emerald-400/10 bg-slate-900/55 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-emerald-200/65">Command Stack</p>
+              <p className="mt-2 text-sm text-slate-300">Architecture, hardening, delivery automation, and technical talent execution in one operating layer.</p>
+            </div>
 
             {/* Social icons */}
             <div className="flex items-center gap-2 pt-2">

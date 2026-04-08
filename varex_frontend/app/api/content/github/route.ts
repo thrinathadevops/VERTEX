@@ -63,7 +63,7 @@ function titleFromFilename(filename: string): string {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// OPTION 1: Read from LOCAL FILESYSTEM (zero API calls)
+// OPTION 1: Read from LOCAL FILESYSTEM (multi-category support)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 async function readFromLocalFilesystem(): Promise<any[] | null> {
   if (!fs.existsSync(LOCAL_CONTENT_DIR)) {
@@ -71,33 +71,52 @@ async function readFromLocalFilesystem(): Promise<any[] | null> {
     return null;
   }
 
-  const files = fs.readdirSync(LOCAL_CONTENT_DIR).filter((f) => f.endsWith(".md"));
   const allPosts: any[] = [];
+  
+  // 1. Get all subdirectories (categories)
+  const entries = fs.readdirSync(LOCAL_CONTENT_DIR, { withFileTypes: true });
+  const folders = entries.filter(e => e.isDirectory()).map(e => e.name);
+  
+  // 2. Also check the root for files (fallback)
+  const rootFiles = entries.filter(e => e.isFile() && e.name.endsWith(".md")).map(e => e.name);
+  
+  const scanFolder = async (folderName: string, isRoot = false) => {
+    const dirPath = isRoot ? LOCAL_CONTENT_DIR : path.join(LOCAL_CONTENT_DIR, folderName);
+    const files = fs.readdirSync(dirPath).filter((f) => f.endsWith(".md"));
+    const category = isRoot ? "aws_interview" : `${folderName}_interview`;
 
-  for (const filename of files) {
-    try {
-      const rawContent = fs.readFileSync(path.join(LOCAL_CONTENT_DIR, filename), "utf-8");
-      const { data, content } = matter(rawContent);
+    for (const filename of files) {
+      try {
+        const rawContent = fs.readFileSync(path.join(dirPath, filename), "utf-8");
+        const { data, content } = matter(rawContent);
 
-      allPosts.push({
-        id: `github-aws-${filename}`,
-        title: data.title || titleFromFilename(filename),
-        slug: filename.replace(/\.md$/, ""),
-        body: await marked.parse(content),
-        category: data.category || "aws_interview",
-        access_level: data.access_level || "free",
-        is_published: true,
-        author_id: data.author || "system",
-        created_at: data.date || new Date().toISOString(),
-        source: "local_filesystem",
-        github_url: `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_CONTENT_PATH}/${filename}`,
-      });
-    } catch (err) {
-      console.warn(`Failed to parse local file ${filename}:`, err);
+        allPosts.push({
+          id: `local-${folderName}-${filename}`,
+          title: data.title || titleFromFilename(filename),
+          slug: filename.replace(/\.md$/, ""),
+          body: await marked.parse(content),
+          category: data.category || category,
+          access_level: data.access_level || "free",
+          is_published: true,
+          author_id: data.author || "system",
+          created_at: data.date || new Date().toISOString(),
+          source: "local_filesystem",
+          github_url: `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${isRoot ? "" : folderName + "/"}${filename}`,
+        });
+      } catch (err) {
+        console.warn(`Failed to parse local file ${filename} in ${folderName}:`, err);
+      }
     }
+  };
+
+  // Scan root and all subfolders
+  await scanFolder("root", true);
+  for (const folder of folders) {
+    if (folder.startsWith(".") || folder === "node_modules") continue;
+    await scanFolder(folder);
   }
 
-  return allPosts;
+  return allPosts.length > 0 ? allPosts : null;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -115,51 +134,77 @@ function githubHeaders(): Record<string, string> {
 }
 
 async function readFromGitHubAPI(): Promise<any[]> {
-  // List files
-  const res = await fetch(GITHUB_API_BASE, { headers: githubHeaders() });
-  if (!res.ok) {
-    throw new Error(`GitHub API returned ${res.status}`);
+  // 1. Get root contents to find directories (categories)
+  const rootRes = await fetch(GITHUB_API_BASE, { headers: githubHeaders() });
+  if (!rootRes.ok) {
+    throw new Error(`GitHub API root returned ${rootRes.status}`);
   }
 
-  const items: Array<{ name: string; type: string }> = await res.json();
-  const mdFiles = items.filter((i) => i.type === "file" && i.name.endsWith(".md"));
+  const rootItems: Array<{ name: string; type: string }> = await rootRes.json();
+  const directories = rootItems.filter(i => i.type === "dir" && !i.name.startsWith("."));
+  const rootFiles = rootItems.filter(i => i.type === "file" && i.name.endsWith(".md"));
 
-  // Fetch and parse in batches of 10
-  const BATCH_SIZE = 10;
   const allPosts: any[] = [];
 
-  for (let i = 0; i < mdFiles.length; i += BATCH_SIZE) {
-    const batch = mdFiles.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map(async ({ name: filename }) => {
-        const url = `${RAW_BASE}/${encodeURIComponent(filename)}`;
-        const rawRes = await fetch(url, {
-          headers: { "User-Agent": "VAREX-Blog-Fetcher", ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}) },
-        });
-        if (!rawRes.ok) throw new Error(`Failed to fetch ${filename}`);
-        const raw = await rawRes.text();
-        const { data, content } = matter(raw);
-
-        return {
-          id: `github-aws-${filename}`,
-          title: data.title || titleFromFilename(filename),
-          slug: filename.replace(/\.md$/, ""),
-          body: await marked.parse(content),
-          category: data.category || "aws_interview",
-          access_level: data.access_level || "free",
-          is_published: true,
-          author_id: data.author || "system",
-          created_at: data.date || new Date().toISOString(),
-          source: "github_api",
-          github_url: `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_CONTENT_PATH}/${filename}`,
-        };
-      })
-    );
-
-    for (const r of results) {
-      if (r.status === "fulfilled") allPosts.push(r.value);
-      else console.warn("GitHub fetch failed:", r.reason);
+  // Helper to fetch files from a specific folder
+  const fetchFromFolder = async (folderPath: string, folderName: string) => {
+    const apiURL = folderPath === "." 
+      ? GITHUB_API_BASE 
+      : `https://api.github.com/repos/${GITHUB_REPO}/contents/${folderPath}`;
+    
+    const res = await fetch(apiURL, { headers: githubHeaders() });
+    if (!res.ok) {
+      console.warn(`Could not list files for folder: ${folderPath}`);
+      return;
     }
+
+    const items: Array<{ name: string; type: string }> = await res.json();
+    const mdFiles = items.filter((i) => i.type === "file" && i.name.endsWith(".md"));
+    const category = folderPath === "." ? "aws_interview" : `${folderName}_interview`;
+
+    // Fetch and parse in batches of 10
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < mdFiles.length; i += BATCH_SIZE) {
+      const batch = mdFiles.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async ({ name: filename }) => {
+          const rawSuffix = folderPath === "." ? "" : `/${folderPath}`;
+          const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}${rawSuffix}/${encodeURIComponent(filename)}`;
+          
+          const rawRes = await fetch(url, {
+            headers: { "User-Agent": "VAREX-Blog-Fetcher", ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}) },
+          });
+          if (!rawRes.ok) throw new Error(`Failed to fetch ${filename}`);
+          const raw = await rawRes.text();
+          const { data, content } = matter(raw);
+
+          return {
+            id: `github-${folderName}-${filename}`,
+            title: data.title || titleFromFilename(filename),
+            slug: filename.replace(/\.md$/, ""),
+            body: await marked.parse(content),
+            category: data.category || category,
+            access_level: data.access_level || "free",
+            is_published: true,
+            author_id: data.author || "system",
+            created_at: data.date || new Date().toISOString(),
+            source: "github_api",
+            github_url: `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${folderPath === "." ? "" : folderPath + "/"}${filename}`,
+          };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled") allPosts.push(r.value);
+        else console.warn("GitHub fetch failed:", r.reason);
+      }
+    }
+  };
+
+  // Fetch from root and each directory
+  await fetchFromFolder(".", "aws"); // Primary/Root defaults to aws
+  for (const dir of directories) {
+    await fetchFromFolder(dir.name, dir.name);
   }
 
   return allPosts;

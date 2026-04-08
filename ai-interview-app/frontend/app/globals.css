@@ -15,15 +15,48 @@
 
   body {
     background:
-      radial-gradient(900px 540px at 10% -8%, rgba(124, 58, 237, 0.28), transparent 58%),
+      radial-gradient(920px 540px at 10% -8%, rgba(124, 58, 237, 0.28), transparent 58%),
+      radial-gradient(820px 420px at 88% 4%, rgba(34, 211, 238, 0.14), transparent 52%),
       radial-gradient(900px 520px at 90% -4%, rgba(244, 63, 94, 0.16), transparent 52%),
-      radial-gradient(800px 400px at 50% 18%, rgba(167, 139, 250, 0.12), transparent 55%),
+      radial-gradient(760px 360px at 50% 18%, rgba(167, 139, 250, 0.12), transparent 55%),
+      radial-gradient(620px 280px at 38% 76%, rgba(59, 130, 246, 0.08), transparent 60%),
       linear-gradient(180deg, #151530 0%, var(--background) 100%);
     color: var(--foreground);
     @apply antialiased selection:bg-[#0369A1] selection:text-white;
     font-family: var(--font-source-sans), sans-serif;
     line-height: 1.6;
     overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(420px 220px at 14% 24%, rgba(168, 85, 247, 0.14), transparent 72%),
+      radial-gradient(460px 240px at 86% 22%, rgba(34, 211, 238, 0.1), transparent 72%),
+      radial-gradient(360px 180px at 56% 72%, rgba(244, 63, 94, 0.08), transparent 74%);
+    mix-blend-mode: screen;
+    opacity: 0.9;
+    z-index: -1;
+    animation: chromaDrift 16s ease-in-out infinite alternate;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 92%);
+    opacity: 0.42;
+    z-index: -1;
+    animation: latticePulse 12s ease-in-out infinite;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -67,7 +100,8 @@
   .spatial-panel {
     background:
       linear-gradient(180deg, rgba(18, 18, 42, 0.84), rgba(10, 10, 24, 0.92)),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%);
+      linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%),
+      radial-gradient(circle at top right, rgba(34, 211, 238, 0.08), transparent 34%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -82,6 +116,34 @@
     background-size: 42px 42px;
     mask-image: radial-gradient(circle at center, black 40%, transparent 95%);
     opacity: 0.55;
+  }
+
+  .chromatic-orbit {
+    background:
+      radial-gradient(42% 58% at 18% 18%, rgba(167, 139, 250, 0.2), transparent 66%),
+      radial-gradient(36% 52% at 82% 22%, rgba(34, 211, 238, 0.18), transparent 62%),
+      radial-gradient(34% 48% at 58% 78%, rgba(244, 63, 94, 0.14), transparent 68%);
+    filter: blur(18px);
+    opacity: 0.8;
+    animation: orbitShift 18s ease-in-out infinite alternate;
+  }
+
+  .signal-beam {
+    background:
+      linear-gradient(135deg, rgba(34, 211, 238, 0.12), rgba(167, 139, 250, 0.08) 38%, rgba(244, 63, 94, 0.1) 72%, transparent 100%);
+    filter: blur(36px);
+    opacity: 0.65;
+    transform-origin: center;
+    animation: beamSweep 20s ease-in-out infinite alternate;
+  }
+
+  .telemetry-mesh path {
+    stroke-dasharray: 8 12;
+    animation: telemetryFlow 16s linear infinite;
+  }
+
+  .telemetry-mesh circle {
+    animation: telemetryBlink 3.8s ease-in-out infinite;
   }
 
   .depth-ring {
@@ -141,6 +203,77 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes chromaDrift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(1.5%, -1.5%, 0) scale(1.04);
+    opacity: 0.96;
+  }
+  100% {
+    transform: translate3d(-1.5%, 1%, 0) scale(1.01);
+    opacity: 0.84;
+  }
+}
+
+@keyframes orbitShift {
+  0% {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(1%, 2%, 0) scale(1.02);
+  }
+}
+
+@keyframes beamSweep {
+  0% {
+    transform: rotate(-6deg) translateX(-2%) scale(0.96);
+    opacity: 0.42;
+  }
+  50% {
+    transform: rotate(4deg) translateX(2%) scale(1.02);
+    opacity: 0.72;
+  }
+  100% {
+    transform: rotate(-2deg) translateX(1%) scale(1);
+    opacity: 0.48;
+  }
+}
+
+@keyframes latticePulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.46;
+  }
+}
+
+@keyframes telemetryFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+@keyframes telemetryBlink {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

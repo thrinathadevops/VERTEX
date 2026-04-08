@@ -21,7 +21,13 @@ async def list_projects(
         q = q.where(Project.category == category)
     if featured_only:
         q = q.where(Project.is_featured == True)
-    result = await db.execute(q.order_by(Project.created_at.desc()))
+    result = await db.execute(
+        q.order_by(
+            Project.is_featured.desc(),
+            Project.display_order.asc(),
+            Project.created_at.desc(),
+        )
+    )
     return result.scalars().all()
 
 @router.get("/{slug}", response_model=ProjectResponse, summary="Get project by slug")
