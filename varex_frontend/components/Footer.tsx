@@ -72,19 +72,6 @@ export default function Footer() {
         </svg>
       </div>
       <div className="mx-auto max-w-6xl px-4 py-16">
-        <div className="mb-10 grid gap-3 rounded-[1.6rem] border border-white/5 bg-white/[0.03] p-4 backdrop-blur-sm sm:grid-cols-3">
-          {[
-            { label: "Delivery Velocity", value: "7-Day Bench" },
-            { label: "Execution Coverage", value: "Cloud • Security • SAP" },
-            { label: "Interview Stack", value: "Mock + Enterprise AI" },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-white/5 bg-slate-900/55 px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-200">{item.value}</p>
-            </div>
-          ))}
-        </div>
-
         {/* ── Top: Brand + Links grid ───────────────────────── */}
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
 

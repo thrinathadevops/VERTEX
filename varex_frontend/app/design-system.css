@@ -1,0 +1,191 @@
+/* PATH: app/design-system.css */
+/* 
+ * VAREX Design System Utility Classes
+ * Reference: docs/design/style-guide.md
+ */
+
+:root {
+  /* Dark Luxury Base */
+  --color-dark-luxury-bg: #0D0D1A;
+  --color-dark-luxury-card: #111827;
+  --color-dark-luxury-text: #F1F1EE;
+  --color-dark-luxury-accent: #0066FF;
+  --color-dark-luxury-border: rgba(255, 255, 255, 0.08);
+
+  /* Neumorphism Base (requires matching bg/element color) */
+  --color-neumorphism-base: #e0e5ec;
+  --shadow-neumorphism-dark: #b8bec7;
+  --shadow-neumorphism-light: #ffffff;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.1 Glassmorphism
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  color: white;
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 20px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.dark .glass-nav {
+  background: rgba(10, 10, 10, 0.85);
+  border-bottom: 1px solid var(--color-dark-luxury-border);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.2 Neumorphism (Soft UI)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.neumorphism-bg {
+  background-color: var(--color-neumorphism-base);
+}
+
+.neumorphism-raised {
+  background-color: var(--color-neumorphism-base);
+  box-shadow: 6px 6px 12px var(--shadow-neumorphism-dark),
+             -6px -6px 12px var(--shadow-neumorphism-light);
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+
+.neumorphism-inset, 
+.neumorphism-raised:active {
+  background-color: var(--color-neumorphism-base);
+  box-shadow: inset 4px 4px 8px var(--shadow-neumorphism-dark),
+              inset -4px -4px 8px var(--shadow-neumorphism-light);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.3 Brutalism
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.brutalism-card {
+  background-color: #FFFFFF;
+  border: 3px solid #000000;
+  border-radius: 0;
+  color: #000000;
+  font-family: monospace;
+  box-shadow: 6px 6px 0px 0px #000000;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.brutalism-card:hover {
+  background-color: #FFE600; /* Yellow accent */
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.brutalism-rotate {
+  transform: rotate(-2deg);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.4 Bento Grid
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.bento-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: minmax(180px, auto);
+  gap: 1rem;
+}
+
+.bento-item {
+  background-color: #111111;
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: transform 0.2s ease-out;
+}
+
+.bento-item-light {
+  background-color: #1A1A2E;
+}
+
+.bento-item:hover {
+  transform: scale(1.02);
+}
+
+/* Span helpers for Bento Grids */
+.col-span-2 { grid-column: span 2; }
+.row-span-2 { grid-row: span 2; }
+
+@media (max-width: 768px) {
+  .bento-container {
+    grid-template-columns: 1fr;
+  }
+  .col-span-2 { grid-column: span 1; }
+  .row-span-2 { grid-row: span 1; }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.6 Dark Luxury
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.theme-dark-luxury {
+  background-color: var(--color-dark-luxury-bg);
+  color: var(--color-dark-luxury-text);
+}
+
+.dark-luxury-card {
+  background-color: var(--color-dark-luxury-card);
+  border: 1px solid var(--color-dark-luxury-border);
+  border-radius: 12px;
+}
+
+.dark-luxury-btn {
+  background-color: var(--color-dark-luxury-accent);
+  color: white;
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgba(0, 102, 255, 0.2);
+  transition: box-shadow 0.2s ease;
+}
+
+.dark-luxury-btn:hover {
+  box-shadow: 0 0 30px rgba(0, 102, 255, 0.4);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   2.2 Scroll Animations (Base classes for IntersectionObserver)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger delays */
+.delay-100 { transition-delay: 100ms; }
+.delay-200 { transition-delay: 200ms; }
+.delay-300 { transition-delay: 300ms; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   5.4 Gradient Text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.text-gradient-purple {
+  background: linear-gradient(135deg, #667eea 0%, #f64f59 100%);
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

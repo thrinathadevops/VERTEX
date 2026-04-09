@@ -945,8 +945,10 @@ export default function HomePage() {
             <div key={item} style={{
               padding: "10px 12px",
               borderRadius: 12,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "linear-gradient(180deg, rgba(16,24,40,0.72), rgba(10,16,30,0.82))",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(14px)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
               color: "#dbeafe",
               fontSize: 12,
               lineHeight: 1.6,
@@ -1550,8 +1552,9 @@ export default function HomePage() {
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
           padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "rgba(255,255,255,0.86)", backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(180deg, rgba(9,16,30,0.78), rgba(8,14,26,0.88))", backdropFilter: "blur(16px) saturate(130%)",
+          borderBottom: "1px solid rgba(148,163,184,0.16)",
+          boxShadow: "0 10px 28px rgba(2,8,23,0.28), inset 0 1px 0 rgba(255,255,255,0.08)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
@@ -1561,8 +1564,8 @@ export default function HomePage() {
             }}>
               <Bot size={14} color="#fff" />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#15304b" }}>VAREX AI Interview</span>
-            <span style={{ fontSize: 11, color: "#5d728a" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2ecff" }}>VAREX AI Interview</span>
+            <span style={{ fontSize: 11, color: "#94a3b8" }}>
               • {session?.interview_mode === "enterprise" ? "Enterprise" : "Practice"}
             </span>
           </div>
@@ -1898,19 +1901,19 @@ export default function HomePage() {
         {currentQuestion && (
           <div className="animate-fadeInUp" style={{
             maxWidth: 700, width: "100%",
-            background: "rgba(255,255,255,0.84)", backdropFilter: "blur(12px)",
-            border: "1px solid rgba(148,163,184,0.18)", borderRadius: 20,
+            background: "linear-gradient(180deg, rgba(16,24,40,0.78), rgba(9,15,28,0.9))", backdropFilter: "blur(18px) saturate(130%)",
+            border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20,
             padding: "28px 32px", textAlign: "center",
-            boxShadow: `0 18px 40px rgba(37,99,235,0.08)`,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 40px rgba(2,8,23,0.28)",
           }}>
             <div style={{
-              fontSize: 11, fontWeight: 700, color: "#5d728a",
+              fontSize: 11, fontWeight: 700, color: "#8fb4d9",
               textTransform: "uppercase", letterSpacing: 2, marginBottom: 12,
             }}>
               Question {turnNumber}
             </div>
             <p style={{
-              fontSize: 20, fontWeight: 600, lineHeight: 1.6, color: "#15304b",
+              fontSize: 20, fontWeight: 600, lineHeight: 1.6, color: "#edf5ff",
               margin: 0,
             }}>
               {currentQuestion}

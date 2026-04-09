@@ -45,7 +45,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${headingFont.variable} ${bodyFont.variable} bg-kyc-background text-kyc-text antialiased`}>
         <Navbar />
-        <main className="mx-auto max-w-6xl px-4 py-8">
+        <main className="flex-1 w-full flex flex-col">
           {children}
         </main>
         <Footer />

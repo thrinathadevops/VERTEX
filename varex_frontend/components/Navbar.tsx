@@ -50,9 +50,9 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-all duration-300 ${isScrolled
-          ? "border-slate-700/80 bg-[#0B1120]/92 backdrop-blur-md shadow-2xl shadow-black/20"
-          : "border-slate-800 bg-[#0B1120] shadow-xl"
+      className={`sticky top-0 z-50 transition-all duration-300 ${isScrolled
+          ? "border-b border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.15)]"
+          : "border-b border-white/10 bg-transparent"
         }`}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">

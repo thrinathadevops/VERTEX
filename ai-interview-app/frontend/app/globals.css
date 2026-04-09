@@ -4,23 +4,23 @@
 
 @layer base {
   :root {
-    --background: #090816;
-    --foreground: #ecf2ff;
-    --surface: #12122a;
-    --surface-2: #1b1b39;
-    --muted: #9fa8c6;
-    --ring: #a78bfa;
-    --cta: #f43f5e;
+    --background: #08101c;
+    --foreground: #edf5ff;
+    --surface: rgba(12, 20, 35, 0.78);
+    --surface-2: rgba(17, 26, 45, 0.88);
+    --muted: #9db1ce;
+    --ring: #60a5fa;
+    --cta: #f97316;
   }
 
   body {
     background:
-      radial-gradient(920px 540px at 10% -8%, rgba(124, 58, 237, 0.28), transparent 58%),
-      radial-gradient(820px 420px at 88% 4%, rgba(34, 211, 238, 0.14), transparent 52%),
-      radial-gradient(900px 520px at 90% -4%, rgba(244, 63, 94, 0.16), transparent 52%),
-      radial-gradient(760px 360px at 50% 18%, rgba(167, 139, 250, 0.12), transparent 55%),
-      radial-gradient(620px 280px at 38% 76%, rgba(59, 130, 246, 0.08), transparent 60%),
-      linear-gradient(180deg, #151530 0%, var(--background) 100%);
+      radial-gradient(940px 560px at 8% -8%, rgba(59, 130, 246, 0.24), transparent 58%),
+      radial-gradient(820px 420px at 88% 6%, rgba(34, 211, 238, 0.16), transparent 50%),
+      radial-gradient(860px 500px at 90% -4%, rgba(249, 115, 22, 0.14), transparent 52%),
+      radial-gradient(760px 360px at 48% 18%, rgba(96, 165, 250, 0.12), transparent 55%),
+      radial-gradient(660px 280px at 36% 76%, rgba(125, 211, 252, 0.07), transparent 60%),
+      linear-gradient(180deg, #101a2f 0%, var(--background) 100%);
     color: var(--foreground);
     @apply antialiased selection:bg-[#0369A1] selection:text-white;
     font-family: var(--font-source-sans), sans-serif;
@@ -35,9 +35,9 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(420px 220px at 14% 24%, rgba(168, 85, 247, 0.14), transparent 72%),
-      radial-gradient(460px 240px at 86% 22%, rgba(34, 211, 238, 0.1), transparent 72%),
-      radial-gradient(360px 180px at 56% 72%, rgba(244, 63, 94, 0.08), transparent 74%);
+      radial-gradient(420px 220px at 14% 24%, rgba(96, 165, 250, 0.14), transparent 72%),
+      radial-gradient(460px 240px at 86% 22%, rgba(34, 211, 238, 0.12), transparent 72%),
+      radial-gradient(360px 180px at 56% 72%, rgba(249, 115, 22, 0.08), transparent 74%);
     mix-blend-mode: screen;
     opacity: 0.9;
     z-index: -1;
@@ -98,15 +98,29 @@
   }
 
   .spatial-panel {
+    position: relative;
+    overflow: hidden;
     background:
-      linear-gradient(180deg, rgba(18, 18, 42, 0.84), rgba(10, 10, 24, 0.92)),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%),
-      radial-gradient(circle at top right, rgba(34, 211, 238, 0.08), transparent 34%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+      linear-gradient(180deg, rgba(14, 22, 39, 0.78), rgba(8, 14, 28, 0.9)),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 38%),
+      radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 34%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 22px 60px rgba(3, 2, 20, 0.42);
-    backdrop-filter: blur(18px);
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 22px 60px rgba(3, 8, 20, 0.42),
+      0 0 0 1px rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px) saturate(135%);
+  }
+
+  .spatial-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(155deg, rgba(255, 255, 255, 0.16), transparent 24%, transparent 64%, rgba(56, 189, 248, 0.08)),
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 22%);
+    opacity: 0.92;
   }
 
   .orbital-grid {
@@ -120,9 +134,9 @@
 
   .chromatic-orbit {
     background:
-      radial-gradient(42% 58% at 18% 18%, rgba(167, 139, 250, 0.2), transparent 66%),
+      radial-gradient(42% 58% at 18% 18%, rgba(96, 165, 250, 0.2), transparent 66%),
       radial-gradient(36% 52% at 82% 22%, rgba(34, 211, 238, 0.18), transparent 62%),
-      radial-gradient(34% 48% at 58% 78%, rgba(244, 63, 94, 0.14), transparent 68%);
+      radial-gradient(34% 48% at 58% 78%, rgba(249, 115, 22, 0.14), transparent 68%);
     filter: blur(18px);
     opacity: 0.8;
     animation: orbitShift 18s ease-in-out infinite alternate;

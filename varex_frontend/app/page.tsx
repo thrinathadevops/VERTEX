@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap, ArrowRight } from "lucide-react";
+import { CheckCircle2, Shield, Server, Cloud, Blocks, Cpu, Database, BarChart3, Users, Zap, ArrowRight, Box, Network, Terminal, Settings } from "lucide-react";
 import AnimateIn, { StaggerContainer, StaggerItem } from "@/components/AnimateIn";
 import Testimonials from "@/components/Testimonials";
 import NewsletterSignup from "@/components/NewsletterSignup";
@@ -12,7 +12,7 @@ import HeroAnimations from "@/components/HeroAnimations";
 import FounderSection from "@/components/FounderSection";
 
 export default function HomePage() {
-  const [introDone, setIntroDone] = useState(false);
+  const [introDone, setIntroDone] = useState(true);
 
   const featureToneClasses: Record<string, string> = {
     sky: "bg-sky-500/10 text-sky-400",
@@ -24,171 +24,148 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 md:gap-10 pb-4">
+    <div className="flex flex-col gap-6 md:gap-8 pb-4">
 
       {/* ── Dynamic letter-assembly intro ── */}
-      <VarexIntro onComplete={() => setIntroDone(true)} />
+      {!introDone && <VarexIntro onComplete={() => setIntroDone(true)} />}
 
       {/* ═══════════════════════════════════════════════════════════
-          HERO SECTION — Full-bleed with animated background
+          NEO-DARK HERO SECTION + TECH STACK MARQUEE
          ═══════════════════════════════════════════════════════════ */}
-      <section className={`relative min-h-[90vh] flex items-center overflow-hidden -mx-4 px-4 transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${introDone ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[1.03] blur-[3px]"}`}>
-        {/* Background layers */}
-        <div className="absolute inset-0 -z-20 bg-[#020504]" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_50%_at_50%_-12%,rgba(0,255,136,0.14),transparent)]" />
-        <div className="absolute inset-0 -z-10 hero-grid" />
-        <div className="absolute inset-0 -z-10 command-grid" />
-        <div className="absolute inset-x-0 top-24 h-[28rem] -z-10 aurora-band" />
-        <div className="absolute left-1/2 top-1/4 h-[22rem] w-[22rem] -translate-x-1/2 -z-10 prism-haze" />
-        <svg
-          className="absolute inset-0 -z-10 h-full w-full opacity-45 signal-lines"
-          viewBox="0 0 1440 900"
-          fill="none"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient id="signalStrokeA" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="rgba(52,211,153,0.0)" />
-              <stop offset="45%" stopColor="rgba(52,211,153,0.55)" />
-              <stop offset="100%" stopColor="rgba(56,189,248,0.0)" />
-            </linearGradient>
-            <linearGradient id="signalStrokeB" x1="1" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(99,102,241,0.0)" />
-              <stop offset="50%" stopColor="rgba(56,189,248,0.38)" />
-              <stop offset="100%" stopColor="rgba(16,185,129,0.0)" />
-            </linearGradient>
-          </defs>
-          <path d="M0 640C190 584 246 476 404 456C528 440 604 506 708 494C844 478 950 332 1088 332C1246 332 1320 436 1440 412" stroke="url(#signalStrokeA)" strokeWidth="1.4" strokeDasharray="8 10" />
-          <path d="M64 744C206 684 314 606 434 610C558 614 626 730 760 728C918 726 980 592 1128 560C1224 540 1328 564 1440 630" stroke="url(#signalStrokeB)" strokeWidth="1.2" strokeDasharray="6 14" />
-          <circle cx="404" cy="456" r="4" fill="rgba(16,185,129,0.85)" />
-          <circle cx="708" cy="494" r="4" fill="rgba(56,189,248,0.75)" />
-          <circle cx="1088" cy="332" r="4" fill="rgba(99,102,241,0.72)" />
-          <circle cx="434" cy="610" r="3.5" fill="rgba(16,185,129,0.72)" />
-          <circle cx="760" cy="728" r="3.5" fill="rgba(56,189,248,0.72)" />
-          <circle cx="1128" cy="560" r="3.5" fill="rgba(99,102,241,0.66)" />
-        </svg>
-        <svg
-          className="absolute inset-0 -z-10 h-full w-full opacity-40 varex-topology"
-          viewBox="0 0 1440 900"
-          fill="none"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient id="varexTopologyA" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgba(0,255,136,0)" />
-              <stop offset="50%" stopColor="rgba(0,255,136,0.34)" />
-              <stop offset="100%" stopColor="rgba(56,189,248,0)" />
-            </linearGradient>
-            <linearGradient id="varexTopologyB" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgba(99,102,241,0)" />
-              <stop offset="52%" stopColor="rgba(56,189,248,0.28)" />
-              <stop offset="100%" stopColor="rgba(158,255,0,0)" />
-            </linearGradient>
-          </defs>
-          <path d="M150 238H354L466 324H640L760 226H960L1088 306H1282" stroke="url(#varexTopologyA)" strokeWidth="1.2" />
-          <path d="M220 692H428L544 608H742L872 730H1110L1240 648" stroke="url(#varexTopologyB)" strokeWidth="1.15" />
-          <path d="M640 324V516L742 608" stroke="rgba(148,163,184,0.16)" strokeWidth="1" />
-          <path d="M760 226V136H1042V306" stroke="rgba(148,163,184,0.12)" strokeWidth="1" />
-          <rect x="332" y="220" width="44" height="36" rx="10" fill="rgba(8,15,15,0.64)" stroke="rgba(16,185,129,0.18)" />
-          <rect x="618" y="306" width="44" height="36" rx="10" fill="rgba(8,15,15,0.64)" stroke="rgba(56,189,248,0.18)" />
-          <rect x="938" y="208" width="44" height="36" rx="10" fill="rgba(8,15,15,0.64)" stroke="rgba(99,102,241,0.18)" />
-          <rect x="720" y="590" width="44" height="36" rx="10" fill="rgba(8,15,15,0.64)" stroke="rgba(56,189,248,0.18)" />
-          <circle cx="354" cy="238" r="4.5" fill="rgba(0,255,136,0.74)" />
-          <circle cx="640" cy="324" r="4.5" fill="rgba(56,189,248,0.7)" />
-          <circle cx="760" cy="226" r="4.5" fill="rgba(158,255,0,0.68)" />
-          <circle cx="1088" cy="306" r="4.5" fill="rgba(99,102,241,0.72)" />
-          <circle cx="742" cy="608" r="4.5" fill="rgba(56,189,248,0.78)" />
-          <text x="286" y="208" fill="rgba(148,163,184,0.52)" fontSize="11" letterSpacing="2">EDGE</text>
-          <text x="588" y="290" fill="rgba(148,163,184,0.52)" fontSize="11" letterSpacing="2">CI/CD</text>
-          <text x="910" y="192" fill="rgba(148,163,184,0.52)" fontSize="11" letterSpacing="2">SECURITY</text>
-          <text x="686" y="576" fill="rgba(148,163,184,0.52)" fontSize="11" letterSpacing="2">DELIVERY</text>
-        </svg>
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent -z-10" />
+      <section className={`relative flex flex-col justify-center overflow-hidden px-4 sm:px-6 transform-gpu transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${introDone ? "opacity-100 translate-y-0 filter-none" : "opacity-0 translate-y-8 blur-[4px]"}`}>
+        
+        {/* Abstract Dark Background Elements */}
+        <div className="absolute inset-0 z-0 bg-[#020617]" />
+        
+        {/* Glowing Orbs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[50%] rounded-full bg-cyan-600/10 blur-[120px] pointer-events-none" />
+        
+        {/* Subtle Tech Grid */}
+        <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_15%,transparent_100%)] pointer-events-none" />
 
-        {/* Floating animated blobs */}
-        <div className="absolute top-20 -left-32 w-72 h-72 bg-emerald-400/10 rounded-full blur-[100px] animate-blob" />
-        <div className="absolute top-40 -right-32 w-80 h-80 bg-lime-300/10 rounded-full blur-[100px] animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-20 left-1/3 w-64 h-64 bg-cyan-300/10 rounded-full blur-[100px] animate-blob animation-delay-4000" />
-        <div className="absolute top-1/3 left-1/2 w-56 h-56 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-[90px] animate-blob animation-delay-2000" />
-
-        <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-16 items-center py-20">
-          {/* LEFT: Enhanced animated content */}
-          <div className="space-y-8 relative">
-            <div className="space-y-4">
-              <span className="terminal-label">Engineering Command Layer</span>
-              <div className="glass-panel glass-outline rounded-3xl p-5 md:p-6">
-                <div className="grid grid-cols-3 gap-3 text-[11px] uppercase tracking-[0.24em] text-emerald-200/70">
-                  <div>
-                    <p className="text-white text-2xl font-bold tracking-tight">7 Days</p>
-                    <p>Talent Delivery</p>
-                  </div>
-                  <div>
-                    <p className="text-white text-2xl font-bold tracking-tight">12x</p>
-                    <p>Release Velocity</p>
-                  </div>
-                  <div>
-                    <p className="text-white text-2xl font-bold tracking-tight">Zero</p>
-                    <p>Chaos by Default</p>
-                  </div>
-                </div>
+        <div className="relative z-10 max-w-7xl mx-auto w-full pt-16 lg:pt-24 pb-16 flex flex-col items-center text-center cursor-default">
+          
+          {/* Main Hero Content */}
+          <div className="space-y-6 flex flex-col items-center max-w-4xl">
+            {/* Command Pill */}
+            <AnimateIn delay={0.1}>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-sky-400/20 bg-sky-500/10 backdrop-blur-md shadow-[0_0_15px_rgba(14,165,233,0.15)] text-sky-300">
+                <span className="flex h-1.5 w-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)] animate-pulse" />
+                <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Next-Gen DevSecOps & Cloud</span>
               </div>
-            </div>
-            <HeroAnimations start={introDone} />
+            </AnimateIn>
+
+            {/* Headline */}
+            <AnimateIn delay={0.2}>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-tight leading-tight">
+                Architect <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm">Unbreakable</span> Resilience. <span className="text-slate-300">Accelerate Execution.</span>
+              </h1>
+            </AnimateIn>
+
+            {/* Subtext */}
+            <AnimateIn delay={0.3}>
+              <p className="text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl leading-relaxed mx-auto">
+                Transform your deployment velocity. We build <span className="text-emerald-300 font-medium tracking-wide">production-grade infrastructure</span>, enforce continuous zero-trust cybersecurity, and deploy elite, AI-vetted engineering teams in days—not months.
+              </p>
+            </AnimateIn>
+
+            {/* CTA Buttons */}
+            <AnimateIn delay={0.4}>
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 pb-10">
+                <Link href="/services" className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-white text-slate-950 font-bold text-sm transition-all hover:bg-slate-200 hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.15)] ring-1 ring-white/50">
+                  Explore Solutions
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </Link>
+                <Link href="/contact" className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-white/10 bg-white/[0.03] text-white font-semibold text-sm transition-all hover:bg-white/[0.08] hover:border-white/20 backdrop-blur-md">
+                  Book Architecture Review
+                </Link>
+              </div>
+            </AnimateIn>
           </div>
 
-          {/* RIGHT: Hero image */}
-          <AnimateIn delay={0.3} direction="right" trigger="mount">
-            <div className="relative max-w-[560px] mx-auto lg:mx-0">
-              <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-400/20 via-lime-300/8 to-transparent rounded-3xl blur-2xl" />
-              <div className="absolute -inset-[1px] rounded-[1.6rem] bg-gradient-to-br from-emerald-300/30 via-white/10 to-transparent opacity-80" />
-              <div className="absolute left-5 top-5 z-10 rounded-2xl border border-emerald-300/15 bg-slate-950/55 px-4 py-3 backdrop-blur-md">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-emerald-200/65">Execution Fabric</p>
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.6)]" />
-                  Cloud
-                  <span className="inline-block h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_14px_rgba(56,189,248,0.6)]" />
-                  Security
-                  <span className="inline-block h-2 w-2 rounded-full bg-lime-300 shadow-[0_0_14px_rgba(190,242,100,0.5)]" />
-                  Talent
-                </div>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-emerald-950/20">
-                <Image
-                  src="/hero-cloud-infra.png"
-                  alt="VAREX Cloud Infrastructure"
-                  width={700}
-                  height={450}
-                  className="w-full h-auto object-cover"
-                  priority
-                />
-                {/* Overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#020504]/70 via-transparent to-transparent" />
-                <svg
-                  className="absolute inset-x-0 top-0 z-[1] h-full w-full opacity-55 varex-topology"
-                  viewBox="0 0 700 450"
-                  fill="none"
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                >
-                  <path d="M42 116H184L252 178H356L428 110H562L648 164" stroke="rgba(56,189,248,0.32)" strokeWidth="1.2" />
-                  <path d="M70 320H214L300 264H430L508 336H644" stroke="rgba(16,185,129,0.26)" strokeWidth="1.2" />
-                  <path d="M356 178V264" stroke="rgba(148,163,184,0.16)" strokeWidth="1" />
-                  <circle cx="184" cy="116" r="4.2" fill="rgba(16,185,129,0.76)" />
-                  <circle cx="356" cy="178" r="4.2" fill="rgba(56,189,248,0.72)" />
-                  <circle cx="428" cy="110" r="4.2" fill="rgba(190,242,100,0.72)" />
-                  <circle cx="508" cy="336" r="4.2" fill="rgba(99,102,241,0.72)" />
-                </svg>
-                <div className="absolute left-4 right-4 bottom-4 glass-panel rounded-2xl p-4">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/70 mb-2">Active Delivery Lanes</p>
-                  <div className="grid grid-cols-2 gap-3 text-sm text-slate-200">
-                    <div className="rounded-xl bg-white/5 p-3">Cloud modernization</div>
-                    <div className="rounded-xl bg-white/5 p-3">DevSecOps hardening</div>
-                    <div className="rounded-xl bg-white/5 p-3">AI hiring automation</div>
-                    <div className="rounded-xl bg-white/5 p-3">SAP enterprise delivery</div>
-                  </div>
-                </div>
+          {/* Tech Stack Scrolling Marquee - Centered Full Width Below */}
+          <AnimateIn delay={0.5} direction="up" className="w-full mt-6">
+            <div className="relative w-full max-w-5xl mx-auto">
+              
+              {/* Premium Glass Container */}
+              <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent backdrop-blur-sm p-4">
+                 
+                 {/* Marquee Animations */}
+                 <style dangerouslySetInnerHTML={{__html: `
+                    @keyframes scrollLeft {
+                      0% { transform: translateX(0); }
+                      100% { transform: translateX(-50%); }
+                    }
+                    @keyframes scrollRight {
+                      0% { transform: translateX(-50%); }
+                      100% { transform: translateX(0); }
+                    }
+                    .animate-scroll-left { animation: scrollLeft 35s linear infinite; }
+                    .animate-scroll-right { animation: scrollRight 35s linear infinite; }
+                    .animate-scroll-left:hover, .animate-scroll-right:hover { animation-play-state: paused; }
+                 `}} />
+
+                 {/* Scrolling Container with Edge Fades */}
+                 <div className="relative space-y-5 overflow-hidden py-3" style={{ maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)" }}>
+                    
+                    {/* ROW 1: Scroll Left (Cloud & DevOps) */}
+                    <div className="flex w-max animate-scroll-left gap-5">
+                       {[
+                         { name: "Docker", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original.svg" },
+                         { name: "Kubernetes", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
+                         { name: "AWS", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
+                         { name: "Azure", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+                         { name: "GCP", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/googlecloud/googlecloud-original.svg" },
+                         { name: "Terraform", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/terraform/terraform-original.svg" },
+                         { name: "Ansible", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/ansible/ansible-original.svg" },
+                         { name: "Jenkins", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jenkins/jenkins-original.svg" },
+                         // Duplicate for seamless scroll
+                         { name: "Docker", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original.svg" },
+                         { name: "Kubernetes", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
+                         { name: "AWS", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
+                         { name: "Azure", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+                         { name: "GCP", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/googlecloud/googlecloud-original.svg" },
+                         { name: "Terraform", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/terraform/terraform-original.svg" },
+                         { name: "Ansible", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/ansible/ansible-original.svg" },
+                         { name: "Jenkins", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jenkins/jenkins-original.svg" },
+                       ].map((tool, i) => (
+                          <div key={i} className="flex items-center flex-shrink-0 gap-4 px-6 md:px-8 py-3.5 md:py-4 bg-white/[0.03] border border-white/5 rounded-2xl transition-all shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:bg-white/[0.08] hover:border-white/20 hover:-translate-y-1">
+                             <img src={tool.src} alt={tool.name} className="h-8 md:h-10 w-auto max-w-[70px] md:max-w-[90px] object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]" />
+                             <span className="text-sm md:text-base font-bold text-slate-200 tracking-wide">{tool.name}</span>
+                          </div>
+                       ))}
+                    </div>
+
+                    {/* ROW 2: Scroll Right (SAP, Security, Automation, Data) */}
+                    <div className="flex w-max animate-scroll-right gap-5 relative left-[calc(-50%-1.25rem)]">
+                       {[
+                         { name: "SAP Solutions", src: "https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg" },
+                         { name: "Cybersecurity (Linux)", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/linux/linux-original.svg" },
+                         { name: "Security Automation", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" },
+                         { name: "SecOps Monitoring", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/prometheus/prometheus-original.svg" },
+                         { name: "Observability", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/grafana/grafana-original.svg" },
+                         { name: "NGINX Defense", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nginx/nginx-original.svg" },
+                         { name: "Enterprise Databases", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" },
+                         { name: "API Security", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postman/postman-original.svg" },
+                         // Duplicate for seamless scroll
+                         { name: "SAP Solutions", src: "https://upload.wikimedia.org/wikipedia/commons/5/59/SAP_2011_logo.svg" },
+                         { name: "Cybersecurity (Linux)", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/linux/linux-original.svg" },
+                         { name: "Security Automation", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" },
+                         { name: "SecOps Monitoring", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/prometheus/prometheus-original.svg" },
+                         { name: "Observability", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/grafana/grafana-original.svg" },
+                         { name: "NGINX Defense", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nginx/nginx-original.svg" },
+                         { name: "Enterprise Databases", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" },
+                         { name: "API Security", src: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postman/postman-original.svg" },
+                       ].map((tool, i) => (
+                          <div key={i} className="flex items-center flex-shrink-0 gap-4 px-6 md:px-8 py-3.5 md:py-4 bg-white/[0.03] border border-white/5 rounded-2xl transition-all shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:bg-white/[0.08] hover:border-white/20 hover:-translate-y-1">
+                             <img src={tool.src} alt={tool.name} className="h-8 md:h-10 w-auto max-w-[70px] md:max-w-[90px] object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]" />
+                             <span className="text-sm md:text-base font-bold text-slate-200 tracking-wide">{tool.name}</span>
+                          </div>
+                       ))}
+                    </div>
+
+                 </div>
               </div>
             </div>
           </AnimateIn>
@@ -198,7 +175,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           TRUST BAR — Key capabilities
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-16 border border-white/5 bg-[linear-gradient(135deg,rgba(5,15,18,0.94),rgba(10,24,19,0.88),rgba(7,14,27,0.92))] rounded-[2rem]">
+      <section className="relative overflow-hidden py-12 sm:py-16 border border-white/5 bg-[linear-gradient(135deg,rgba(5,15,18,0.94),rgba(10,24,19,0.88),rgba(7,14,27,0.92))] rounded-[2rem]">
         <div className="absolute inset-y-0 left-0 w-1/2 bg-[radial-gradient(circle_at_left_center,rgba(52,211,153,0.08),transparent_70%)]" />
         <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_right_center,rgba(56,189,248,0.08),transparent_70%)]" />
         <StaggerContainer className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -229,7 +206,7 @@ export default function HomePage() {
             },
           ].map((f) => (
             <StaggerItem key={f.title}>
-              <div className="glass-panel rounded-2xl p-6 flex items-start gap-5 group">
+              <div className="glass-panel bento-tile rounded-2xl p-6 flex items-start gap-5 group">
                 <div className={`flex-shrink-0 p-3.5 rounded-xl group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[f.color]}`}>
                   {f.icon}
                 </div>
@@ -246,10 +223,10 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           SERVICES SECTION — What We Do
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-16 bg-[linear-gradient(180deg,rgba(4,9,9,0.98),rgba(6,10,20,0.96))] rounded-[2rem] border border-white/5">
+      <section className="relative overflow-hidden py-12 sm:py-16 bg-[linear-gradient(180deg,rgba(4,9,9,0.98),rgba(6,10,20,0.96))] rounded-[2rem] border border-white/5">
         <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.12),transparent_70%)]" />
         <div className="max-w-6xl mx-auto px-4">
-          <AnimateIn className="text-center mb-16">
+          <AnimateIn className="text-center mb-12 lg:mb-16">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">What We Do</h2>
             <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-4">Comprehensive Engineering Solutions</h3>
             <p className="text-slate-400 max-w-2xl mx-auto">
@@ -271,7 +248,7 @@ export default function HomePage() {
               { icon: <Cpu className="w-5 h-5" />, title: "AI-Powered Hiring", desc: "Deploy pre-vetted engineers in 7 days using our proprietary evaluation matrix.", href: "/services/ai-powered-hiring", color: "emerald" },
             ].map((s) => (
               <StaggerItem key={s.title}>
-                <Link href={s.href} className="motion-card group flex flex-col h-full glass-panel hover:bg-white/[0.08] border border-white/5 hover:border-emerald-300/30 p-5 rounded-[1.4rem] transition-all duration-300 hover:shadow-xl hover:shadow-emerald-950/10">
+                <Link href={s.href} className="motion-card group flex flex-col h-full glass-panel bento-tile hover:bg-white/[0.08] border border-white/5 hover:border-emerald-300/30 p-5 rounded-[1.4rem] transition-all duration-300 hover:shadow-xl hover:shadow-emerald-950/10">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${featureToneClasses[s.color]}`}>
                     {s.icon}
                   </div>
@@ -290,7 +267,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           ABOUT SECTION — with image
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-[linear-gradient(135deg,rgba(7,16,15,0.92),rgba(7,19,24,0.88),rgba(10,12,22,0.92))] border border-white/5 rounded-[2rem]">
+      <section className="relative overflow-hidden py-16 lg:py-20 bg-[linear-gradient(135deg,rgba(7,16,15,0.92),rgba(7,19,24,0.88),rgba(10,12,22,0.92))] border border-white/5 rounded-[2rem]">
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-emerald-400/10 blur-[120px]" />
         <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-cyan-400/10 blur-[120px]" />
         <div className="max-w-6xl mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
@@ -372,16 +349,16 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           WHY VAREX — Numbers & CTA
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-[linear-gradient(180deg,rgba(3,8,8,0.98),rgba(8,11,20,0.96))] rounded-[2rem] border border-white/5">
+      <section className="relative overflow-hidden py-16 lg:py-20 bg-[linear-gradient(180deg,rgba(3,8,8,0.98),rgba(8,11,20,0.96))] rounded-[2rem] border border-white/5">
         <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.12),transparent_70%)]" />
         <div className="absolute inset-x-0 bottom-0 h-48 bg-[radial-gradient(circle_at_bottom,rgba(16,185,129,0.1),transparent_72%)]" />
         <div className="max-w-6xl mx-auto px-4">
-          <AnimateIn className="text-center mb-16">
+          <AnimateIn className="text-center mb-12">
             <h2 className="text-sm font-bold tracking-widest text-sky-400 uppercase mb-3">Why Choose VAREX</h2>
             <h3 className="text-3xl md:text-5xl font-extrabold text-white">Built for Scale. Designed to Last.</h3>
           </AnimateIn>
 
-          <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {[
               { icon: <Users className="w-7 h-7" />, value: "50+", label: "Enterprise Clients" },
               { icon: <Zap className="w-7 h-7" />, value: "99.9%", label: "Uptime SLA" },
@@ -434,7 +411,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           TESTIMONIALS
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-[linear-gradient(135deg,rgba(8,14,24,0.9),rgba(14,19,36,0.86))] border-y border-slate-800/50 rounded-2xl">
+      <section className="relative overflow-hidden py-16 lg:py-20 bg-[linear-gradient(135deg,rgba(8,14,24,0.9),rgba(14,19,36,0.86))] border border-white/5 rounded-[2rem]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.08),transparent_32%)]" />
         <div className="max-w-6xl mx-auto px-4">
           <Testimonials />
@@ -444,7 +421,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           NEWSLETTER
          ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden py-24 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(10,12,24,0.94),rgba(5,10,10,0.96))] rounded-2xl">
+      <section className="relative overflow-hidden py-16 lg:py-20 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(10,12,24,0.94),rgba(5,10,10,0.96))] border border-white/5 rounded-[2rem]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.08),transparent_34%)]" />
         <div className="max-w-6xl mx-auto px-4">
           <NewsletterSignup />

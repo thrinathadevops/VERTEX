@@ -626,9 +626,11 @@ admin
 ### Public Website
 - **Homepage** — Hero, services strip (DevSecOps / Security / SAP / AI Hiring), testimonials, newsletter
 - **Blog** — Category pages for DevOps, Cybersecurity, SAP SD, Architecture, AI Hiring; free + premium articles
-- **Portfolio** — Case studies with tech stack, client industry, outcomes
-- **Workshops** — Listing, individual pages, seat availability, registration
-- **Team** — Member profiles with specialisations and social links
+- **Portfolio** — Case studies with tech stack, client industry,
+* **AI Interviews:** Realistic AWS & Azure tech interviews
+* **Multi-Category Blog:** Automated blog via GitHub markdown scanning
+* **Interactive Calculators:** AWS & Azure cost estimations
+* **Design System:** Reference our [Graphic Styles & AI Prompt Guide](docs/design/style-guide.md) for pre-built CSS utilities (Glassmorphism, Bento Grid, Neumorphism). and social links
 - **Certifications** — Issued certs with badge images and credential URLs
 - **FAQ** — Categorised, searchable FAQ
 - **Services** — Detail pages for DevSecOps / Cybersecurity / SAP SD / AI Hiring

@@ -4,7 +4,6 @@ import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } fro
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, Shield, Zap, Server, Lock } from "lucide-react";
-import PlexusBackground from "./PlexusBackground";
 
 // ─── Typewriter ────────────────────────────────────────────────────────────────
 const PHRASES = [
@@ -85,11 +84,6 @@ export default function HeroAnimations({ start = true }: HeroAnimationsProps) {
 
   return (
     <div ref={heroRef} onMouseMove={handleMouseMove} className="contents relative">
-
-      {/* ── Background Canvas ── */}
-      <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none opacity-50">
-         <PlexusBackground />
-      </div>
 
       {/* ── Mouse-following glow ── */}
       {!reduceMotion && (
