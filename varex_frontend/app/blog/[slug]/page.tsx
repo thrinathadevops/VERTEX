@@ -265,6 +265,7 @@ export default function BlogPostPage() {
     azure_interview: "bg-blue-500/20 text-blue-300",
     linux_interview: "bg-emerald-500/20 text-emerald-300",
     kubernetes_interview: "bg-indigo-500/20 text-indigo-300",
+    python: "bg-yellow-500/20 text-yellow-300",
   };
   const category = (post as any).category ?? "devops";
 
