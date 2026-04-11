@@ -550,4 +550,515 @@ print(generate_kubernetes_health_report(node_count=20, pod_count=1000, unhealthy
 
 ---
 
+### Task 13: Bypassing manual kubectl with Python structured rollout restarts
+
+**Why use this logic?** Running `kubectl rollout restart deployment <name>` manually works locally, but for CI pipelines targeting 50 clusters, it's inefficient. Python natively hits the API by modifying the Deployment's annotation timestamp securely, forcing a zero-downtime rolling restart systematically.
+
+**Python Script:**
+```python
+import datetime
+import json
+
+def trigger_kubernetes_rolling_restart(namespace, deployment_name):
+    # 1. To trigger a native rollout restart, we patch the deployment with a fresh timestamp annotation
+    current_time_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    # 2. Structure the exact Dictionary / JSON Patch payload required by the K8s API
+    patch_payload = {
+        "spec": {
+            "template": {
+                "metadata": {
+                    "annotations": {
+                        "kubectl.kubernetes.io/restartedAt": current_time_iso
+                    }
+                }
+            }
+        }
+    }
+    
+    # 3. Simulate Native Execution:
+    # v1_apps.patch_namespaced_deployment(name=deployment_name, namespace=namespace, body=patch_payload)
+    
+    report = f"🔄 Kubernetes Rollout Restart Injected:\n"
+    report += f"Target: Deployment '{deployment_name}' in Namespace '{namespace}'\n"
+    report += f"Patch Body:\n{json.dumps(patch_payload, indent=2)}"
+    
+    return report
+
+print(trigger_kubernetes_rolling_restart("production-apps", "auth-gateway"))
+```
+
+**Output of the script:**
+```json
+🔄 Kubernetes Rollout Restart Injected:
+Target: Deployment 'auth-gateway' in Namespace 'production-apps'
+Patch Body:
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "annotations": {
+          "kubectl.kubernetes.io/restartedAt": "2026-04-11T14:35:00.123456+00:00"
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+### Task 14: Synchronizing Kubernetes Secrets mechanically with external Vaults
+
+**Why use this logic?** Storing raw base64 tokens inside Git YAML is definitively insecure. Native Python scripts fetching literal runtime credentials from AWS Secrets Manager / HashiCorp Vault, base64 encoding them algebraically, and pushing them into the K8s Secret API seals the pipeline mathematically.
+
+**Python Script:**
+```python
+import base64
+import json
+
+def synthesize_kubernetes_secret(secret_name, vault_provided_dictionary):
+    encoded_data = {}
+    
+    # 1. Kubernetes Secrets mandate explicit base64 encoding natively
+    for key, raw_value in vault_provided_dictionary.items():
+        base64_bytes = base64.b64encode(raw_value.encode('utf-8')).decode('utf-8')
+        encoded_data[key] = base64_bytes
+        
+    # 2. Formulate K8s Object Representation
+    k8s_secret = {
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": secret_name
+        },
+        "type": "Opaque",
+        "data": encoded_data
+    }
+    
+    # 3. Execution: v1_core.create_namespaced_secret(namespace="default", body=k8s_secret)
+    return f"🔒 Secret Payload Synthesized for API Injection:\n{json.dumps(k8s_secret, indent=2)}"
+
+mock_vault_dictionary = {
+    "DB_PASSWORD": "super_secret_db_pass",
+    "API_TOKEN": "99x-auth-string"
+}
+
+print(synthesize_kubernetes_secret("backend-credentials", mock_vault_dictionary))
+```
+
+**Output of the script:**
+```json
+🔒 Secret Payload Synthesized for API Injection:
+{
+  "apiVersion": "v1",
+  "kind": "Secret",
+  "metadata": {
+    "name": "backend-credentials"
+  },
+  "type": "Opaque",
+  "data": {
+    "DB_PASSWORD": "c3VwZXJfc2VjcmV0X2RiX3Bhc3M=",
+    "API_TOKEN": "OTl4LWF1dGgtc3RyaW5n"
+  }
+}
+```
+
+---
+
+### Task 15: Identifying orphaned Persistent Volumes (PVs) and deleting them safely
+
+**Why use this logic?** When pods are deleted, AWS EBS backed Persistent Volumes often become orphaned, sitting in a `Released` or `Failed` state forever collecting $50/month fees. Python iterates state globally, filtering arrays securely to purge these structural FinOps leaks instantly.
+
+**Python Script:**
+```python
+def eradicate_orphaned_volumes(persistent_volume_array):
+    purged_volumes = []
+    
+    for pv in persistent_volume_array:
+        name = pv.get("name")
+        status = pv.get("status")
+        capacity = pv.get("size")
+        
+        # 1. Kubernetes explicitly sets non-bound volumes to "Released" or "Failed" natively
+        if status in ["Released", "Failed"]:
+            purged_volumes.append(f"{name} [{capacity}] (Status: {status})")
+            # Execution: v1_core.delete_persistent_volume(name=name)
+            
+    if purged_volumes:
+         return "💰 FINOPS PURGE EXECUTED - Orphaned Storage Destroyed:\n- " + "\n- ".join(purged_volumes)
+         
+    return "✅ STORAGE CHECK: All Persistent Volumes are actively bound to running Pods."
+
+cluster_pvs = [
+    {"name": "pvc-3a21", "status": "Bound", "size": "50Gi"},
+    {"name": "pvc-9b44", "status": "Released", "size": "500Gi"}, # Unused massive disk
+    {"name": "pvc-1c99", "status": "Failed", "size": "20Gi"}
+]
+
+print(eradicate_orphaned_volumes(cluster_pvs))
+```
+
+**Output of the script:**
+```text
+💰 FINOPS PURGE EXECUTED - Orphaned Storage Destroyed:
+- pvc-9b44 [500Gi] (Status: Released)
+- pvc-1c99 [20Gi] (Status: Failed)
+```
+
+---
+
+### Task 16: Injecting environment variables directly into ConfigMaps via API
+
+**Why use this logic?** When a new external routing endpoint is created, developers manually updating massive YAML lists cause syntax errors. Executing an iterative Key/Value Python API patch safely maps new features straight into the ConfigMap structurally without breaking whitespace.
+
+**Python Script:**
+```python
+import json
+
+def patch_kubernetes_configmap(configmap_name, new_env_vars):
+    # 1. Generate the K8s native Patch structure dynamically
+    # We target the 'data' matrix directly
+    patch_body = {
+        "data": new_env_vars
+    }
+    
+    # 2. Simulate API Call
+    # v1_core.patch_namespaced_config_map(name=configmap_name, namespace="dev", body=patch_body)
+    
+    return f"⚙️ CONFIGMAP PATCH GENERATED [{configmap_name}]:\n{json.dumps(patch_body, indent=2)}"
+
+new_dynamic_routes = {
+    "PAYMENT_GATEWAY_URL": "https://v2.stripe.com",
+    "ENABLE_EXPERIMENTAL_FLAGS": "true"
+}
+
+print(patch_kubernetes_configmap("global-system-config", new_dynamic_routes))
+```
+
+**Output of the script:**
+```json
+⚙️ CONFIGMAP PATCH GENERATED [global-system-config]:
+{
+  "data": {
+    "PAYMENT_GATEWAY_URL": "https://v2.stripe.com",
+    "ENABLE_EXPERIMENTAL_FLAGS": "true"
+  }
+}
+```
+
+---
+
+### Task 17: Calculating cost metrics mathematically for Node memory usage overages
+
+**Why use this logic?** If an EKS Cluster provisions a 64GB Node, but the developer limits only add up to 10GB, you are burning money mathematically. Python sums array elements against the native physical Node Capacity, generating specific resource waste alerts.
+
+**Python Script:**
+```python
+def calculate_node_memory_waste(node_total_gb, running_pods):
+    total_requested = 0.0
+    
+    # 1. Iterate across the sum of all pod 'requests' memory mechanically
+    for pod in running_pods:
+        # Assuming our K8s API crawler converted Gi to Float GB earlier globally
+        total_requested += pod.get("request_gb", 0)
+        
+    # 2. Evaluate structural waste percentages algebraically
+    waste_gb = node_total_gb - total_requested
+    waste_percentage = (waste_gb / node_total_gb) * 100
+    
+    report = f"Node Capacity: {node_total_gb}GB | Pods Reserved: {total_requested}GB\n"
+    
+    if waste_percentage > 50:
+         return report + f"🚨 SEVERE INEFFICIENCY: Node is {waste_percentage:.0f}% empty! ({waste_gb}GB wasted)."
+         
+    return report + f"✅ Resource Allocation Optimal. {waste_percentage:.0f}% internal waste margin."
+
+pods_on_node = [
+    {"name": "api-1", "request_gb": 4.0},
+    {"name": "worker", "request_gb": 6.0}
+]
+
+# Physical node is 64GB, pods only request 10GB
+print(calculate_node_memory_waste(64.0, pods_on_node))
+```
+
+**Output of the script:**
+```text
+Node Capacity: 64.0GB | Pods Reserved: 10.0GB
+🚨 SEVERE INEFFICIENCY: Node is 84% empty! (54.0GB wasted).
+```
+
+---
+
+### Task 18: Patching Pod CPU Requests dynamically via JSON merge payloads
+
+**Why use this logic?** During a Black Friday traffic surge, you need to universally increase CPU limits *without* writing YAML. Python looping over target Deployments executing dynamic JSON structurally increases Limits directly against the active K8s control plane seamlessly.
+
+**Python Script:**
+```python
+import json
+
+def dynamic_cpu_limit_surge(deployment_name, new_cpu_cores_string):
+    # 1. Structure the heavily nested target limit vector precisely
+    scale_patch = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": deployment_name, # By default container name matches deployment name
+                            "resources": {
+                                "limits": {
+                                    "cpu": new_cpu_cores_string
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    
+    # Execution:
+    # v1_apps.patch_namespaced_deployment(name=deployment_name, namespace="prod", body=scale_patch)
+    
+    return f"⚡ CPU SURGE PATCH EXECUTED:\n{json.dumps(scale_patch, indent=2)}"
+
+print(dynamic_cpu_limit_surge("web-frontend-core", "4000m")) # Surging from 1 CPU to 4 CPUs
+```
+
+**Output of the script:**
+```json
+⚡ CPU SURGE PATCH EXECUTED:
+{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "web-frontend-core",
+            "resources": {
+              "limits": {
+                "cpu": "4000m"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+---
+
+### Task 19: Simulating Chaos testing by cordoning and draining nodes natively
+
+**Why use this logic?** Netflix Chaos Monkey relies on random API terminations. In Kubernetes, gracefully destroying nodes programmatically tests application resilience. Python marking a node as `unschedulable` (Cordon) forces pods to migrate mathematically under strain, verifying high availability natively.
+
+**Python Script:**
+```python
+import json
+
+def execute_chaos_node_cordon(node_name):
+    # 1. Cordoning simply patches the explicit unschedulable flag to True structurally
+    cordon_body = {
+        "spec": {
+            "unschedulable": True
+        }
+    }
+    
+    # 2. Simulate execution
+    # v1_core.patch_node(name=node_name, body=cordon_body)
+    
+    return f"🧨 CHAOS EXPERIMENT [CORDON] -> Targeting Node: '{node_name}'\nPayload: {json.dumps(cordon_body)}"
+
+print(execute_chaos_node_cordon("ip-10-0-2-99.ec2.internal"))
+```
+
+**Output of the script:**
+```json
+🧨 CHAOS EXPERIMENT [CORDON] -> Targeting Node: 'ip-10-0-2-99.ec2.internal'
+Payload: {"spec": {"unschedulable": true}}
+```
+
+---
+
+### Task 20: Generating dynamic HPA (Horizontal Pod Autoscaler) formulas for custom metrics
+
+**Why use this logic?** Scaling strictly on CPU is flawed; you should scale natively on RabbitMQ queue depth or HTTP Latency. Synthesizing `v2beta2` Custom Metric HPA definitions dynamically in Python ensures Kubernetes Autoscalers connect mathematically to your exact Datadog custom metric.
+
+**Python Script:**
+```python
+import yaml
+
+def generate_custom_metric_hpa(target_deployment, metric_name, target_value_average):
+    # 1. Construct v2beta2 custom metric structural logic
+    hpa_manifest = {
+        "apiVersion": "autoscaling/v2beta2",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {"name": f"{target_deployment}-custom-hpa"},
+        "spec": {
+            "scaleTargetRef": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": target_deployment
+            },
+            "minReplicas": 2,
+            "maxReplicas": 25,
+            "metrics": [
+                {
+                    "type": "External",
+                    "external": {
+                        "metric": {"name": metric_name},
+                        "target": {
+                            "type": "AverageValue",
+                            "averageValue": target_value_average # e.g. "500" messages in queue
+                        }
+                    }
+                }
+            ]
+        }
+    }
+    
+    return f"--- Generative HPA ---\n{yaml.dump(hpa_manifest, sort_keys=False)}"
+
+print(generate_custom_metric_hpa("pdf-generation-worker", "rabbitmq_queue_messages", "500"))
+```
+
+**Output of the script:**
+```yaml
+--- Generative HPA ---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pdf-generation-worker-custom-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pdf-generation-worker
+  minReplicas: 2
+  maxReplicas: 25
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: rabbitmq_queue_messages
+      target:
+        type: AverageValue
+        averageValue: '500'
+```
+
+---
+
+### Task 21: Purging Evicted/Completed pods completely across all namespaces
+
+**Why use this logic?** When a pod hits OOM and moves to `Evicted`, Kubernetes leaves the dead shell structurally in the namespace forever for debug purposes. Across years, 10,000 dead pods choke the `kubectl get pods` API severely. Python loops delete these automatically.
+
+**Python Script:**
+```python
+def purge_dead_pod_husks(global_pod_array):
+    purged = []
+    
+    # 1. Filter explicitly to only Terminal States natively
+    terminal_states = ["Evicted", "Completed", "Failed"]
+    
+    for pod in global_pod_array:
+        name = pod.get("name")
+        status = pod.get("status")
+        ns = pod.get("namespace")
+        
+        if status in terminal_states:
+            purged.append(f"{ns}/{name} [State: {status}]")
+            # Execution: v1_core.delete_namespaced_pod(name=name, namespace=ns)
+            
+    if purged:
+        return "🧹 SYSTEM CLEANUP - Purged Terminal Pod Shells:\n- " + "\n- ".join(purged)
+        
+    return "✅ SYSTEM CLEANUP: No dead shells found across namespaces."
+
+mock_states = [
+    {"name": "worker-1", "namespace": "dev", "status": "Running"},
+    {"name": "db-migrate-job", "namespace": "prod", "status": "Completed"},
+    {"name": "app-crash-test", "namespace": "dev", "status": "Evicted"}
+]
+
+print(purge_dead_pod_husks(mock_states))
+```
+
+**Output of the script:**
+```text
+🧹 SYSTEM CLEANUP - Purged Terminal Pod Shells:
+- prod/db-migrate-job [State: Completed]
+- dev/app-crash-test [State: Evicted]
+```
+
+---
+
+### Task 22: Structuring validation webhooks in Python to intercept deployment manifests
+
+**Why use this logic?** How do you stop developers from deploying `:latest` Docker images inherently? A Kubernetes `ValidatingWebhookConfiguration` sends *all* deployment JSON directly to a Python Flask API natively. Python calculates security rules and literally rejects the kubernetes transaction before it happens.
+
+**Python Script:**
+```python
+import json
+
+def mutating_webhook_admission_controller(kubernetes_admission_review_request):
+    # 1. Drill down into the payload representing the proposed Object
+    pod_spec = kubernetes_admission_review_request["request"]["object"]["spec"]
+    request_uid = kubernetes_admission_review_request["request"]["uid"]
+    
+    # 2. Iterate against all containers
+    for container in pod_spec.get("containers", []):
+         image_tag = container.get("image", "")
+         
+         # 3. Security Rule Constraint checking inherently
+         if image_tag.endswith(":latest") or image_tag.endswith(":master"):
+             # Return structured Rejection AdmissionResponse
+             return json.dumps({
+                 "apiVersion": "admission.k8s.io/v1",
+                 "kind": "AdmissionReview",
+                 "response": {
+                     "uid": request_uid,
+                     "allowed": False,
+                     "status": {"message": f"SECURITY POLICY REJECTION: Container '{container['name']}' uses forbidden ':latest' tag natively. Pinned hashes explicitly required."}
+                 }
+             }, indent=2)
+             
+    # Accept structurally if compliant
+    return json.dumps({"response": {"uid": request_uid, "allowed": True}}, indent=2)
+
+mock_deploy_attempt = {
+    "request": {
+        "uid": "11bb-22cc-33dd",
+        "object": {
+            "spec": {
+                "containers": [{"name": "web-server", "image": "nginx:latest"}]
+            }
+        }
+    }
+}
+
+print(mutating_webhook_admission_controller(mock_deploy_attempt))
+```
+
+**Output of the script:**
+```json
+{
+  "apiVersion": "admission.k8s.io/v1",
+  "kind": "AdmissionReview",
+  "response": {
+    "uid": "11bb-22cc-33dd",
+    "allowed": false,
+    "status": {
+      "message": "SECURITY POLICY REJECTION: Container 'web-server' uses forbidden ':latest' tag natively. Pinned hashes explicitly required."
+    }
+  }
+}
+```
+
+---
+
 Using Python scripts to mechanically intercept and organize Kubernetes telemetry limits catastrophic downtime by identifying deployment regressions and infrastructural faults the absolute second they happen securely.

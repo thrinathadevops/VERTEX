@@ -476,4 +476,362 @@ SUCCESS: Service Observatory Bound.
 
 ---
 
+### Task 11: Injecting eBPF auto-instrumentation daemons via Python
+
+**Why use this logic?** Sometimes an application is written in Go or C++ where native Python `opentelemetry-instrument` wrappers won't work. By triggering eBPF sidecars programmatically, you can observe binary network calls at the Linux kernel level dynamically without touching their source code.
+
+**Python Script:**
+```python
+import subprocess
+import json
+
+def deploy_ebpf_observability_daemon(target_binary_path):
+    # 1. Structure the configuration for a generic eBPF sidecar execution natively
+    ebpf_config = {
+        "target": target_binary_path,
+        "otlp_endpoint": "http://localhost:4318/v1/traces",
+        "scrape_interval_ms": 100
+    }
+    
+    config_file = "/tmp/ebpf_config.json"
+    with open(config_file, "w") as f:
+         json.dump(ebpf_config, f)
+         
+    # 2. Simulate Linux privilege escalation sequence inherently required for eBPF kernel hooks
+    cmd = ["sudo", "otel-ebpf-profiler", "--config", config_file]
+    
+    # In reality: subprocess.run(cmd, check=True)
+    return f"eBPF Kernel Probe launched matching: {target_binary_path}\nCommand: {' '.join(cmd)}"
+
+print(deploy_ebpf_observability_daemon("/usr/bin/legacy_go_api"))
+```
+
+**Output of the script:**
+```text
+eBPF Kernel Probe launched matching: /usr/bin/legacy_go_api
+Command: sudo otel-ebpf-profiler --config /tmp/ebpf_config.json
+```
+
+---
+
+### Task 12: Generating custom Metrics from OpenTelemetry spans algebraically
+
+**Why use this logic?** If you have Traces generating thousands of spans, but lack general system metrics, you can mathematically extract metrics *from* the spans natively. This eliminates the need to configure separate Prometheus metric emitters structurally.
+
+**Python Script:**
+```python
+def extract_metrics_from_trace(trace_spans):
+    total_latency = 0
+    error_count = 0
+    
+    for span in trace_spans:
+        # Evaluate spans dynamically
+        duration = span.get("end_time") - span.get("start_time")
+        total_latency += duration
+        
+        if span.get("status_code") >= 400:
+            error_count += 1
+            
+    # Calculate synthetics inherently
+    average_latency = total_latency / len(trace_spans) if trace_spans else 0
+    
+    # Exposing the synthesized metrics explicitly
+    return f"[SYNTHETIC METRIC] Avg Latency: {average_latency:.2f}ms\n[SYNTHETIC METRIC] Error Count: {error_count}"
+
+simulated_spans = [
+    {"start_time": 0, "end_time": 45, "status_code": 200},
+    {"start_time": 100, "end_time": 190, "status_code": 500},
+    {"start_time": 200, "end_time": 210, "status_code": 200}
+]
+
+print(extract_metrics_from_trace(simulated_spans))
+```
+
+**Output of the script:**
+```text
+[SYNTHETIC METRIC] Avg Latency: 48.33ms
+[SYNTHETIC METRIC] Error Count: 1
+```
+
+---
+
+### Task 13: Scrubbing payload attributes using SpanProcessors natively
+
+**Why use this logic?** If a developer accidentally adds an attribute `["user.password": "P@ssw0rd"]` to a span, it will hit Datadog and violate security. Python OTel allows you to build a Custom `SpanProcessor` that intercepts the span explicitly and scrubs values before export.
+
+**Python Script:**
+```python
+# Typically inherits from opentelemetry.sdk.trace.SpanProcessor
+class SecurityScrubbingProcessor:
+    def __init__(self):
+        self.banned_keys = ["password", "token", "ssn"]
+
+    def on_end(self, span_dict):
+        # 1. Intercept span prior to network export intrinsically
+        attrs = span_dict.get("attributes", {})
+        
+        # 2. Iterate against keys mechanically 
+        clean_attrs = {}
+        for k, v in attrs.items():
+            if any(banned in k.lower() for banned in self.banned_keys):
+                clean_attrs[k] = "[REDACTED]"
+            else:
+                clean_attrs[k] = v
+                
+        span_dict["attributes"] = clean_attrs
+        return span_dict
+
+# Processing a span that is attempting to export sensitive tokens
+vulnerable_span = {
+    "name": "login_request",
+    "attributes": {
+        "user.email": "test@test.com",
+        "user.password_hash": "2cf24dba5fb0a30"
+    }
+}
+
+processor = SecurityScrubbingProcessor()
+print("Exporting Cleaned Span:")
+print(processor.on_end(vulnerable_span))
+```
+
+**Output of the script:**
+```text
+Exporting Cleaned Span:
+{'name': 'login_request', 'attributes': {'user.email': 'test@test.com', 'user.password_hash': '[REDACTED]'}}
+```
+
+---
+
+### Task 14: Defining multi-tenant headers dynamically
+
+**Why use this logic?** In massive SaaS platforms, a single backend collector receives traces from 100 different logical customers. Mutating Python scripts to dynamically inject `X-Tenant-ID` headers at runtime guarantees traces route cleanly to segregated backend databases.
+
+**Python Script:**
+```python
+import os
+
+def configure_multitenant_otlp_export(tenant_id, base_headers):
+    # 1. Dynamically append structural routing headers alongside authorization natively
+    multitenant_headers = f"{base_headers},X-Tenant-ID={tenant_id}"
+    
+    # 2. Inject into Python's physical runtime environment
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = multitenant_headers
+    
+    return f"Runtime Bound -> OTLP Headers configured for Tenant [{tenant_id}]."
+
+print(configure_multitenant_otlp_export("Enterprise_Client_99", "Authorization=Bearer X"))
+print(os.environ["OTEL_EXPORTER_OTLP_HEADERS"])
+```
+
+**Output of the script:**
+```text
+Runtime Bound -> OTLP Headers configured for Tenant [Enterprise_Client_99].
+Authorization=Bearer X,X-Tenant-ID=Enterprise_Client_99
+```
+
+---
+
+### Task 15: Configuring OpenTelemetry probability sampling mathematically
+
+**Why use this logic?** Capturing 100% of telemetry traces generates immense DB strain. Implementing a programmatic "TraceIDRatioBased" sampling script ensures that only mathematically specified fractions of traffic (e.g., 5%) are genuinely exported remotely.
+
+**Python Script:**
+```python
+def check_sampling_probability(trace_id_hex, probability_float):
+    # 1. OpenTelemetry standardizes sampling mathematically by converting TraceID string to Int natively
+    trace_int = int(trace_id_hex, 16)
+    
+    # 2. Evaluate against the massive 64-bit maximum boundary natively
+    max_trace_id = 0xffffffffffffffff
+    
+    # 3. Calculate threshold dynamically
+    threshold = probability_float * max_trace_id
+    
+    if trace_int < threshold:
+         return f"Trace {trace_id_hex} SAMPLED IN (Included in {probability_float*100}%)"
+    else:
+         return f"Trace {trace_id_hex} SAMPLED OUT (Dropped)"
+
+# 10% sampling probability simulation
+print(check_sampling_probability("0000000000000001", 0.10)) # Very low ID, included
+print(check_sampling_probability("ffffffffffffffff", 0.10)) # Very high ID, dropped
+```
+
+**Output of the script:**
+```text
+Trace 0000000000000001 SAMPLED IN (Included in 10.0%)
+Trace ffffffffffffffff SAMPLED OUT (Dropped)
+```
+
+---
+
+### Task 16: Bridging OpenTelemetry Python logs with standard `logging` module
+
+**Why use this logic?** Python natively uses the standard `import logging` library. Asking developers to completely rewrite their logs to OpenTelemetry format is unrealistic. We inject an `OTel Handler` dynamically into the native Root logger logically.
+
+**Python Script:**
+```python
+import logging
+# from opentelemetry._logs import set_logger_provider
+# from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+
+def bridging_otel_to_native_logger():
+    # 1. Establish the generic Python native logger structurally
+    logger = logging.getLogger("LegacyApp")
+    logger.setLevel(logging.INFO)
+    
+    # 2. Simulate instantiation of the OpenTelemetry bridging daemon natively 
+    # handler = LoggingHandler(level=logging.NOTSET, logger_provider=LoggerProvider())
+    mock_handler_name = "OTel_gRPC_LoggingHandler"
+    
+    # 3. Attach handler intrinsically
+    # logger.addHandler(handler)
+    
+    return f"[CONFIGURATION] Standard Python Logger '{logger.name}' successfully bound to -> {mock_handler_name}"
+
+print(bridging_otel_to_native_logger())
+```
+
+**Output of the script:**
+```text
+[CONFIGURATION] Standard Python Logger 'LegacyApp' successfully bound to -> OTel_gRPC_LoggingHandler
+```
+
+---
+
+### Task 17: Identifying detached "Orphan" spans using structural trace analysis
+
+**Why use this logic?** If an API Gateway trace ID doesn't properly pass through HTTP headers to a downstream Flask backend, the backend will generate an entirely new unconnected trace string. This orphans the spans. Searching structurally detects broken propagation.
+
+**Python Script:**
+```python
+def locate_orphan_spans(trace_pool):
+    valid_parents = set([span["span_id"] for span in trace_pool])
+    orphans = []
+    
+    for span in trace_pool:
+        parent = span.get("parent_id")
+        # If parent_id exists but cannot be found historically, it is structurally orphaned.
+        if parent is not None and parent not in valid_parents:
+            orphans.append(f"Orphaned Span: {span['span_id']} (Missing Parent: {parent})")
+            
+    if orphans:
+        return "TRACE PROPAGATION ERROR:\n" + "\n".join(orphans)
+    return "All parent/child trace links are structurally continuous."
+
+spans = [
+    {"span_id": "aa1", "parent_id": None},      # Root Gateway
+    {"span_id": "bb2", "parent_id": "aa1"},     # Valid logic link
+    {"span_id": "cc3", "parent_id": "xx99"}     # xx99 vanished, context dropped
+]
+
+print(locate_orphan_spans(spans))
+```
+
+**Output of the script:**
+```text
+TRACE PROPAGATION ERROR:
+Orphaned Span: cc3 (Missing Parent: xx99)
+```
+
+---
+
+### Task 18: Parsing OTLP Protobuf payload streams in local memory
+
+**Why use this logic?** OTLP uses Protocol Buffers (Binary), NOT JSON. It is exceptionally unreadable without tools. By compiling Python against the OTel `proto` schema natively, we can script decoders that read raw binary strings directly off the wire for hardcore debugging.
+
+**Python Script:**
+```python
+# import opentelemetry.proto.trace.v1.trace_pb2 as trace_pb2
+
+def mock_protobuf_decoder(hex_binary_stream):
+    # 1. In reality: 
+    # trace_buffer = trace_pb2.TracesData()
+    # trace_buffer.ParseFromString(bytes.fromhex(hex_binary_stream))
+    
+    # 2. Simulate raw decode structure intrinsically
+    if "0A" in hex_binary_stream: 
+        return "Protobuf Decode: [TraceData -> ResourceSpans -> InstrumentationLibrarySpans]"
+    return "Protobuf Decode Failed."
+
+mock_binary_hex = "0A1C0A0A746573745F7370616E"
+print(f"Decoding Raw Stream: {mock_binary_hex}")
+print(mock_protobuf_decoder(mock_binary_hex))
+```
+
+**Output of the script:**
+```text
+Decoding Raw Stream: 0A1C0A0A746573745F7370616E
+Protobuf Decode: [TraceData -> ResourceSpans -> InstrumentationLibrarySpans]
+```
+
+---
+
+### Task 19: Emulating massive W3C Trace-Context cascading network latency
+
+**Why use this logic?** Testing 10 layers of microservices natively is difficult. Python recursion dynamically linking W3C `traceparent` headers mechanically simulates deep networks instantly, determining the breaking points of your APM system's payload sizes.
+
+**Python Script:**
+```python
+def simulate_distributed_latency_cascade(depth, current_latency=0.0):
+    # 1. Base case mathematically
+    if depth == 0:
+        return current_latency
+        
+    # 2. Emulate an exponentially growing W3C Context Hop inherently 
+    hop_latency = 15.0 * (1.2 ** depth) 
+    print(f"[Hop {depth}] Trace Context passed. Network Lag: {hop_latency:.1f}ms")
+    
+    # 3. Recurse structurally
+    return simulate_distributed_latency_cascade(depth - 1, current_latency + hop_latency)
+
+print("--- EXECUTING DEEP TRACE SIMULATION (5 HOPS) ---")
+total_lag = simulate_distributed_latency_cascade(5)
+print(f"--- TOTAL CASCADED LATENCY: {total_lag:.1f}ms ---")
+```
+
+**Output of the script:**
+```text
+--- EXECUTING DEEP TRACE SIMULATION (5 HOPS) ---
+[Hop 5] Trace Context passed. Network Lag: 37.3ms
+[Hop 4] Trace Context passed. Network Lag: 31.1ms
+[Hop 3] Trace Context passed. Network Lag: 25.9ms
+[Hop 2] Trace Context passed. Network Lag: 21.6ms
+[Hop 1] Trace Context passed. Network Lag: 18.0ms
+--- TOTAL CASCADED LATENCY: 133.9ms ---
+```
+
+---
+
+### Task 20: Exposing standard ASGI/WSGI Python metrics using OTel middleware
+
+**Why use this logic?** Instrumenting the actual web framework (FastAPI/Django) correctly involves adding specific middleware. This Python function natively integrates the OpenTelemetry metrics module structurally directly into the ASGI logic stream to expose "HTTP Total Requests" automatically.
+
+**Python Script:**
+```python
+def configure_asgi_telemetry_middleware(app_framework):
+    # 1. Typical OpenTelemetry integration dynamically maps FastAPI natively
+    # from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    
+    # 2. Identify the web framework type inherently
+    if app_framework == "FastAPI":
+        # FastAPIInstrumentor.instrument_app(app)
+        return "SUCCESS: ASGI OpenTelemetry Middleware completely bound to FastAPI."
+    elif app_framework == "Django":
+        # DjangoInstrumentor().instrument()
+        return "SUCCESS: WSGI OpenTelemetry Middleware completely bound to Django."
+    else:
+        return f"FAULT: Web framework '{app_framework}' lacks official automatic OTel Middleware."
+
+print(configure_asgi_telemetry_middleware("FastAPI"))
+```
+
+**Output of the script:**
+```text
+SUCCESS: ASGI OpenTelemetry Middleware completely bound to FastAPI.
+```
+
+---
+
 By aggressively scripting and standardizing your OpenTelemetry environments with Python, your DevOps teams bypass repetitive boilerplate setups and universally protect the integrity of your observability pipelines.

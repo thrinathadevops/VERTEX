@@ -477,4 +477,314 @@ Action: Investigate calling service to ensure HTTP instrumentation is active.
 
 ---
 
-Successfully integrating traces, alongside metrics and logs, unlocks full-spectrum automated observability—transforming DevSecOps from a reactive hunting exercise into a proactive analytical science.
+### Task 12: Implementing tail-based trace sampling algorithms
+
+**Why use this logic?** Recording 100% of traces generates massive APM bills. "Head-based" sampling drops 90% of traffic blindly. "Tail-based" sampling buffers the trace until completion, deploying Python algorithms to explicitly *only* retain and export traces the moment an error occurs natively.
+
+**Python Script:**
+```python
+def tail_based_decision_engine(trace_buffer_array):
+    # 1. Trace hasn't been exported yet. Evaluate the entire completed chain.
+    contains_error = False
+    max_duration_ms = 0
+    
+    # 2. Iterate through all buffered child spans dynamically
+    for span in trace_buffer_array:
+        if span.get("error"):
+            contains_error = True
+        
+        duration = span.get("duration", 0)
+        if duration > max_duration_ms:
+            max_duration_ms = duration
+            
+    # 3. Rule formulation: Export ONLY if there's an error, OR it took longer than 1000ms
+    if contains_error or max_duration_ms > 1000:
+        return "[SAMPLER] Submitting Trace to OTLP backend (High Value)."
+        
+    return "[SAMPLER] Trace Dropped (Low Value / Normal). Saves 1.5KB."
+
+healthy_trace = [{"error": False, "duration": 150}, {"error": False, "duration": 20}]
+erratic_trace = [{"error": False, "duration": 150}, {"error": True, "duration": 45}]
+
+print(tail_based_decision_engine(healthy_trace))
+print(tail_based_decision_engine(erratic_trace))
+```
+
+**Output of the script:**
+```text
+[SAMPLER] Trace Dropped (Low Value / Normal). Saves 1.5KB.
+[SAMPLER] Submitting Trace to OTLP backend (High Value).
+```
+
+---
+
+### Task 13: Injecting user metadata Baggage across boundaries
+
+**Why use this logic?** While span attributes attach only to the active span, "Baggage" propagates down the entire request tree explicitly. Python native OTel baggage arrays guarantee that `tenant_id` initiated at the API Gateway is still visible when the DB microservice executes 4 layers down.
+
+**Python Script:**
+```python
+from opentelemetry import baggage
+
+def propagate_vip_baggage():
+    # 1. Set explicit baggage keys mechanically
+    ctx = baggage.set_baggage("tenant_tier", "Enterprise_VIP")
+    ctx = baggage.set_baggage("request_origin", "iOS_App", context=ctx)
+    
+    # 2. Extract values dynamically
+    tier = baggage.get_baggage("tenant_tier", context=ctx)
+    origin = baggage.get_baggage("request_origin", context=ctx)
+    
+    return f"Baggage propagating across network: [Tier: {tier} | Origin: {origin}]"
+
+print(propagate_vip_baggage())
+```
+
+**Output of the script:**
+```text
+Baggage propagating across network: [Tier: Enterprise_VIP | Origin: iOS_App]
+```
+
+---
+
+### Task 14: Distributed clock-skew mathematical correction
+
+**Why use this logic?** If Service A is in AWS and Service B is in Azure, NTP clock differences mean Service B's trace might "start" before Service A "called" it. Python algorithmically detects negative timelines and offsets the drift natively.
+
+**Python Script:**
+```python
+def correct_clock_skew(parent_ts, child_ts, assumed_latency_ms=10):
+    # 1. Evaluate temporal paradox
+    if child_ts < parent_ts:
+        drift = parent_ts - child_ts
+        
+        # 2. Force child to start exactly after the parent + network latency
+        adjusted_child = parent_ts + assumed_latency_ms
+        return f"Paradox Deteced: SKEW by {drift}ms. Corrected Child TS -> {adjusted_child}"
+        
+    return "Timeline coherent natively."
+
+parent_call = 1600000050
+child_recv  = 1600000010 # Physically impossible without time travel
+
+print(correct_clock_skew(parent_call, child_recv))
+```
+
+**Output of the script:**
+```text
+Paradox Deteced: SKEW by 40ms. Corrected Child TS -> 1600000060
+```
+
+---
+
+### Task 15: Structuring Trace-based Topology mapping arrays
+
+**Why use this logic?** Rather than manually drawing architecture diagrams in Visio, parsing traces dynamically tells you exactly what talks to what. Extracting relationships from edge graphs natively builds the "Service Map" dynamically.
+
+**Python Script:**
+```python
+def generate_service_topology(trace_arrays):
+    topology_matrix = set()
+    
+    for trace in trace_arrays:
+        parent = trace.get("parent_service")
+        child = trace.get("child_service")
+        
+        # Append distinct directional vector mathematically
+        if parent and child:
+            topology_matrix.add(f"[{parent}] ---> [{child}]")
+            
+    return "\n".join(topology_matrix)
+
+fleet_spans = [
+    {"parent_service": "api-gateway", "child_service": "auth-api"},
+    {"parent_service": "auth-api", "child_service": "redis-cache"},
+    {"parent_service": "api-gateway", "child_service": "auth-api"} # Duplicate dropped inherently
+]
+
+print("--- DYNAMIC ARCHITECTURE MAP ---")
+print(generate_service_topology(fleet_spans))
+```
+
+**Output of the script:**
+```text
+--- DYNAMIC ARCHITECTURE MAP ---
+[auth-api] ---> [redis-cache]
+[api-gateway] ---> [auth-api]
+```
+
+---
+
+### Task 16: Extracting Database query strings directly from raw Spans
+
+**Why use this logic?** Datadog Database integrations often strip query parameters for security. If you need local debugging, querying the local trace JSON mechanically lets you execute the raw offending SQL locally.
+
+**Python Script:**
+```python
+def extract_sql_statement_from_trace(span_dictionary):
+    # 1. OTel standardizes DB queries under specific 'db.statement' attribute keys natively
+    attrs = span_dictionary.get("attributes", {})
+    
+    sql_string = attrs.get("db.statement")
+    system = attrs.get("db.system")
+    
+    if sql_string:
+        return f"[{system.upper()}] Query Executed:\n{sql_string}"
+    return "No database footprint inside span."
+
+db_span = {
+    "name": "SELECT pg_users",
+    "attributes": {
+        "db.system": "postgresql",
+        "db.statement": "SELECT * FROM users WHERE active = true LIMIT 1;"
+    }
+}
+
+print(extract_sql_statement_from_trace(db_span))
+```
+
+**Output of the script:**
+```text
+[POSTGRESQL] Query Executed:
+SELECT * FROM users WHERE active = true LIMIT 1;
+```
+
+---
+
+### Task 17: Automating mock trace synthesis for testing
+
+**Why use this logic?** When building custom dashboards in Grafana Tempo, engineers need dummy data. Python structurally generating randomized trace trees looping heavily natively avoids polluting actual test-environments.
+
+**Python Script:**
+```python
+import uuid
+import random
+
+def generate_mock_trace_tree(depth=3):
+    trace_id = uuid.uuid4().hex
+    spans = []
+    
+    parent_id = None
+    # 1. Iteratively generate linked structure
+    for x in range(depth):
+        span_id = uuid.uuid4().hex[:16]
+        span = {
+            "trace_id": trace_id,
+            "span_id": span_id,
+            "parent_id": parent_id,
+            "duration": random.randint(10, 500)
+        }
+        spans.append(span)
+        parent_id = span_id # Next iteration becomes child
+        
+    return f"Synthesized W3C Trace Chain: {trace_id}\nSpans Generated: {len(spans)}"
+
+print(generate_mock_trace_tree())
+```
+
+**Output of the script:**
+```text
+Synthesized W3C Trace Chain: a1b2c3d4e5f6...
+Spans Generated: 3
+```
+
+---
+
+### Task 18: Securing OTLP endpoints via TLS dynamically
+
+**Why use this logic?** Exporting unencrypted payloads over the open internet violates strict SOC2 compliance. Establishing secure HTTPS wrapping organically in Python guarantees end-to-end trace telemetry encryption.
+
+**Python Script:**
+```python
+def configure_secure_otlp(endpoint, cert_path):
+    # 1. Mechanical check
+    is_secure = endpoint.startswith("https://")
+    
+    if not is_secure:
+        return f"[SECURITY EXCEPTION] Exporter endpoint {endpoint} lacks TLS encryption!"
+        
+    return f"[OK] OTLP Encrypted Transmit securely bound to CA Cert: {cert_path}"
+
+print(configure_secure_otlp("http://tempo:4318", "/etc/certs/ca.pem"))
+print(configure_secure_otlp("https://tempo-secure:4318", "/etc/certs/ca.pem"))
+```
+
+**Output of the script:**
+```text
+[SECURITY EXCEPTION] Exporter endpoint http://tempo:4318 lacks TLS encryption!
+[OK] OTLP Encrypted Transmit securely bound to CA Cert: /etc/certs/ca.pem
+```
+
+---
+
+### Task 19: Filtering out repetitive Kubernetes Liveness probes mechanically
+
+**Why use this logic?** If Kubelet hits `/health` every 10 seconds, and OTel traces every HTTP call identically, 90% of your trace storage is utterly useless robot checks. Filtering specific paths pre-export radically reduces noise structurally.
+
+**Python Script:**
+```python
+def filter_noise_traces(span_array):
+    noise_paths = ["/health", "/metrics", "/ready"]
+    clean_spans = []
+    
+    for span in span_array:
+        path = span.get("http.target", "")
+        # Filter natively
+        if path not in noise_paths:
+            clean_spans.append(span)
+            
+    dropped = len(span_array) - len(clean_spans)
+    return f"Noise Filter Complete. Kept: {len(clean_spans)} | Dropped: {dropped} probe traces."
+
+input_traffic = [
+    {"http.target": "/health"},
+    {"http.target": "/health"},
+    {"http.target": "/api/login"}
+]
+
+print(filter_noise_traces(input_traffic))
+```
+
+**Output of the script:**
+```text
+Noise Filter Complete. Kept: 1 | Dropped: 2 probe traces.
+```
+
+---
+
+### Task 20: Aggregating Trace payload sizes to determine network tax
+
+**Why use this logic?** Traces carry extensive metadata. If thousands of spans generate megabytes of payloads, the application will experience network I/O throttling. Mechanically calculating string-bytes in python reveals the true overhead cost logically.
+
+**Python Script:**
+```python
+import sys
+import json
+
+def calculate_telemetry_network_tax(trace_dictionary_array):
+    total_bytes = 0
+    
+    for span in trace_dictionary_array:
+        # 1. Serialize to text to determine raw network footprint mathematically
+        raw_string = json.dumps(span)
+        # 2. Get byte size
+        total_bytes += sys.getsizeof(raw_string)
+        
+    kb = total_bytes / 1024
+    
+    if kb > 1000:
+        return f"CRITICAL: Telemetry payload is {kb:.1f} KB. High Network I/O tax imminent."
+    return f"Nominal: Payload size {kb:.2f} KB."
+
+massive_span = [{"metadata": "A" * 50000}] # 50kb of useless metadata
+print(calculate_telemetry_network_tax(massive_span))
+```
+
+**Output of the script:**
+```text
+Nominal: Payload size 48.91 KB.
+```
+
+---
+
+Successfully integrating traces, alongside exhaustive metric validation and robust logging arrays, unlocks full-spectrum automated observability—transforming DevSecOps from a reactive hunting exercise into a proactive analytical science.

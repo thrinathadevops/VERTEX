@@ -367,4 +367,320 @@ SYNCHRONIZED: Anomaly at Time 168001 perfectly matches Log content: 'OOM Killer 
 
 ---
 
+### Task 9: Provisioning ephemeral Grafana Dashboards dynamically via JSON
+
+**Why use this logic?** If a Tier-1 incident fires, you don't have time to manually build a Grafana dashboard. Python can programmatically build a specific JSON dashboard template highlighting exact failing metrics, pushing it instantly to Grafana via API for the on-call engineer.
+
+**Python Script:**
+```python
+import json
+
+def synthesize_incident_dashboard(incident_id, failing_metric_name):
+    # 1. Structure the mandatory Grafana Dashboard JSON hierarchy
+    dashboard_payload = {
+        "dashboard": {
+            "id": None,
+            "title": f"INCIDENT {incident_id} : Rapid Triage Board",
+            "tags": [ "ephemeral", "incident" ],
+            "timezone": "browser",
+            "panels": [
+                {
+                    "title": "Failing Metric Context",
+                    "type": "timeseries",
+                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+                    "targets": [
+                        { "expr": failing_metric_name, "refId": "A" }
+                    ]
+                }
+            ]
+        },
+        "overwrite": True
+    }
+    
+    # 2. Simulate HTTP POST to Grafana API
+    # requests.post("/api/dashboards/db", json=dashboard_payload)
+    
+    return f"Provisioned strictly ephemeral dashboard tracking '{failing_metric_name}' natively."
+
+print(synthesize_incident_dashboard("INC-942", "node_cpu_seconds_total{mode='system'}"))
+```
+
+**Output of the script:**
+```text
+Provisioned strictly ephemeral dashboard tracking 'node_cpu_seconds_total{mode='system'}' natively.
+```
+
+---
+
+### Task 10: Validating Grafana API Keys for rotation staleness
+
+**Why use this logic?** Long-lived Service Account keys represent massive security backdoors. Querying the Grafana API natively via Python to identify API keys older than 90 days triggers automated SOC2 offboarding.
+
+**Python Script:**
+```python
+import time
+
+def audit_grafana_api_staleness(api_key_registry):
+    current_time_epoch = int(time.time())
+    max_age_seconds = 90 * 24 * 60 * 60 # 90 Days mathematically
+    
+    stale_keys = []
+    
+    for key_schema in api_key_registry:
+        age_seconds = current_time_epoch - key_schema.get("created_at")
+        
+        # Determine violation logically
+        if age_seconds > max_age_seconds:
+            stale_keys.append(key_schema.get("name"))
+            
+    if stale_keys:
+        return "SECURITY RISK: The following Grafana API Keys require immediate rotation:\n- " + "\n- ".join(stale_keys)
+    return "SECURITY AUDIT PASSED: All API keys within 90-day validity window."
+
+now = int(time.time())
+registry = [
+    {"name": "admin_backup_sa", "created_at": now - (10 * 86400)}, # 10 days old
+    {"name": "jenkins_deploy_bot", "created_at": now - (120 * 86400)} # 120 days old
+]
+
+print(audit_grafana_api_staleness(registry))
+```
+
+**Output of the script:**
+```text
+SECURITY RISK: The following Grafana API Keys require immediate rotation:
+- jenkins_deploy_bot
+```
+
+---
+
+### Task 11: Generating Grafana Annotations programmatically during deployments
+
+**Why use this logic?** If CPU spikes mysteriously at 10:05 AM, engineers blindly guess why. By injecting Python scripts into Jenkins that POST simple text "Annotations" to Grafana Native APIs, a visual vertical line appears on the graph exactly when the deployment happened.
+
+**Python Script:**
+```python
+def publish_grafana_deployment_annotation(grafana_url, app_name, version_tag):
+    import time
+    
+    timestamp = int(time.time() * 1000) # Grafana API requires Milliseconds natively
+    
+    # 1. Structure the Annotation V1 Model
+    annotation_payload = {
+        "time": timestamp,
+        "isRegion": False,
+        "tags": ["deployment", app_name, version_tag],
+        "text": f"🚀 Jenkins Auto-Deploy: {app_name} updated to {version_tag}"
+    }
+    
+    # 2. Simulate API Call structurally (requests.post(url + '/api/annotations', ...))
+    return f"Grafana Annotation successfully seeded to TS {timestamp}: '{annotation_payload['text']}'"
+
+print(publish_grafana_deployment_annotation("http://grafana", "Payment_Gateway", "v4.5.1"))
+```
+
+**Output of the script:**
+```text
+Grafana Annotation successfully seeded to TS 1712850000000: '🚀 Jenkins Auto-Deploy: Payment_Gateway updated to v4.5.1'
+```
+
+---
+
+### Task 12: Purging orphaned or unused Dashboards mechanically
+
+**Why use this logic?** An enterprise Grafana instance might accumulate 500 "Test" dashboards over 5 years. Python iterating over dashboard metadata and identifying instances with zero views in 6 months drastically cleans up the User Interface logically.
+
+**Python Script:**
+```python
+def garbage_collect_dashboards(dashboard_metadata_list):
+    deleted_boards = []
+    
+    for board in dashboard_metadata_list:
+        title = board.get("title", "")
+        # Emulation: The API usually returns 'hits' or 'lastViewed' metrics
+        last_viewed_days_ago = board.get("last_viewed_days", 0)
+        
+        # Purge anything older than 180 days intrinsically, or explicitly named 'test'
+        is_abandoned = last_viewed_days_ago > 180
+        is_test = "test" in title.lower()
+        
+        if is_abandoned or is_test:
+            # requests.delete(f"/api/dashboards/uid/{board['uid']}")
+            deleted_boards.append(title)
+            
+    return f"Grafana Cleanup -> Pruned {len(deleted_boards)} obsolete dashboards: {deleted_boards}"
+
+dashboards = [
+    {"title": "Prod Node Exporter", "last_viewed_days": 1},
+    {"title": "John Test Dashboard", "last_viewed_days": 4},
+    {"title": "Legacy CloudWatch Bridge", "last_viewed_days": 200}
+]
+
+print(garbage_collect_dashboards(dashboards))
+```
+
+**Output of the script:**
+```text
+Grafana Cleanup -> Pruned 2 obsolete dashboards: ['John Test Dashboard', 'Legacy CloudWatch Bridge']
+```
+
+---
+
+### Task 13: Synchronizing Grafana Data Sources via Provisioning files
+
+**Why use this logic?** Manually adding a Prometheus URL in the Grafana UI isn't GitOps. Python can render YAML files on disk (`/etc/grafana/provisioning/datasources/ds.yaml`) dynamically, allowing Grafana to map data sources entirely as-code inherently.
+
+**Python Script:**
+```python
+import yaml
+
+def render_grafana_datasource_yaml(target_prom_url):
+    # 1. Structure the exact dictionary array Grafana needs natively
+    ds_config = {
+        "apiVersion": 1,
+        "datasources": [
+            {
+                "name": "Primary Prometheus",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": target_prom_url,
+                "isDefault": True,
+                "editable": False # Enforce GitOps strictly
+            }
+        ]
+    }
+    
+    # 2. Dump natively to YAML string
+    return yaml.dump(ds_config, default_flow_style=False, sort_keys=False)
+
+print("--- EXPORTED GRAFANA DATASOURCE PROVISIONING YAML ---")
+print(render_grafana_datasource_yaml("http://prometheus-internal.svc:9090"))
+```
+
+**Output of the script:**
+```yaml
+--- EXPORTED GRAFANA DATASOURCE PROVISIONING YAML ---
+apiVersion: 1
+datasources:
+- name: Primary Prometheus
+  type: prometheus
+  access: proxy
+  url: http://prometheus-internal.svc:9090
+  isDefault: true
+  editable: false
+```
+
+---
+
+### Task 14: Executing Grafana load tests simulating thousands of queries
+
+**Why use this logic?** If an SRE pulls up a dashboard examining a full year of 100-services data, Grafana will literally crash the downstream TSDB. A Python chaos script rapidly opening Dashboards asynchronously tests structural capacity organically.
+
+**Python Script:**
+```python
+def simulate_dashboard_concurrent_load(concurrent_users):
+    # 1. We mock launching N parallel threads logically
+    results = []
+    
+    for user_thread in range(concurrent_users):
+        # 2. Simulate downstream database latency inherently
+        db_latency_ms = 45 * user_thread
+        
+        if db_latency_ms > 2000:
+             results.append(f"User {user_thread} Failed: HTTP 504 Gateway Timeout")
+             break
+        results.append(f"User {user_thread} Success: Rendered (DB Lag: {db_latency_ms}ms)")
+        
+    return "Chaos Load Test Complete:\n" + "\n".join(results)
+
+print(simulate_dashboard_concurrent_load(concurrent_users=50))
+```
+
+**Output of the script:**
+```text
+Chaos Load Test Complete:
+User 0 Success: Rendered (DB Lag: 0ms)
+User 1 Success: Rendered (DB Lag: 45ms)
+...
+User 44 Success: Rendered (DB Lag: 1980ms)
+User 45 Failed: HTTP 504 Gateway Timeout
+```
+
+---
+
+### Task 15: Auditing Dashboard Permissions via Content Restrictions
+
+**Why use this logic?** Financial dashboards shouldn't be visible to Engineering interns. Fetching Dashboards dynamically through Python and verifying the `acl` (Access Control List) permissions guarantees strict RBAC segregation structurally.
+
+**Python Script:**
+```python
+def check_dashboard_permissions(dashboard_acls):
+    for board_name, roles in dashboard_acls.items():
+        # 1. Define sensitive context natively
+        is_financial = "finance" in board_name.lower()
+        
+        if is_financial and "Viewer" in roles:
+            return f"SECURITY BREACH: Financial Dashboard '{board_name}' is accessible to generic 'Viewers'."
+            
+    return "SECURITY AUDIT PASSED: All sensitive dashboards structurally locked down."
+
+acls = {
+    "Infrastructure Status": ["Viewer", "Editor", "Admin"],
+    "Finance: Monthly Cloud Spend": ["Viewer", "Admin"] # Incorrect permission
+}
+
+print(check_dashboard_permissions(acls))
+```
+
+**Output of the script:**
+```text
+SECURITY BREACH: Financial Dashboard 'Finance: Monthly Cloud Spend' is accessible to generic 'Viewers'.
+```
+
+---
+
+### Task 16: Extracting specific time-ranges of Grafana CSV data structurally
+
+**Why use this logic?** If the Data Science team asks you to pull exactly "14 minutes of API hits from yesterday", asking them to learn PromQL is arrogant. Python extracting via Grafana's `/api/datasources/proxy` simplifies exports natively.
+
+**Python Script:**
+```python
+import csv
+import io
+
+def mock_grafana_csv_export(timeseries_data_dict):
+    # 1. Structure file organically without touching disk
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # 2. Write headers properly
+    writer.writerow(["Timestamp_Epoch", "Metric_Value"])
+    
+    # 3. Dump structurally
+    for ts, val in timeseries_data_dict.items():
+        writer.writerow([ts, val])
+        
+    return output.getvalue()
+
+grafana_query_result = {
+    1680000000: 45.4,
+    1680000060: 45.9,
+    1680000120: 89.1
+}
+
+print("--- Data Science Clean CSV Export ---")
+print(mock_grafana_csv_export(grafana_query_result).strip())
+```
+
+**Output of the script:**
+```text
+--- Data Science Clean CSV Export ---
+Timestamp_Epoch,Metric_Value
+1680000000,45.4
+1680000060,45.9
+1680000120,89.1
+```
+
+---
+
 Infrastucture dashboards are meant to clarify system states, rather than obscure them. Adding programmatic pre-checks against inputs, thresholds, and connectivity keeps Grafana inherently trustworthy.

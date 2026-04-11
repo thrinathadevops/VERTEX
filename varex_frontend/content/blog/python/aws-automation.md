@@ -617,4 +617,406 @@ Root Cause: Downstream EKS fault detected -> '[FATAL] Postgres Deadlock executed
 
 ---
 
+### Task 13: Purging unattached Elastic IPs (EIPs) structurally to save costs
+
+**Why use this logic?** AWS charges hourly for allocated public IP addresses that are *not* attached to a running EC2 instance. Over years, this "EIP leak" costs thousands of dollars. Python scripts programmatically check `describe_addresses` natively, isolating and releasing unattached IPs mathematically.
+
+**Python Script:**
+```python
+import boto3
+
+def audit_and_release_unattached_eips(boto3_ec2_client_response):
+    released_ips = []
+    
+    # 1. Iterate over the EC2 address dictionary response natively
+    for address in boto3_ec2_client_response.get("Addresses", []):
+        ip = address.get("PublicIp")
+        allocation_id = address.get("AllocationId")
+        
+        # 2. Structural logic gate: If 'InstanceId' is missing, it's orphan.
+        if "InstanceId" not in address:
+            # Execution: ec2_client.release_address(AllocationId=allocation_id)
+            released_ips.append(ip)
+            
+    # 3. Report synthesis
+    if released_ips:
+         return "💰 FINOPS OPTIMIZATION - Purged Unattached IPs:\n- " + "\n- ".join(released_ips)
+         
+    return "✅ IP AUDIT: All allocated AWS Elastic IPs are correctly bound."
+
+mock_ec2_response = {
+    "Addresses": [
+         {"PublicIp": "3.14.5.99", "AllocationId": "eipalloc-11a", "InstanceId": "i-09ab12"},
+         {"PublicIp": "54.1.2.33", "AllocationId": "eipalloc-22b"} # Orphaned explicitly
+    ]
+}
+
+print(audit_and_release_unattached_eips(mock_ec2_response))
+```
+
+**Output of the script:**
+```text
+💰 FINOPS OPTIMIZATION - Purged Unattached IPs:
+- 54.1.2.33
+```
+
+---
+
+### Task 14: Synchronizing AWS WAF IP sets mathematically to block brute-force attacks
+
+**Why use this logic?** If an attacker scripts 50,000 HTTP requests, application logic will fall over. A Python script running in Lambda can analyze CloudWatch for 403 errors, extract the attacker's IP, and automatically append it to an AWS Web Application Firewall (WAF) rule natively preventing further ingress.
+
+**Python Script:**
+```python
+def update_aws_waf_blacklist(current_waf_ips, new_attacker_ip):
+    # 1. Ensure mathematical uniqueness using Sets natively
+    ip_set = set(current_waf_ips)
+    
+    # 2. AWS WAF requires formal CIDR notation inherently
+    cidr_formatted = f"{new_attacker_ip}/32"
+    
+    # Check bounds (AWS limit is 10,000 IPs per set natively)
+    if len(ip_set) >= 10000:
+         return "FATAL: WAF IP Set completely full."
+         
+    if cidr_formatted not in ip_set:
+         ip_set.add(cidr_formatted)
+         # Execution: waf_client.update_ip_set(LockToken=..., Addresses=list(ip_set))
+         return f"🛡️ WAF BLACKLIST UPDATED: Pushed [{cidr_formatted}] to CloudFront Firewall natively."
+         
+    return f"WAF: IP [{cidr_formatted}] already blocked structurally."
+
+base_waf_list = ["10.0.0.1/32", "192.168.1.5/32"]
+print(update_aws_waf_blacklist(base_waf_list, "45.22.19.1"))
+```
+
+**Output of the script:**
+```text
+🛡️ WAF BLACKLIST UPDATED: Pushed [45.22.19.1/32] to CloudFront Firewall natively.
+```
+
+---
+
+### Task 15: Rotating IAM Access Keys for users older than 90 days
+
+**Why use this logic?** Stale API keys are massive attack vectors. Automating a Python script that iterates `list_access_keys` across all IAM accounts and evaluates the `CreateDate` algebraically ensures DevOps teams deactivate non-compliant keys immediately.
+
+**Python Script:**
+```python
+from datetime import datetime, timezone, timedelta
+
+def audit_stale_iam_access_keys(iam_user_key_array):
+    violation_keys = []
+    
+    # 1. Calculate the explicit 90-day threshold mathematically
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    
+    # 2. Iterate against the literal ISO timestamps returned by boto3
+    for key in iam_user_key_array:
+         creation = datetime.fromisoformat(key["create_date"])
+         
+         if creation < ninety_days_ago:
+             violation_keys.append(f"User: {key['user']} | Key: {key['key_id']}")
+             # Remediation: iam.update_access_key(UserName=..., AccessKeyId=..., Status='Inactive')
+             
+    if violation_keys:
+         return "🔐 IDENTITY SECURITY REVENUE - Deactivating Stale Keys:\n- " + "\n- ".join(violation_keys)
+         
+    return "✅ IAM AUDIT: All Access Keys rotated within 90 days."
+
+mock_iam_keys = [
+    {"user": "dev-mike", "key_id": "AKIA123", "create_date": "2026-03-01T12:00:00+00:00"},
+    {"user": "ci-deploy", "key_id": "AKIA999", "create_date": "2025-10-15T12:00:00+00:00"} # Violates 90 days
+]
+
+print(audit_stale_iam_access_keys(mock_iam_keys))
+```
+
+**Output of the script:**
+```text
+🔐 IDENTITY SECURITY REVENUE - Deactivating Stale Keys:
+- User: ci-deploy | Key: AKIA999
+```
+
+---
+
+### Task 16: Evaluating S3 bucket public-access block flags programmatically
+
+**Why use this logic?** If an engineer creates an S3 bucket explicitly for application data but forgets to activate the "Block Public Access" module natively, data leaks instantly. A python loop scanning every bucket via `get_public_access_block` catches this structural failure mechanically.
+
+**Python Script:**
+```python
+def validate_s3_public_blocks(bucket_name, api_public_access_response):
+    try:
+        # 1. Extract the dict natively provided by S3 configurations
+        config = api_public_access_response.get("PublicAccessBlockConfiguration", {})
+        
+        # 2. Validate all 4 critical security pillars natively
+        reqs = ["BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets"]
+        
+        for rule in reqs:
+             if not config.get(rule, False):
+                 return f"🚨 SECURITY FAILED: [{bucket_name}] - Flag '{rule}' is disabled! Fixing natively..."
+                 # Execution: s3.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration={...})
+                 
+        return f"✅ SECURITY PASSED: [{bucket_name}] solidly isolated."
+        
+    except Exception as e:
+        return f"🚨 CRITICAL MISSING: [{bucket_name}] has NO block-access configurations!"
+
+mock_vulnerable = {
+    "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": True,
+        "IgnorePublicAcls": False, # Explicit vulnerability
+        "BlockPublicPolicy": True,
+         "RestrictPublicBuckets": True
+    }
+}
+
+print(validate_s3_public_blocks("prod-customer-uploads", mock_vulnerable))
+```
+
+**Output of the script:**
+```text
+🚨 SECURITY FAILED: [prod-customer-uploads] - Flag 'IgnorePublicAcls' is disabled! Fixing natively...
+```
+
+---
+
+### Task 17: Automating Aurora/RDS cluster scaling using CloudWatch Event webhooks
+
+**Why use this logic?** Instead of using expensive auto-scalers inherently, a discrete Python payload invoked by a CloudWatch "CPU > 90%" alarm can hit `modify_db_instance` to explicitly upgrade an `db.t3.medium` to `db.t3.large` mathematically preventing a database outage.
+
+**Python Script:**
+```python
+def dynamic_rds_upscale(db_identifier, current_instance_class):
+    # 1. Define vertical upgrade paths mathematically natively
+    upgrade_path = {
+        "db.t3.medium": "db.t3.large",
+        "db.t3.large": "db.r5.xlarge"
+    }
+    
+    target_class = upgrade_path.get(current_instance_class)
+    
+    if not target_class:
+         return f"SYSTEM BOTTLENECK: No upgrade path mapped for '{current_instance_class}'."
+         
+    # 2. Trigger API Upgrade
+    # rds.modify_db_instance(DBInstanceIdentifier=db_identifier, DBInstanceClass=target_class, ApplyImmediately=True)
+    
+    return f"🚀 DATABASE UPSCALED:\nInstance [{db_identifier}] migrating [{current_instance_class} -> {target_class}] immediately."
+
+print(dynamic_rds_upscale("production-postgres-core", "db.t3.large"))
+```
+
+**Output of the script:**
+```text
+🚀 DATABASE UPSCALED:
+Instance [production-postgres-core] migrating [db.t3.large -> db.r5.xlarge] immediately.
+```
+
+---
+
+### Task 18: Parsing Route53 DNS zones to identify dangling CNAME takeover risks
+
+**Why use this logic?** If an S3 bucket or ElasticBeanstalk environment is deleted, but the Route53 DNS CNAME array still structurally points to it, hackers can deploy an app to that URL and steal your traffic. Python scans Route53, checking if endpoints natively resolve.
+
+**Python Script:**
+```python
+def detect_dangling_route53_cnames(route_53_records):
+    dangling_risks = []
+    
+    for record in route_53_records:
+        if record.get("Type") == "CNAME":
+             target = record["ResourceRecords"][0]["Value"]
+             
+             # 1. Very crude resolution check (in reality, use generic DNS resolver socket inherently)
+             if "elasticbeanstalk.com" in target or "s3-website" in target:
+                  # Note: A real implementation algebraically checks the HTTP response from target
+                  # If it returns "NoSuchBucket" or HTTP 404 from AWS explicitly, it's dangling.
+                  is_dangling = True 
+                  
+                  if is_dangling:
+                       dangling_risks.append(f"Record [{record['Name']}] -> Pointing at Dead AWS Target [{target}]")
+                       
+    if dangling_risks:
+         return "💀 SUBDOMAIN TAKEOVER RISK EXPOSED:\n" + "\n".join(dangling_risks)
+         
+    return "DNS Security Matrix Clean."
+
+mock_records = [
+    {"Name": "api.varex.local", "Type": "A", "ResourceRecords": [{"Value": "10.0.0.1"}]},
+    {"Name": "promo.varex.local", "Type": "CNAME", "ResourceRecords": [{"Value": "dead-promo-site.s3-website-us-east-1.amazonaws.com"}]}
+]
+
+print(detect_dangling_route53_cnames(mock_records))
+```
+
+**Output of the script:**
+```text
+💀 SUBDOMAIN TAKEOVER RISK EXPOSED:
+Record [promo.varex.local] -> Pointing at Dead AWS Target [dead-promo-site.s3-website-us-east-1.amazonaws.com]
+```
+
+---
+
+### Task 19: Assuming Cross-Account Roles via STS mathematically securely
+
+**Why use this logic?** Managing discrete keys for Dev, Stage, and Prod is chaotic. A centralized CI script can dynamically hit the AWS Secure Token Service (STS) `assume_role` endpoint, instantly generating ephemeral 15-minute structurally sound tokens to act inside `Production` safely.
+
+**Python Script:**
+```python
+import json
+
+def generate_sts_ephemeral_credentials(target_role_arn, session_label):
+    # 1. Execution logic to STS mathematically
+    # sts_client = boto3.client('sts')
+    # response = sts_client.assume_role(RoleArn=target_role_arn, RoleSessionName=session_label, DurationSeconds=900)
+    
+    # 2. Simulate STS API Response Payload
+    assumed_role_result = {
+        "Credentials": {
+            "AccessKeyId": "ASIAX...",
+            "SecretAccessKey": "wJalrX...",
+            "SessionToken": "IQoJb3JpZ2...",
+            "Expiration": "2026-04-11T16:00:00Z"
+        }
+    }
+    
+    return f"🔑 CROSS-ACCOUNT ACCESS GRANTED:\n{json.dumps(assumed_role_result, indent=2)}"
+
+print(generate_sts_ephemeral_credentials("arn:aws:iam::888899990000:role/ProdDeployer", "CI-Build-1104"))
+```
+
+**Output of the script:**
+```json
+🔑 CROSS-ACCOUNT ACCESS GRANTED:
+{
+  "Credentials": {
+    "AccessKeyId": "ASIAX...",
+    "SecretAccessKey": "wJalrX...",
+    "SessionToken": "IQoJb3JpZ2...",
+    "Expiration": "2026-04-11T16:00:00Z"
+  }
+}
+```
+
+---
+
+### Task 20: Generating AWS Cost Explorer daily JSON cost matrices
+
+**Why use this logic?** Waiting until the end of the month to discover AWS burned $5,000 on Lambdas is fatal. A daily cron running `get_cost_and_usage` natively isolates yesterday's expenses mathematically, routing them to Slack dynamically.
+
+**Python Script:**
+```python
+def format_cost_explorer_daily_matrix(aws_ce_response):
+    report = []
+    
+    # 1. Isolate Results array natively
+    for day in aws_ce_response.get("ResultsByTime", []):
+         target_date = day.get("TimePeriod", {}).get("Start")
+         # 2. Parse structural 'UnblendedCost' natively provided by Cost Explorer
+         cost = float(day.get("Total", {}).get("UnblendedCost", {}).get("Amount", 0))
+         
+         report.append(f"[{target_date}] Total Cloud Cost: ${cost:.2f}")
+         
+    return "📈 FinOps Daily Report:\n" + "\n".join(report)
+
+mock_ce_output = {
+    "ResultsByTime": [
+        {
+            "TimePeriod": {"Start": "2026-04-10"},
+            "Total": {"UnblendedCost": {"Amount": "145.20"}}
+        }
+    ]
+}
+
+print(format_cost_explorer_daily_matrix(mock_ce_output))
+```
+
+**Output of the script:**
+```text
+📈 FinOps Daily Report:
+[2026-04-10] Total Cloud Cost: $145.20
+```
+
+---
+
+### Task 21: Sniffing VPC Flow logs natively for Rejected/Forbidden SSH traffic
+
+**Why use this logic?** Identifying network breaches requires scanning millions of VPC Flow Logs. Native Python code loading these arrays, applying strict IP validation mathematically against "Port 22 + Rejected" isolates structural port-scanning attempts immediately.
+
+**Python Script:**
+```python
+def isolate_ssh_port_scans(vpc_flow_logs_array):
+    attack_vectors = []
+    
+    # 1. Iterate VPC Log struct: version account_id interface source_ip dest_ip src_port dest_port ...
+    for log in vpc_flow_logs_array:
+        components = log.split()
+        
+        # 2. Safety bounds mapping natively
+        if len(components) >= 12:
+            src_ip = components[3]
+            dst_port = components[6]
+            action = components[12]
+            
+            # 3. Algebraically check for Port 22 (SSH) being Rejected (AWS Firewall logic output)
+            if dst_port == "22" and action == "REJECT":
+                attack_vectors.append(f"Port-Scan Blocked: TCP 22 originating from {src_ip}")
+                
+    if attack_vectors:
+        return "⚠️ MALICIOUS NETWORK TRAFFIC IDENTIFIED:\n" + "\n".join(attack_vectors)
+        
+    return "VPC Firewall optimal."
+
+mock_flow = [
+    # src-ip dst-ip ... src-port dst-port ... action
+    "2 1234 eni-1 10.0.0.5 192.168.1.5 50123 80 6 10 100 162000000 162000500 ACCEPT OK",
+    "2 1234 eni-2 44.55.66.77 10.0.0.1 61000 22 6 1 40 162000000 162000500 REJECT OK"
+]
+
+print(isolate_ssh_port_scans(mock_flow))
+```
+
+**Output of the script:**
+```text
+⚠️ MALICIOUS NETWORK TRAFFIC IDENTIFIED:
+Port-Scan Blocked: TCP 22 originating from 44.55.66.77
+```
+
+---
+
+### Task 22: Structuring automated ECS Task container deregistration during severe OOM alerts
+
+**Why use this logic?** If an ECS cluster node reaches 99% RAM due to memory leaking in a container, instead of letting it naturally crash, python can hook a CloudWatch CPU alarm and hit the `stop_task` API instantly, isolating it before it structurally degrades the whole cluster.
+
+**Python Script:**
+```python
+def isolate_degraded_ecs_task(cluster_name, task_id, diagnostic_reason):
+    # 1. Emulate ECS boto3 target natively
+    
+    action_log = f"CRITICAL: ECS Node Degradation executing safe termination.\n"
+    action_log += f"Cluster: {cluster_name}\nTask: {task_id}\nReason: {diagnostic_reason}\n"
+    
+    # 2. Execution logic mapping
+    # ecs.stop_task(cluster=cluster_name, task=task_id, reason=diagnostic_reason)
+    
+    action_log += f"Target Task shifted to [STOPPED_STATE] algebraically."
+    return action_log
+
+print(isolate_degraded_ecs_task("production-fargate-cluster", "task-8f92bd12", "Node RAM > 99%. Executing pre-emptive termination."))
+```
+
+**Output of the script:**
+```text
+CRITICAL: ECS Node Degradation executing safe termination.
+Cluster: production-fargate-cluster
+Task: task-8f92bd12
+Reason: Node RAM > 99%. Executing pre-emptive termination.
+Target Task shifted to [STOPPED_STATE] algebraically.
+```
+
+---
+
 By embracing Python structurally across your AWS environment securely with `boto3` and Powertools, you radically decrease the 'Mean Time Between Failures' structurally and prevent manual console diving.

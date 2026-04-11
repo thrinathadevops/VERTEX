@@ -467,4 +467,366 @@ print(build_omniscience_payload(app, k8s, ci, aws))
 
 ---
 
+### Task 9: Forcing Index Merges dynamically via Python to save space
+
+**Why use this logic?** Read-only historical indexes in Elasticsearch contain multiple disorganized Lucene segments natively. This wastes RAM. Triggering a programmatic `_forcemerge` against cold indices reduces segments structurally down to 1, cutting disk footprint and accelerating query times vastly.
+
+**Python Script:**
+```python
+def trigger_forcemerge_on_cold_indices(index_name):
+    # 1. Structure the forcemerge API constraint
+    # We want to force all underlying Lucene segments down to exactly 1
+    api_endpoint = f"/{index_name}/_forcemerge"
+    params = "?max_num_segments=1"
+    
+    # 2. Emulate the execution
+    # In reality: es_client.indices.forcemerge(index=index_name, max_num_segments=1)
+    
+    return f"⚡ Optimization Initiated:\nPOST {api_endpoint}{params}\nIndex '{index_name}' successfully compressed into 1 segment."
+
+print(trigger_forcemerge_on_cold_indices("aws-cloudtrail-logs-2025.10"))
+```
+
+**Output of the script:**
+```text
+⚡ Optimization Initiated:
+POST /aws-cloudtrail-logs-2025.10/_forcemerge?max_num_segments=1
+Index 'aws-cloudtrail-logs-2025.10' successfully compressed into 1 segment.
+```
+
+---
+
+### Task 10: Creating Snapshot/Restore policies natively via API
+
+**Why use this logic?** Clicking through Kibana/OpenSearch Dashboards to back up your cluster is functionally dangerous. Python can dynamically establish S3 Snapshot lifecycle policies (SLM) structurally, pushing definitions into the cluster API so the cluster automatically backs itself up daily without human intervention.
+
+**Python Script:**
+```python
+import json
+
+def register_daily_snapshot_policy(policy_name, repository_name):
+    # 1. Provide the structural JSON for an SLM (Snapshot Lifecycle Management) routine
+    slm_payload = {
+        "schedule": "0 30 2 * * ?", # Runs at 2:30 AM natively every day
+        "name": "<nightly-snap-{now/d}>",
+        "repository": repository_name,
+        "config": {
+            "indices": ["logs-*", "metrics-*"],
+            "ignore_unavailable": True,
+            "include_global_state": False
+        },
+        "retention": {
+            "expire_after": "30d",
+            "min_count": 5,
+            "max_count": 30
+        }
+    }
+    
+    api_path = f"/_slm/policy/{policy_name}"
+    
+    return f"🚀 Snapshot Policy Registered [{api_path}]:\n{json.dumps(slm_payload, indent=2)}"
+
+print(register_daily_snapshot_policy("daily_observability_backup", "aws_s3_cold_storage"))
+```
+
+**Output of the script:**
+```json
+🚀 Snapshot Policy Registered [/_slm/policy/daily_observability_backup]:
+{
+  "schedule": "0 30 2 * * ?",
+  "name": "<nightly-snap-{now/d}>",
+  "repository": "aws_s3_cold_storage",
+  "config": {
+    "indices": [
+      "logs-*",
+      "metrics-*"
+    ],
+    "ignore_unavailable": true,
+    "include_global_state": false
+  },
+  "retention": {
+    "expire_after": "30d",
+    "min_count": 5,
+    "max_count": 30
+  }
+}
+```
+
+---
+
+### Task 11: Detecting Unassigned Elasticsearch Shards programmatically
+
+**Why use this logic?** If an Elasticsearch Node crashes, shards turn `UNASSIGNED`, turning cluster health to `RED`. The `_cat/shards` endpoint outputs this globally. Python easily iterates over this string stream natively, isolating exactly which shards are floating in the void.
+
+**Python Script:**
+```python
+def parse_unassigned_shards(cat_shards_output):
+    unassigned = []
+    
+    # 1. Iterate over line breaks from the _cat API organically
+    lines = cat_shards_output.strip().split("\n")
+    
+    for line in lines:
+        parts = line.split()
+        # 2. Column 3 inherently reflects assignment state
+        if len(parts) >= 3 and parts[3] == "UNASSIGNED":
+            index_name = parts[0]
+            shard_id = parts[1]
+            unassigned.append(f"Index: {index_name} | Shard: {shard_id}")
+            
+    # 3. Present status report
+    if unassigned:
+         return "❌ CLUSTER DEGRADED. Unassigned shards detected:\n" + "\n".join(unassigned)
+    return "✅ CLUSTER HEALTHY. All shards structurally assigned."
+
+# Mocking the output of `GET /_cat/shards`
+mock_output = """
+app-logs-01 0 p STARTED 3014 31.1mb 10.0.0.1 node-1
+app-logs-01 0 r UNASSIGNED
+app-logs-02 1 p STARTED 3012 30.1mb 10.0.0.2 node-2
+"""
+
+print(parse_unassigned_shards(mock_output))
+```
+
+**Output of the script:**
+```text
+❌ CLUSTER DEGRADED. Unassigned shards detected:
+Index: app-logs-01 | Shard: 0
+```
+
+---
+
+### Task 12: Synchronizing OpenSearch/Elasticsearch Roles (RBAC) securely
+
+**Why use this logic?** Developers frequently require read-access to new indices but not delete-access. Python abstracts the complex JSON API payload mapping users to OpenSearch Roles securely, preventing humans from misconfiguring wildcard JSON permissions that might delete the cluster.
+
+**Python Script:**
+```python
+import json
+
+def assign_role_to_opensearch_user(role_name, username):
+    # 1. Structure the strict internal Security API payload
+    # OpenSearch and Elasticsearch have slightly differing /_security APIs, but structure is similar
+    
+    role_mapping_payload = {
+        "users": [username],
+        # In reality, you append to existing lists, but for automation we override safely
+    }
+    
+    api_endpoint = f"/_security/role_mapping/{role_name}"
+    
+    formatted = json.dumps(role_mapping_payload, indent=2)
+    return f"RBAC Assignment executing against {api_endpoint}:\n{formatted}"
+
+print(assign_role_to_opensearch_user("read_only_developer", "jdoe@company.com"))
+```
+
+**Output of the script:**
+```json
+RBAC Assignment executing against /_security/role_mapping/read_only_developer:
+{
+  "users": [
+    "jdoe@company.com"
+  ]
+}
+```
+
+---
+
+### Task 13: Creating Elasticsearch Ingest Node Pipelines automatically
+
+**Why use this logic?** If an application team starts sending literal text strings instead of JSON objects abruptly, Elasticsearch mapping exceptions crash the ingest structurally. Python creates internal `Ingest Pipelines` natively via API to automatically `grok` (parse) or drop bad fields *before* they are written to disk.
+
+**Python Script:**
+```python
+import json
+
+def provision_ingest_pipeline(pipeline_id):
+    # 1. Define the internal transformation pipeline logic natively
+    pipeline_schema = {
+        "description": "Standardize incoming raw syslog streams via Grok dynamically",
+        "processors": [
+            {
+                "grok": {
+                    "field": "message",
+                    # Extracts standard syslog structurally
+                    "patterns": ["%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\\[%{POSINT:syslog_pid}\\])?: %{GREEDYDATA:syslog_message}"]
+                }
+            },
+            {
+                "remove": {
+                    "field": "message",
+                    "ignore_missing": True
+                }
+            }
+        ]
+    }
+    
+    return f"Pipeline [{pipeline_id}] provisioned:\n{json.dumps(pipeline_schema, indent=2)}"
+
+print(provision_ingest_pipeline("syslog-standardizer"))
+```
+
+**Output of the script:**
+```json
+Pipeline [syslog-standardizer] provisioned:
+{
+  "description": "Standardize incoming raw syslog streams via Grok dynamically",
+  "processors": [
+    {
+      "grok": {
+        "field": "message",
+        "patterns": [
+          "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\\[%{POSINT:syslog_pid}\\])?: %{GREEDYDATA:syslog_message}"
+        ]
+      }
+    },
+    {
+      "remove": {
+        "field": "message",
+        "ignore_missing": true
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Task 14: Writing Python queries to calculate 99th Percentile log latency
+
+**Why use this logic?** Querying for "Average" latency hides massive catastrophic spikes. The `percentiles` aggregation in Elasticsearch leverages the T-Digest algorithm. Python triggers this organically, fetching the absolute P99 latency mathematically across 10 million logs instantly.
+
+**Python Script:**
+```python
+import json
+
+def fetch_p99_latency_metrics(target_index, latency_field):
+    # 1. Structure Percentile Aggregation Payload
+    aggregation_query = {
+        "size": 0, # We only want the calculation, not the physical documents
+        "aggs": {
+            "load_time_outlier": {
+                "percentiles": {
+                    "field": latency_field,
+                    "percents": [95.0, 99.0, 99.9] 
+                }
+            }
+        }
+    }
+    
+    # 2. Emulate returning the result logically
+    mock_es_response = {
+        "aggregations": {
+            "load_time_outlier": {
+                "values": {
+                    "95.0": 145.2,
+                    "99.0": 850.4,
+                    "99.9": 2100.9
+                }
+            }
+        }
+    }
+    
+    # 3. Parse mathematically
+    p99_val = mock_es_response["aggregations"]["load_time_outlier"]["values"]["99.0"]
+    return f"Aggregated [{target_index}] successfully. \nP99 Latency: {p99_val}ms"
+
+print(fetch_p99_latency_metrics("frontend-metrics-*", "http.response.time_ms"))
+```
+
+**Output of the script:**
+```text
+Aggregated [frontend-metrics-*] successfully. 
+P99 Latency: 850.4ms
+```
+
+---
+
+### Task 15: Triggering index rollover dynamically when size exceeds 50GB
+
+**Why use this logic?** Indices that grow larger than 50GB physically break internal Lucene search efficiency constraints natively. Python loops over the cluster catalog, fetching sizes structurally, and hits the `_rollover` API for any index passing the threshold mathematically.
+
+**Python Script:**
+```python
+def analyze_and_rollover_indexes(index_metrics):
+    rollovers_triggered = []
+    max_gb_threshold = 50.0
+    
+    # 1. Iterate over dictionary of current aliases inherently
+    for alias_name, size_gb in index_metrics.items():
+        if size_gb > max_gb_threshold:
+            # 2. Simulate API execution: POST /{alias_name}/_rollover
+            rollovers_triggered.append(f"{alias_name} ({size_gb}GB -> Limit {max_gb_threshold}GB)")
+            
+    # 3. Return summary logically
+    if rollovers_triggered:
+        return "⚠️ CAPACITY REACHED. Rollover Executed on:\n- " + "\n- ".join(rollovers_triggered)
+    return "✅ CAPACITY STABLE. No index exceeds rollover limits."
+
+current_cluster_state = {
+    "app-logs-write-alias": 12.4,
+    "firewall-logs-write-alias": 55.6, # Will trigger rollover
+    "vpc-flow-write-alias": 49.9
+}
+
+print(analyze_and_rollover_indexes(current_cluster_state))
+```
+
+**Output of the script:**
+```text
+⚠️ CAPACITY REACHED. Rollover Executed on:
+- firewall-logs-write-alias (55.6GB -> Limit 50.0GB)
+```
+
+---
+
+### Task 16: Constructing cross-cluster federation search queries natively
+
+**Why use this logic?** Global enterprises operate multiple Elasticsearch clusters (US-East, EU-West, AP-South). Querying them simultaneously requires Cross-Cluster Search (CCS). Python programmatically bridges these distinct physical locations structurally by prepending the registered cluster alias mechanically into the query DSL.
+
+**Python Script:**
+```python
+import json
+
+def synthesize_cross_cluster_query(cluster_array, target_index):
+    # 1. Elasticsearch Cross-Cluster syntax natively prepends the cluster identifier
+    # Syntax: cluster_name:index_name
+    
+    federated_targets = []
+    for cluster in cluster_array:
+        federated_targets.append(f"{cluster}:{target_index}")
+        
+    unified_index_string = ",".join(federated_targets)
+    
+    # 2. Generate standard query logic against the unified array
+    ccs_query = {
+        "query": { "match_all": {} } # Simple search for demonstration
+    }
+    
+    report = f"--- CROSS CLUSTER SEARCH INITIATED ---\n"
+    report += f"Target Execution Path: {unified_index_string}\n"
+    report += f"Payload:\n{json.dumps(ccs_query, indent=2)}"
+    
+    return report
+
+clusters = ["us_east", "eu_west", "ap_south"]
+print(synthesize_cross_cluster_query(clusters, "security-audit-logs-*"))
+```
+
+**Output of the script:**
+```json
+--- CROSS CLUSTER SEARCH INITIATED ---
+Target Execution Path: us_east:security-audit-logs-*,eu_west:security-audit-logs-*,ap_south:security-audit-logs-*
+Payload:
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+---
+
 Using Python explicitly as the interaction layer bridging Elasticsearch with your continuous integration pipelines provides deep visibility controls without tying your developers down in manual querying workflows.

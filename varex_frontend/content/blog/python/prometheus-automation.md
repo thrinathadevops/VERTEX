@@ -465,4 +465,408 @@ Line 5 Syntactical Fault: bad_metric_no_space_before_val{env="dev"}100
 
 ---
 
+### Task 11: Purging PromQL query timeouts using mathematically sharded requests
+
+**Why use this logic?** Running `sum(rate(http_requests_total[1y]))` instantly crashes the Prometheus server with an HTTP 504 Timeout because parsing an entire year of data requires too much RAM. Python logically "shards" the query into 12 separate 1-month queries natively, aggregating the data locally.
+
+**Python Script:**
+```python
+def execute_sharded_promql_query(base_query, total_months):
+    # 1. Break a massive time range into smaller logical chunks natively
+    responses = []
+    
+    for month in range(1, total_months + 1):
+        # 2. Dynamically modify the PromQL time vector securely 
+        # e.g., rate(metric[1h] offset 1M), then offset 2M, etc.
+        sharded_query = f"{base_query} offset {month}M"
+        
+        # 3. Simulate execution structurally (e.g. requests.get(url, params={"query": sharded_query}))
+        network_status = "200 OK"
+        responses.append(f"[{month}M] -> {network_status} Data Block Acquired.")
+        
+    return f"Sharded Execution Complete (Timeout Avoided):\n" + "\n".join(responses)
+
+print(execute_sharded_promql_query("sum(rate(http_requests_total[720h]))", total_months=3))
+```
+
+**Output of the script:**
+```text
+Sharded Execution Complete (Timeout Avoided):
+[1M] -> 200 OK Data Block Acquired.
+[2M] -> 200 OK Data Block Acquired.
+[3M] -> 200 OK Data Block Acquired.
+```
+
+---
+
+### Task 12: Creating Dynamic ServiceMonitors via Kubernetes Python client
+
+**Why use this logic?** In Prometheus-Operator environments, you don't edit `prometheus.yml`. You create `ServiceMonitor` Kubernetes Custom Resources (CRDs). Python natively constructs and applies these CRDs directly into K8s, guaranteeing immediate observability the second a new service boots.
+
+**Python Script:**
+```python
+def generate_servicemonitor_crd(service_name, namespace, metric_port="metrics"):
+    # 1. Structure the exact CRD payload Prometheus Operator expects mathematically
+    crd_manifest = {
+        "apiVersion": "monitoring.coreos.com/v1",
+        "kind": "ServiceMonitor",
+        "metadata": {
+            "name": f"{service_name}-monitor",
+            "namespace": namespace,
+            "labels": {"release": "prometheus"} # Mandatory selector
+        },
+        "spec": {
+            "selector": {
+                "matchLabels": {"app": service_name}
+            },
+            "endpoints": [
+                {"port": metric_port, "interval": "15s", "path": "/metrics"}
+            ]
+        }
+    }
+    
+    # 2. In reality, apply natively: kubernetes.client.CustomObjectsApi().create_namespaced_custom_object(...)
+    return f"Prepared Kubernetes ServiceMonitor Manifest for [{service_name}]:\n{crd_manifest}"
+
+print(generate_servicemonitor_crd("auth-api", "production"))
+```
+
+**Output of the script:**
+```text
+Prepared Kubernetes ServiceMonitor Manifest for [auth-api]:
+{'apiVersion': 'monitoring.coreos.com/v1', 'kind': 'ServiceMonitor', 'metadata': {'name': 'auth-api-monitor', 'namespace': 'production', 'labels': {'release': 'prometheus'}}, 'spec': {'selector': {'matchLabels': {'app': 'auth-api'}}, 'endpoints': [{'port': 'metrics', 'interval': '15s', 'path': '/metrics'}]}}
+```
+
+---
+
+### Task 13: Correlating Prometheus ALERTS metric with deployment events
+
+**Why use this logic?** If Prometheus fires an alert exactly 10 seconds after Jenkins finishes a deployment, the deployment is definitively the root cause. Fetching the native `ALERTS` timeseries and comparing it logically against CI timestamps structurally pinpoints faults.
+
+**Python Script:**
+```python
+def check_deployment_causality(deploy_timestamp_epoch, prometheus_alert_timestamps):
+    # 1. Set the causality window purely logically (e.g. within 5 minutes of deploy)
+    causality_window = 300 
+    
+    related_alerts = []
+    
+    for alert_time, alert_name in prometheus_alert_timestamps:
+        time_diff = alert_time - deploy_timestamp_epoch
+        
+        # 2. Check if the alert fired strictly AFTER the deploy, but within the window
+        if 0 < time_diff <= causality_window:
+            related_alerts.append(f"{alert_name} (Fired {time_diff}s post-deploy)")
+            
+    if related_alerts:
+        return "ROLLBACK REQUIRED: System degraded directly following deployment.\n" + "\n".join(related_alerts)
+    return "DEPLOYMENT SAFE: No closely correlated Prometheus ALERTS detected."
+
+deploy_time = 1700000000
+prom_alerts = [
+    (1690000000, "HighCPU"),        # Way before
+    (1700000045, "5xxErrorSpike"),  # 45 seconds after
+    (1700000100, "PodCrashLoop")    # 100 seconds after
+]
+
+print(check_deployment_causality(deploy_time, prom_alerts))
+```
+
+**Output of the script:**
+```text
+ROLLBACK REQUIRED: System degraded directly following deployment.
+5xxErrorSpike (Fired 45s post-deploy)
+PodCrashLoop (Fired 100s post-deploy)
+```
+
+---
+
+### Task 14: Exposing native JVM GC metrics automatically via Python JMX parser
+
+**Why use this logic?** Java microservices require a complex JMX exporter to reach Prometheus. If it breaks, Java goes black. Python can locally connect to the JVM via shell, extract the garbage collection heaps textually, and natively export them to `/metrics` as a failsafe sidecar.
+
+**Python Script:**
+```python
+import re
+
+def scrape_jvm_jstat_output(jstat_cli_output_string):
+    # 1. jstat -gcutil typically outputs headers then raw float percentages
+    # Headers:  S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT   
+    # Data:     0.00 100.00  32.40  10.23  95.42  89.31     12    0.145     2    0.234    0.379
+    
+    lines = jstat_cli_output_string.strip().split('\n')
+    if len(lines) < 2: return "Parser failed."
+    
+    # 2. Map indices inherently
+    headers = lines[0].split()
+    values = lines[1].split()
+    
+    # 3. Construct Prometheus format explicitly
+    prom_str = ""
+    for h, v in zip(headers, values):
+        prom_str += f"# HELP jvm_jstat_{h.lower()} JVM extracted diagnostic\n"
+        prom_str += f"# TYPE jvm_jstat_{h.lower()} gauge\n"
+        prom_str += f"jvm_jstat_{h.lower()} {v}\n"
+        
+    return prom_str.strip()
+
+jstat_mock = """
+  S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT   
+  0.00 100.00  32.40  10.23  95.42  89.31     12    0.145     2    0.234    0.379
+"""
+
+print(scrape_jvm_jstat_output(jstat_mock))
+```
+
+**Output of the script:**
+```text
+# HELP jvm_jstat_s0 JVM extracted diagnostic
+# TYPE jvm_jstat_s0 gauge
+jvm_jstat_s0 0.00
+# HELP jvm_jstat_s1 JVM extracted diagnostic
+# TYPE jvm_jstat_s1 gauge
+jvm_jstat_s1 100.00
+# HELP jvm_jstat_e JVM extracted diagnostic
+# TYPE jvm_jstat_e gauge
+jvm_jstat_e 32.40
+# HELP jvm_jstat_o JVM extracted diagnostic
+# TYPE jvm_jstat_o gauge
+jvm_jstat_o 10.23
+# HELP jvm_jstat_m JVM extracted diagnostic
+# TYPE jvm_jstat_m gauge
+jvm_jstat_m 95.42
+# HELP jvm_jstat_ccs JVM extracted diagnostic
+# TYPE jvm_jstat_ccs gauge
+jvm_jstat_ccs 89.31
+# HELP jvm_jstat_ygc JVM extracted diagnostic
+# TYPE jvm_jstat_ygc gauge
+jvm_jstat_ygc 12
+# HELP jvm_jstat_ygct JVM extracted diagnostic
+# TYPE jvm_jstat_ygct gauge
+jvm_jstat_ygct 0.145
+# HELP jvm_jstat_fgc JVM extracted diagnostic
+# TYPE jvm_jstat_fgc gauge
+jvm_jstat_fgc 2
+# HELP jvm_jstat_fgct JVM extracted diagnostic
+# TYPE jvm_jstat_fgct gauge
+jvm_jstat_fgct 0.234
+# HELP jvm_jstat_gct JVM extracted diagnostic
+# TYPE jvm_jstat_gct gauge
+jvm_jstat_gct 0.379
+```
+
+---
+
+### Task 15: Calculating PromQL Apdex scores for User Experience
+
+**Why use this logic?** "Average Latency" lies. Apdex mathematically balances Satisfied, Tolerating, and Frustrated users into a single 0.0 to 1.0 index natively. Python can fetch raw Prometheus buckets and compute Apdex logically to evaluate physical user happiness.
+
+**Python Script:**
+```python
+def calculate_system_apdex(satisfied_reqs, tolerating_reqs, frustrated_reqs):
+    # 1. Total traffic evaluation 
+    total = satisfied_reqs + tolerating_reqs + frustrated_reqs
+    if total == 0: return "Apdex: N/A"
+    
+    # 2. Strict Apdex Equation: (Satisfied + (Tolerating / 2)) / Total Requests
+    apdex = (satisfied_reqs + (tolerating_reqs / 2.0)) / total
+    
+    # 3. Categorize UX intrinsically
+    if apdex >= 0.94: rating = "EXCELLENT"
+    elif apdex >= 0.85: rating = "GOOD"
+    elif apdex >= 0.70: rating = "FAIR"
+    elif apdex >= 0.50: rating = "POOR"
+    else: rating = "UNACCEPTABLE"
+    
+    return f"Apdex Score: {apdex:.2f} ({rating})"
+
+print("Morning Traffic: ", calculate_system_apdex(800, 150, 50))
+print("Crash Traffic: ", calculate_system_apdex(100, 500, 400))
+```
+
+**Output of the script:**
+```text
+Morning Traffic:  Apdex Score: 0.88 (GOOD)
+Crash Traffic:  Apdex Score: 0.35 (UNACCEPTABLE)
+```
+
+---
+
+### Task 16: Validating Prometheus Remote-Write authorization
+
+**Why use this logic?** If Prometheus is sending its TSDB metrics to the cloud (Grafana Mimir or Datadog) via `remote_write`, the credentials must be valid. Injecting Python directly against the upstream URL checks structural 401 Unauthorized faults before Prometheus completely fills up its local WAL and crashes.
+
+**Python Script:**
+```python
+# import requests
+
+def validate_remote_write_credentials(endpoint_url, token):
+    # 1. Assemble strict Prometheus Remote-Write Auth headers 
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "x-prometheus-remote-write-version": "0.1.0"
+    }
+    
+    # 2. Simulate HTTP POST test inherently
+    mock_status_code = 200 if token == "valid_abc" else 401
+    
+    if mock_status_code == 401:
+        return "[FATAL] Remote-Write rejected. Token Invalid. Local disk will fill and crash!"
+    return "[OK] Cloud Exporter actively accepting Remote-Write streams."
+
+print(validate_remote_write_credentials("https://mimir.cloud/push", "bad_token"))
+print(validate_remote_write_credentials("https://mimir.cloud/push", "valid_abc"))
+```
+
+**Output of the script:**
+```text
+[FATAL] Remote-Write rejected. Token Invalid. Local disk will fill and crash!
+[OK] Cloud Exporter actively accepting Remote-Write streams.
+```
+
+---
+
+### Task 17: Backfilling Prometheus historical data arrays dynamically
+
+**Why use this logic?** If Prometheus was offline for 3 hours, you have a massive blank gap in Grafana natively. Python can pull historical metrics identically from a secondary source (like CloudWatch) and synthesize "Prometheus Remote-Write" byte blocks natively to retroactively backfill the database.
+
+**Python Script:**
+```python
+def generate_historical_backfill_block(metric_name, timestamp_start, timestamp_end, fixed_val):
+    backfill_buffer = []
+    
+    # 1. Step interval (e.g. 15 seconds) mathematically
+    step_s = 15
+    current_ts = timestamp_start
+    
+    # 2. Iterate dynamically constructing synthetic history
+    while current_ts <= timestamp_end:
+        # Structure strict payload
+        line = f"{metric_name} {fixed_val} {current_ts * 1000}" # Prom requires Milliseconds
+        backfill_buffer.append(line)
+        current_ts += step_s
+        
+    return f"Synthesized {len(backfill_buffer)} historical datapoints effectively."
+
+print(generate_historical_backfill_block("aws_rds_cpu", 1680000000, 1680001000, 45.5))
+```
+
+**Output of the script:**
+```text
+Synthesized 67 historical datapoints effectively.
+```
+
+---
+
+### Task 18: Emulating Thanos/Cortex multi-cluster PromQL federation
+
+**Why use this logic?** If you lack a global Thanos system, Python must inherently federate queries itself. Calling 3 distinct regional Prometheus endpoints sequentially, adding their JSON results mathematically, and returning a unified synthetic total provides cross-cluster observability purely via script.
+
+**Python Script:**
+```python
+def federate_cluster_promql(regional_results_array):
+    unified_sum = 0.0
+    
+    # 1. Simulate iterating over different Kubernetes clusters cleanly
+    for cluster_name, result in regional_results_array.items():
+        if result.get("status") == "success":
+            # 2. Safely extract numeric metric logically
+            val = float(result["data"]["result"][0]["value"][1])
+            unified_sum += val
+            print(f"[{cluster_name}] Logged: {val}")
+            
+    return f"--- GLOBAL FEDERATED TOTAL --- : {unified_sum}"
+
+cluster_responses = {
+    "us-east-1-prom": {"status": "success", "data": {"result": [{"value": [1000, "450"]}]}},
+    "eu-west-1-prom": {"status": "success", "data": {"result": [{"value": [1000, "120"]}]}},
+    "ap-south-1-prom": {"status": "success", "data": {"result": [{"value": [1000, "65"]}]}},
+}
+
+print(federate_cluster_promql(cluster_responses))
+```
+
+**Output of the script:**
+```text
+[us-east-1-prom] Logged: 450.0
+[eu-west-1-prom] Logged: 120.0
+[ap-south-1-prom] Logged: 65.0
+--- GLOBAL FEDERATED TOTAL --- : 635.0
+```
+
+---
+
+### Task 19: Identifying PromQL queries scanning too many samples
+
+**Why use this logic?** Prometheus 2.x endpoints expose detailed execution metadata. A developer's inefficient query might scan 50,000,000 samples logically, slowing down every other dashboard natively pointlessly. Python structurally identifies these inefficient network queries for optimization.
+
+**Python Script:**
+```python
+def audit_promql_query_performance(api_stats_payload):
+    # 1. Extract internal Prometheus engine profiling logically
+    total_samples_scanned = api_stats_payload.get("samplesScanned", 0)
+    exec_time_ms = api_stats_payload.get("evalTimeMs", 0)
+    
+    report = f"PromQL Trace -> Samples Scanned: {total_samples_scanned:,} | Time: {exec_time_ms}ms"
+    
+    # 2. Strict Threshold Enforcement
+    if total_samples_scanned > 1000000:
+        return report + "\n[WARNING] Query scanned > 1M samples. Extreme memory hazard. Add strict label filters."
+        
+    return report + "\n[OK] Query executed efficiently."
+
+efficient = {"samplesScanned": 450, "evalTimeMs": 2}
+dangerous = {"samplesScanned": 55000000, "evalTimeMs": 14500}
+
+print(audit_promql_query_performance(efficient))
+print("-" * 20)
+print(audit_promql_query_performance(dangerous))
+```
+
+**Output of the script:**
+```text
+PromQL Trace -> Samples Scanned: 450 | Time: 2ms
+[OK] Query executed efficiently.
+--------------------
+PromQL Trace -> Samples Scanned: 55,000,000 | Time: 14500ms
+[WARNING] Query scanned > 1M samples. Extreme memory hazard. Add strict label filters.
+```
+
+---
+
+### Task 20: Exposing asynchronous Python Celery queue lengths to Prometheus
+
+**Why use this logic?** Standard Python ASGI servers (FastAPI/Django) track HTTP metrics cleanly, but background asynchronous Worker Queues (Celery/Redis) are totally blind to HTTP scrapers natively. Measuring the exact queue depth logically exposes async delays to Prometheus directly.
+
+**Python Script:**
+```python
+def capture_redis_queue_depth(mock_redis_client):
+    # 1. Simulate Redis execution: length = redis_client.llen("celery")
+    length_main = 1450
+    length_dlq = 12
+    
+    # 2. Construct Exposition Block cleanly
+    exposition = [
+        "# HELP celery_queue_depth Asynchronous task backlog",
+        "# TYPE celery_queue_depth gauge",
+        f'celery_queue_depth{{queue="main"}} {length_main}',
+        f'celery_queue_depth{{queue="dead_letters"}} {length_dlq}'
+    ]
+    
+    # 3. Output natively to the local HTTP scraper endpoint automatically
+    return "\n".join(exposition)
+
+print(capture_redis_queue_depth("mock"))
+```
+
+**Output of the script:**
+```text
+# HELP celery_queue_depth Asynchronous task backlog
+# TYPE celery_queue_depth gauge
+celery_queue_depth{queue="main"} 1450
+celery_queue_depth{queue="dead_letters"} 12
+```
+
+---
+
 Automating your integrations checks ensures that the observability tools meant to protect your system don't themselves become the source of unexpected failures.

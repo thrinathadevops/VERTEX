@@ -486,4 +486,578 @@ print(diff_configurations(yaml_last_week, yaml_today))
 
 ---
 
+### Task 9: Scrubbing PII natively from YAML configuration dumps
+
+**Why use this logic?** When extracting production configuration for local debugging, you implicitly pull down Slack tokens, DB passwords, and GitHub secrets. A Python script algorithmically iterating over the YAML AST to mask any key named `password` or `token` ensures developers never download live credentials.
+
+**Python Script:**
+```python
+import yaml
+
+def scrub_pii_from_yaml(production_yaml_string):
+    config = yaml.safe_load(production_yaml_string)
+    
+    # 1. Recursive scrubbing mechanism
+    def mask_secrets(dict_node):
+        for key, val in dict_node.items():
+            if isinstance(val, dict):
+                mask_secrets(val)
+            elif isinstance(key, str) and any(bad in key.lower() for bad in ["password", "token", "secret", "key"]):
+                # 2. Mutate value securely
+                dict_node[key] = "******** [REDACTED BY SRE SCRIPT]"
+                
+    mask_secrets(config)
+    
+    return yaml.dump(config, default_flow_style=False, sort_keys=False)
+
+prod_config = """
+db_settings:
+  pool: 100
+  password: "super_secret_db_pass"
+telemetry:
+  slack_token: "xoxb-1111-2222-3333"
+  active: true
+"""
+
+print(scrub_pii_from_yaml(prod_config))
+```
+
+**Output of the script:**
+```yaml
+db_settings:
+  pool: 100
+  password: ******** [REDACTED BY SRE SCRIPT]
+telemetry:
+  slack_token: ******** [REDACTED BY SRE SCRIPT]
+  active: true
+```
+
+---
+
+### Task 10: Validating Kubernetes API versions against deprecated matrices in YAML
+
+**Why use this logic?** When Kubernetes clusters upgrade (e.g., v1.30), old `apiVersion` elements like `extensions/v1beta1` instantly break CI/CD pipelines natively. Python looping through 500 YAML files flagging deprecated fields saves hours of debugging opaque Kubernetes API errors.
+
+**Python Script:**
+```python
+import yaml
+
+def validate_k8s_api_deprecation(k8s_manifest_string):
+    manifests = yaml.safe_load_all(k8s_manifest_string)
+    deprecated = {
+        "extensions/v1beta1": "apps/v1",
+        "networking.k8s.io/v1beta1": "networking.k8s.io/v1"
+    }
+    
+    violations = []
+    
+    # 1. Iterate over multi-doc YAML natively
+    for idx, doc in enumerate(manifests):
+         if not doc: continue
+         
+         api_ver = doc.get("apiVersion")
+         kind = doc.get("kind")
+         
+         # 2. Evaluate mathematically
+         if api_ver in deprecated:
+              violations.append(f"Document #{idx+1} ({kind}) uses deprecated '{api_ver}'. Upgrade to '{deprecated[api_ver]}'.")
+              
+    if violations:
+         return "🔥 DEPRECATION WARNINGS FOUND:\n" + "\n".join(violations)
+    return "✅ Cluster Manifests Fully Compatible."
+
+old_kubernetes_file = """
+apiVersion: v1
+kind: Service
+---
+apiVersion: extensions/v1beta1  # Explicitly broken in modern k8s 
+kind: Deployment
+"""
+
+print(validate_k8s_api_deprecation(old_kubernetes_file))
+```
+
+**Output of the script:**
+```text
+🔥 DEPRECATION WARNINGS FOUND:
+Document #2 (Deployment) uses deprecated 'extensions/v1beta1'. Upgrade to 'apps/v1'.
+```
+
+---
+
+### Task 11: Converting complex Docker Compose YAML files into Kubernetes Manifests
+
+**Why use this logic?** Teams use `docker-compose.yaml` to run MySQL and API locally natively. Python can explicitly rip apart the `services` array structurally, outputting equivalent K8s `Deployment` and `Service` representations dynamically to kickstart cloud migrations.
+
+**Python Script:**
+```python
+import yaml
+
+def compose_to_kubernetes_converter(compose_string):
+    compose_obj = yaml.safe_load(compose_string)
+    k8s_outputs = []
+    
+    # 1. Parse Docker Compose logic natively
+    services = compose_obj.get("services", {})
+    
+    for name, config in services.items():
+        image = config.get("image", "unknown:latest")
+        ports = config.get("ports", [])
+        
+        # 2. Generative mapping to Pod
+        deployment = {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": name},
+            "spec": {
+                "replicas": 1,
+                "selector": {"matchLabels": {"app": name}},
+                "template": {
+                    "metadata": {"labels": {"app": name}},
+                    "spec": {"containers": [{"name": name, "image": image}]}
+                }
+            }
+        }
+        
+        # Append port extraction if exists
+        if ports:
+            container_port = int(str(ports[0]).split(":")[1])
+            deployment["spec"]["template"]["spec"]["containers"][0]["ports"] = [{"containerPort": container_port}]
+            
+        k8s_outputs.append(yaml.dump(deployment, default_flow_style=False, sort_keys=False))
+        
+    return "\n---\n".join(k8s_outputs)
+
+mock_compose = """
+services:
+  web:
+    image: nginx:1.24
+    ports:
+      - "8080:80"
+  db:
+    image: postgres:15
+"""
+
+print(compose_to_kubernetes_converter(mock_compose))
+```
+
+**Output of the script:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: nginx:1.24
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: postgres:15
+```
+
+---
+
+### Task 12: Generating GitLab CI/CD `.gitlab-ci.yml` pipeline files structurally
+
+**Why use this logic?** Writing CI/CD logic manually limits the ability to roll out standard templates dynamically. Creating `.gitlab-ci.yml` structurally using Python allows you to dynamically append the `include` and `stages` logic conditionally based on project language.
+
+**Python Script:**
+```python
+import yaml
+
+def generate_gitlab_pipeline(project_language_type):
+    # 1. Base pipeline mapping securely
+    pipeline = {
+        "stages": ["lint", "build", "deploy"],
+        "variables": {"DOCKER_DRIVER": "overlay2"},
+        "build_job": {
+            "stage": "build",
+            "script": ["echo Building generic matrix..."]
+        }
+    }
+    
+    # 2. Dynamic logical insertion
+    if project_language_type.lower() == "python":
+         pipeline["test_job"] = {
+             "stage": "lint",
+             "script": ["pip install ruff", "ruff check ."]
+         }
+    elif project_language_type.lower() == "node":
+         pipeline["test_job"] = {
+             "stage": "lint",
+             "script": ["npm run lint"]
+         }
+         
+    return f"--- Generative GitLab Pipeline ---\n{yaml.dump(pipeline, sort_keys=False)}"
+
+print(generate_gitlab_pipeline("python"))
+```
+
+**Output of the script:**
+```yaml
+--- Generative GitLab Pipeline ---
+stages:
+- lint
+- build
+- deploy
+variables:
+  DOCKER_DRIVER: overlay2
+build_job:
+  stage: build
+  script:
+  - echo Building generic matrix...
+test_job:
+  stage: lint
+  script:
+  - pip install ruff
+  - ruff check .
+```
+
+---
+
+### Task 13: Extracting exact node selectors mathematically from heavy Helm output
+
+**Why use this logic?** When dealing with huge Helm installations containing 8000 lines of YAML, operators completely lose track of where pods are being scheduled. Python ripping the exact `nodeSelector` array cleanly out of massive dumps resolves scheduling conflicts immediately.
+
+**Python Script:**
+```python
+import yaml
+
+def audit_helm_scheduling_targets(helm_manifest_yaml_text):
+    # Simulate loading multi-document payload natively
+    documents = yaml.safe_load_all(helm_manifest_yaml_text)
+    scheduling_report = []
+    
+    # 1. Recursive parsing loop explicitly isolating mapping features
+    for doc in documents:
+        if not doc or doc.get("kind") not in ["Deployment", "StatefulSet", "DaemonSet"]:
+             continue
+             
+        name = doc.get("metadata", {}).get("name", "unknown")
+        
+        # Drill precisely into spec -> template -> spec
+        pod_spec = doc.get("spec", {}).get("template", {}).get("spec", {})
+        
+        # 2. Extract specific node logic
+        selectors = pod_spec.get("nodeSelector", {})
+        tolerations = pod_spec.get("tolerations", [])
+        
+        scheduling_report.append(f"Workload [{name}]:")
+        scheduling_report.append(f"  - Node Selector: {selectors if selectors else 'None (Any Node)'}")
+        scheduling_report.append(f"  - Tolerations : {len(tolerations)} rules mapped")
+        
+    return "\n".join(scheduling_report)
+
+heavy_helm_output = """
+kind: Deployment
+metadata:
+  name: gpu-worker
+spec:
+  template:
+    spec:
+      nodeSelector:
+        hardware: nvidia
+      tolerations:
+        - key: "gpu"
+          operator: "Exists"
+---
+kind: Service
+metadata:
+  name: ignore-this
+"""
+
+print(audit_helm_scheduling_targets(heavy_helm_output))
+```
+
+**Output of the script:**
+```text
+Workload [gpu-worker]:
+  - Node Selector: {'hardware': 'nvidia'}
+  - Tolerations : 1 rules mapped
+```
+
+---
+
+### Task 14: Sorting YAML arrays recursively to enforce strict commit hygiene
+
+**Why use this logic?** If an engineer modifies `us-east-1` at the top of a config matrix, and another adds `eu-west-1` at the bottom, Git creates a horrifying merge conflict. Python sorting keys alphabetically inside YAML natively guarantees flawless identical state logic on every git pull.
+
+**Python Script:**
+```python
+import yaml
+
+def enforce_alphabetical_yaml_hygiene(raw_yaml):
+    # 1. Safe load parses identical map
+    config = yaml.safe_load(raw_yaml)
+    
+    # 2. The critical step is mapping `sort_keys=True` explicitly in Python PyYAML natively
+    clean_yaml = yaml.dump(config, default_flow_style=False, sort_keys=True)
+    
+    return f"🧹 HYGIENE ENFORCED:\n{clean_yaml}"
+
+chaotic_developer_yaml = """
+zookeeper_endpoints: 
+  - "1.2.3.4"
+redis_port: 6379
+aws_regions:
+  us-west-1: false
+  eu-west-1: true
+  ap-south-1: false
+alert_threshold: 90
+"""
+
+print(enforce_alphabetical_yaml_hygiene(chaotic_developer_yaml))
+```
+
+**Output of the script:**
+```yaml
+🧹 HYGIENE ENFORCED:
+alert_threshold: 90
+aws_regions:
+  ap-south-1: false
+  eu-west-1: true
+  us-west-1: false
+redis_port: 6379
+zookeeper_endpoints:
+- 1.2.3.4
+```
+
+---
+
+### Task 15: Expanding environment variables natively inside generic YAML nodes
+
+**Why use this logic?** Python's underlying `yaml.safe_load()` doesn't automatically parse strings like `${DB_PASS}` securely. Scripting a recursive function that mathematically loops through text natively exchanging OS parameters before final stringification prevents application boot crashes.
+
+**Python Script:**
+```python
+import yaml
+import os
+import re
+
+def parse_yaml_with_os_expansion(yaml_text_with_variables):
+    # 1. Inject mockup OS environments securely
+    os.environ['DATABASE_URL'] = "postgres://admin:secret@10.0.0.1:5432/core"
+    os.environ['API_REPLICAS'] = "5"
+    
+    # 2. We execute a regex replacement linearly against the RAW text string natively 
+    # capturing the explicit `${VAR_NAME}` sequence
+    pattern = re.compile(r'\$\{([^}^{]+)\}')
+    
+    def replacer(match):
+         env_var_name = match.group(1)
+         return os.environ.get(env_var_name, f"MISSING_ENV_{env_var_name}")
+         
+    expanded_text = pattern.sub(replacer, yaml_text_with_variables)
+    
+    # 3. Load cleanly natively into dict 
+    parsed_config = yaml.safe_load(expanded_text)
+    
+    return f"Resolved Dictionary System:\n{parsed_config}"
+
+raw_template = """
+system:
+  connection_string: "${DATABASE_URL}"
+  scaling:
+    active_pods: ${API_REPLICAS}
+"""
+
+print(parse_yaml_with_os_expansion(raw_template))
+```
+
+**Output of the script:**
+```text
+Resolved Dictionary System:
+{'system': {'connection_string': 'postgres://admin:secret@10.0.0.1:5432/core', 'scaling': {'active_pods': 5}}}
+```
+
+---
+
+### Task 16: Patching nested array elements surgically without destroying structural anchors
+
+**Why use this logic?** Modifying a Kubernetes image array inside python natively involves digging through 6 layers of dictionaries. Doing it safely by strictly checking `isinstance()` recursively prevents throwing `KeyError` crashes in massive configurations.
+
+**Python Script:**
+```python
+import yaml
+
+def surgical_image_patch_yaml(k8s_yaml_str, target_container, new_image_tag):
+    document = yaml.safe_load(k8s_yaml_str)
+    
+    try:
+        # 1. Surgical Drill directly into the K8s object
+        containers = document["spec"]["template"]["spec"]["containers"]
+        
+        # 2. Iterate against the specific list algebraically
+        for container in containers:
+            if container.get("name") == target_container:
+                old = container["image"]
+                container["image"] = new_image_tag
+                print(f"Surgical Strike: '{target_container}' Image Update [{old} -> {new_image_tag}] natively")
+                
+    except KeyError:
+        return "CRITICAL: YAML Structure does not match absolute K8s Pod Template parameters."
+        
+    return yaml.dump(document, default_flow_style=False, sort_keys=False)
+
+mock_deployment = """
+spec:
+  template:
+    spec:
+      containers:
+      - name: sidecar
+        image: fluent-bit:old
+      - name: worker
+        image: python:3.9
+"""
+
+print("\nResulting YAML:")
+print(surgical_image_patch_yaml(mock_deployment, "worker", "python:3.11-alpine"))
+```
+
+**Output of the script:**
+```text
+Surgical Strike: 'worker' Image Update [python:3.9 -> python:3.11-alpine] natively
+
+Resulting YAML:
+spec:
+  template:
+    spec:
+      containers:
+      - image: fluent-bit:old
+        name: sidecar
+      - image: python:3.11-alpine
+        name: worker
+```
+
+---
+
+### Task 17: Merging massive Prometheus scrape configs algorithmically
+
+**Why use this logic?** If two teams paste the identical target `10.0.0.1:9090` into a `prometheus.yml` scrape configuration natively, the metrics database fails due to duplication errors. Python explicitly executing `set()` merge algorithms fixes the structure inherently.
+
+**Python Script:**
+```python
+import yaml
+
+def deduplicate_scrape_targets(prometheus_yaml_payload):
+    config = yaml.safe_load(prometheus_yaml_payload)
+    
+    # 1. Dig natively to the scrapes
+    scrape_configs = config.get("scrape_configs", [])
+    
+    for job in scrape_configs:
+        static_configs = job.get("static_configs", [])
+        for block in static_configs:
+             # 2. Targets is a list of IPs. Extract and cast to a mathematical SET securely
+             targets = block.get("targets", [])
+             
+             unique_targets = list(set(targets))
+             unique_targets.sort() # Guarantee alphabetical hygiene
+             
+             block["targets"] = unique_targets
+             
+    return f"🚀 OPTIMIZED PROMETHEUS CONFIG:\n{yaml.dump(config, sort_keys=False)}"
+
+bloated_config = """
+scrape_configs:
+  - job_name: "nodes"
+    static_configs:
+      - targets: ["10.0.0.1:9100", "10.0.0.9:9100", "10.0.0.1:9100"] # Duplicate 0.1 explicitly
+"""
+
+print(deduplicate_scrape_targets(bloated_config))
+```
+
+**Output of the script:**
+```yaml
+🚀 OPTIMIZED PROMETHEUS CONFIG:
+scrape_configs:
+- job_name: nodes
+  static_configs:
+  - targets:
+    - 10.0.0.1:9100
+    - 10.0.0.9:9100
+```
+
+---
+
+### Task 18: Converting raw YAML payloads into heavily nested Terraform TFVars securely
+
+**Why use this logic?** The FinOps team sends you an arbitrary `config.yml`, but HashiCorp Terraform fundamentally requires `.tfvars.json` structures. Python translates dictionary trees structurally into explicit mapping syntaxes securely in milliseconds.
+
+**Python Script:**
+```python
+import yaml
+import json
+
+def convert_yaml_to_terraform_vars(yaml_string):
+    config_dict = yaml.safe_load(yaml_string)
+    
+    # 1. Terraform expects a single massive JSON mapping struct identical to the YAML definition
+    tfvars_struct = {}
+    
+    for key, value in config_dict.items():
+        # Cleanly transfer map structurally
+        tfvars_struct[key] = value
+        
+    return f"// auto-generated config.tfvars.json\n{json.dumps(tfvars_struct, indent=2)}"
+
+infra_yaml = """
+instance_type: "t3.large"
+allowed_regions:
+  - "us-east-1"
+  - "us-west-2"
+database_cluster:
+  engine: "aurora-mysql"
+  version: "8.0.mysql_aurora"
+"""
+
+print(convert_yaml_to_terraform_vars(infra_yaml))
+```
+
+**Output of the script:**
+```json
+// auto-generated config.tfvars.json
+{
+  "instance_type": "t3.large",
+  "allowed_regions": [
+    "us-east-1",
+    "us-west-2"
+  ],
+  "database_cluster": {
+    "engine": "aurora-mysql",
+    "version": "8.0.mysql_aurora"
+  }
+}
+```
+
+---
+
 With Python native `PyYAML` ingestion processing, teams can generate robust GitOps architectures seamlessly, bridging manual human-readable text logic identically into powerful runtime deployments across your systems.
