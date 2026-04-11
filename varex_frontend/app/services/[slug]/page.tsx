@@ -21,6 +21,128 @@ const SERVICES: Record<string, {
   title: string; icon: string; tagline: string; description: string;
   offerings: string[]; outcomes: string[]; techStack: string[];
 }> = {
+  "engineering-services": {
+    title: "Engineering Services",
+    icon: "cicd",
+    tagline: "End-to-end cloud infrastructure and delivery.",
+    description: "We architect, build, and operate unbreakable production environments. Our comprehensive end-to-end engineering services transform legacy applications into modern, cloud-native powerhouses, enabling your teams to continuously ship features with zero friction and absolute reliability.",
+    offerings: [
+      "Enterprise Cloud Architecture Design tailored for AWS, Azure, and GCP",
+      "Complete Migration & Modernisation from Monolithic to Microservices",
+      "DevSecOps Implementation embedded directly into CI/CD pipelines",
+      "Infrastructure as Code (IaC) Automation using Terraform, Terragrunt, and Ansible",
+      "Kubernetes & Container Orchestration (EKS, AKS, GKE, OpenShift)",
+      "Site Reliability Engineering (SRE) implementation with SLI/SLO definitions",
+      "Zero-Downtime Deployment strategies (Blue/Green, Canary, Feature Flags)",
+      "Security Hardening across compute, network, and storage resources",
+      "API Gateway, Service Mesh, and advanced traffic routing setup",
+      "Disaster Recovery (DR) planning, testing, and automated failover",
+    ],
+    outcomes: [
+      "Highly resilient, auto-scaling production environments handling massive load",
+      "Over 80% reduction in manual infrastructure provisioning time",
+      "Consistent, auditable compliance deployed as code across all environments",
+      "Accelerated delivery velocity for product engineering teams (from days to hours)",
+      "Significantly reduced Mean Time to Recovery (MTTR) during incidents",
+      "Fully standardized and reproducible infrastructure across environments",
+    ],
+    techStack: [
+      "Terraform", "Terragrunt", "Ansible", "Kubernetes", "AWS", "Microsoft Azure", "Google Cloud", 
+      "Docker", "GitHub Actions", "GitLab CI", "Jenkins", "ArgoCD", "Istio", "NGINX", 
+      "HashiCorp Vault", "Prometheus", "Grafana", "ELK Stack"
+    ],
+  },
+  "cybersecurity-resilience": {
+    title: "Cybersecurity & Resilience",
+    icon: "security",
+    tagline: "Proactive defense and unshakeable infrastructure.",
+    description: "We implement military-grade security controls, continuous penetration testing, and zero-trust boundaries that secure your enterprise against evolving threats while accelerating, not hindering, your deployment velocity.",
+    offerings: [
+      "DevSecOps Pipelines with integrated SAST, DAST, and SCA scanning",
+      "Cloud Security Posture Management (CSPM) and continuous monitoring",
+      "Identity and Access Management (IAM) optimization and least-privilege design",
+      "Container Security hardening and real-time runtime threat detection",
+      "Zero Trust Network Architecture design, micro-segmentation, and execution",
+      "Compliance & Audit readiness mapping for ISO 27001, SOC2, and GDPR",
+      "Continuous Web Application and API Security assessments",
+      "Comprehensive VAPT & Threat Modelling exercises (OWASP Top 10)",
+      "Secrets Management and automated key rotation implementations",
+      "Web Application Firewall (WAF) deployment and DDoS mitigation routing",
+    ],
+    outcomes: [
+      "Impervious security posture across the entire application and infrastructure stack",
+      "Frictionless compliance readiness for major enterprise and financial audits",
+      "Early vulnerability detection reducing exposure windows to near zero",
+      "Continuous runtime monitoring stopping threats autonomously in real-time",
+      "Complete visibility into attack surfaces across multi-cloud environments",
+      "Developer-first security workflows that eliminate traditional security bottlenecks",
+    ],
+    techStack: [
+      "HashiCorp Vault", "Falco", "Trivy", "SonarQube", "OWASP ZAP", "Wazuh", "Checkmarx", 
+      "Snyk", "AWS Security Hub", "Azure Sentinel", "Cloudflare WAF", "Palo Alto", "Nessus", "Burp Suite"
+    ],
+  },
+  "sap-sd-consulting": {
+    title: "SAP SD Consulting",
+    icon: "sap",
+    tagline: "Optimising complex order-to-cash workflows.",
+    description: "Our elite SAP consultants execute complex integrations, massive system rollouts, and advanced billing optimizations that drive operational excellence across global manufacturing, retail, and pharmaceutical enterprises.",
+    offerings: [
+      "End-to-end S/4HANA SD Module Implementation and flawless data migration",
+      "Order-to-Cash (O2C) Optimisation to minimize billing discrepancies and delays",
+      "Complex SAP SD Integration with CRM, MM, WM, and FI/CO ecosystems",
+      "Comprehensive global SAP Support & regional rollout execution",
+      "Advanced Pricing Procedures and Condition Configuration methodologies",
+      "EDI Integration for automated B2B sales cycles and supplier communication",
+      "Master Data Management structures covering Customers, Materials, and Pricing",
+      "BRF+ (Business Rule Framework plus) output management configurations",
+      "Intercompany Sales and complex third-party drop-shipment processing",
+      "GST/VAT e-invoicing compliance updates seamlessly integrated into billing",
+    ],
+    outcomes: [
+      "Accelerated sales processing, invoice generation, and optimized cash flow",
+      "Zero-disruption SAP S/4HANA transitions completed on budget",
+      "Perfectly unified sales and distribution data pipelines across disparate systems",
+      "Custom pricing conditions mapped exactly to intricate enterprise business logic",
+      "Massive reduction in manual order entry through B2B EDI automation",
+      "100% compliance with localized tax regulations and e-invoicing laws",
+    ],
+    techStack: [
+      "SAP S/4HANA", "SAP ECC 6.0", "ABAP", "SAP BTP (Business Technology Platform)", 
+      "SAP Fiori", "SAP CPI", "IDOC", "RFC", "OData APIs", "BRF+"
+    ],
+  },
+  "ai-powered-interview": {
+    title: "AI-Powered Interview Platform",
+    icon: "ai",
+    tagline: "The fastest way to vet elite technical talent.",
+    description: "Our proprietary AI engine powers robust, adaptive technical interviews for enterprises. We evaluate engineering candidates objectively, accurately, and thoroughly, completely eliminating human evaluation bottlenecks.",
+    offerings: [
+      "Mock Interview mode for candidate practice with instant, granular feedback",
+      "AI Interview for Clients delivering 100% automated enterprise assessments",
+      "7-phase adaptive questioning (from basic ice-breakers to deep-dive architecture)",
+      "Multi-criteria AI scoring (Code Quality, Communication, System Design, Problem Solving)",
+      "Resume-aware contextual question generation customized per candidate's specific background",
+      "Advanced anti-cheat proctoring (browser lock, eye-tracking, and integrity monitoring)",
+      "Live Coding Environments allowing candidates to execute code in secure sandboxes",
+      "Seamless ATS Integration (Greenhouse, Workday, Lever) for centralized pipeline tracking",
+      "Custom Evaluation Rubrics tailored to specific internal company engineering levels",
+      "Automated post-interview executive summary reports generating instant Hire/Reject matrices",
+    ],
+    outcomes: [
+      "Scale from 10 to 10,000 parallel interviews with absolute zero added headcount",
+      "Total elimination of human bias and fatigue in technical evaluation scoring",
+      "Unprecedented speed-to-hire by skipping weeks of manual technical screening overhead",
+      "Deeply analytical candidate matching based on exact project profiles and required stacks",
+      "Consistent, high-bar evaluation ensuring only the top 1% reach final round interviews",
+      "Exceptional candidate experience through flexible, on-demand AI scheduling",
+    ],
+    techStack: [
+      "Proprietary Assessment Engine", "LLM Processing (OpenAI GPT-4 / Anthropic)", "Llama 3", 
+      "Google Gemini", "WebRTC Video pipelines", "Docker-based Code Sandboxing", 
+      "React/Next.js Client UI", "PostgreSQL Vector Search"
+    ],
+  },
   "ci-cd-pipeline-setup": {
     title: "CI/CD Pipeline Setup",
     icon: "cicd",
@@ -329,7 +451,7 @@ export default function ServiceDetailPage({ params }: { params: { slug: string }
   const ServiceIcon = SERVICE_ICONS[service.icon] ?? Boxes;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto px-4 pt-24 pb-16 space-y-8">
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-[11px] text-slate-400">
